@@ -10,9 +10,11 @@ import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/maintenance/presentation/plan_create_sheet.dart';
+import 'package:meu_auto/features/obligation/application/obligation_provider.dart';
+import 'package:meu_auto/features/obligation/presentation/documentos_section.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
-import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -61,10 +63,16 @@ class CuidadosScreen extends ConsumerWidget {
 
   Future<void> _refresh(WidgetRef ref, String vehicleId) async {
     ref.invalidate(maintenancePlansProvider(vehicleId));
+    ref.invalidate(obligationsProvider(vehicleId));
+    ref.invalidate(segurosProvider(vehicleId));
     try {
-      await ref.read(maintenancePlansProvider(vehicleId).future);
+      await Future.wait([
+        ref.read(maintenancePlansProvider(vehicleId).future),
+        ref.read(obligationsProvider(vehicleId).future),
+        ref.read(segurosProvider(vehicleId).future),
+      ]);
     } on Object {
-      // The provider already holds the failure; CuidadosView renders it.
+      // The providers already hold the failure; the view renders it.
     }
   }
 }
@@ -86,17 +94,21 @@ class CuidadosView extends ConsumerWidget {
       ),
       data: (list) {
         if (list.isEmpty) {
-          return AppEmptyState(
-            title: 'Os cuidados do seu carro começam aqui',
-            message:
-                'O cadastro costuma criar os planos sugeridos. '
-                'Você pode criar o primeiro agora.',
-            actionLabel: 'Criar plano',
-            onAction: () => PlanCreateSheet.show(context, vehicleId: vehicleId),
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.s16),
+            children: [
+              _PlansEmpty(
+                onCreate: () =>
+                    PlanCreateSheet.show(context, vehicleId: vehicleId),
+              ),
+              DocumentosSection(vehicleId: vehicleId),
+            ],
           );
         }
         return CuidadosContent(
           plans: list,
+          trailing: DocumentosSection(vehicleId: vehicleId),
           onPlanTap: (plan) => context.push(AppRoutes.plan(plan.id)),
           onBaselineTap: (plan) => context.push(
             AppRoutes.maintenanceNew,
@@ -116,6 +128,7 @@ class CuidadosContent extends StatelessWidget {
   const CuidadosContent({
     super.key,
     required this.plans,
+    this.trailing,
     this.onPlanTap,
     this.onBaselineTap,
     this.onNeedsBaselineGroupTap,
@@ -123,6 +136,7 @@ class CuidadosContent extends StatelessWidget {
   });
 
   final List<MaintenancePlan> plans;
+  final Widget? trailing;
   final ValueChanged<MaintenancePlan>? onPlanTap;
   final ValueChanged<MaintenancePlan>? onBaselineTap;
   final VoidCallback? onNeedsBaselineGroupTap;
@@ -176,11 +190,11 @@ class CuidadosContent extends StatelessWidget {
             plans: groups.historyOnly,
             onTap: _tapOf,
           ),
+        ?trailing,
         if (onProfileTap != null) ...[
           const SizedBox(height: AppSpacing.s16),
           _ProfileLink(onTap: onProfileTap!),
         ],
-        const _DocumentosNotBuilt(),
       ],
     );
   }
@@ -351,39 +365,38 @@ class _ProfileLink extends StatelessWidget {
   }
 }
 
-/// Says out loud that ipva, licenciamento and seguro have no screens yet.
-///
-/// The server has the routes; this app does not consume them. Saying so beats
-/// hiding the gap, and it certainly beats showing invented figures. Delete
-/// this when the screens land — see docs/DECISOES-EM-ABERTO.md.
-class _DocumentosNotBuilt extends StatelessWidget {
-  const _DocumentosNotBuilt();
+class _PlansEmpty extends StatelessWidget {
+  const _PlansEmpty({this.onCreate});
+
+  final VoidCallback? onCreate;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.s24,
-        bottom: AppSpacing.s16,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(bottom: AppSpacing.s16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            Icons.info_outline,
-            size: 18,
-            color: theme.colorScheme.onSurfaceVariant,
+          Text(
+            'Os cuidados do seu carro começam aqui',
+            style: theme.textTheme.titleLarge,
           ),
-          const SizedBox(width: AppSpacing.s8),
-          Expanded(
-            child: Text(
-              'IPVA, licenciamento e seguro entram em breve.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+          const SizedBox(height: AppSpacing.s8),
+          Text(
+            'O cadastro costuma criar os planos sugeridos. '
+            'Você pode criar o primeiro agora.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          if (onCreate != null) ...[
+            const SizedBox(height: AppSpacing.s16),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppButton(label: 'Criar plano', onPressed: onCreate),
+            ),
+          ],
         ],
       ),
     );

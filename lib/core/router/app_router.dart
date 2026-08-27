@@ -26,6 +26,9 @@ import 'package:meu_auto/features/maintenance/presentation/maintenance_form_scre
 import 'package:meu_auto/features/maintenance/presentation/maintenance_list_screen.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_history_screen.dart';
 import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
+import 'package:meu_auto/features/obligation/presentation/obligation_detail_screen.dart';
+import 'package:meu_auto/features/obligation/presentation/seguro_detail_screen.dart';
+import 'package:meu_auto/features/obligation/presentation/seguro_form_screen.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_detail_screen.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_form_screen.dart';
@@ -112,11 +115,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        path: '/obrigacoes/:obligationId',
-        // Prompt 17 replaces this with the obligation detail. Until that
-        // screen exists, the Cuidados tab is the only place prazos appear.
-        redirect: (context, state) => AppRoutes.care,
-        builder: (context, state) => const SizedBox.shrink(),
+        path: AppRoutes.obligationDetail,
+        builder: (context, state) => ObligationDetailScreen(
+          obligationId: state.pathParameters['obligationId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.seguroNew,
+        builder: (context, state) {
+          final vehicle = ref.read(selectedVehicleProvider).value;
+          if (vehicle == null) {
+            return const SizedBox.shrink();
+          }
+          return SeguroFormScreen(vehicleId: vehicle.id);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.seguroDetail,
+        builder: (context, state) =>
+            SeguroDetailScreen(seguroId: state.pathParameters['seguroId']!),
+        routes: [
+          GoRoute(
+            path: 'editar',
+            builder: (context, state) =>
+                SeguroEditScreen(seguroId: state.pathParameters['seguroId']!),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.vehicleProfile,

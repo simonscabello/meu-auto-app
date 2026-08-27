@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
+import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
@@ -176,6 +177,24 @@ void main() {
     expect(find.text('Tudo em dia'), findsOneWidget);
     expect(find.byType(AppErrorState), findsNothing);
   });
+
+  test('an obligation alert opens the detail, not Cuidados', () {
+    expect(
+      routeForAlert(_alert(type: AlertReferenceType.obligation, id: 'ob-1')),
+      AppRoutes.obligation('ob-1'),
+    );
+    expect(
+      routeForAlert(_alert(type: AlertReferenceType.obligation, id: 'ob-1')),
+      isNot(AppRoutes.care),
+    );
+  });
+
+  test('a seguro alert opens the policy detail', () {
+    expect(
+      routeForAlert(_alert(type: AlertReferenceType.seguro, id: 'sg-1')),
+      AppRoutes.seguro('sg-1'),
+    );
+  });
 }
 
 const _vehicleId = '11111111-1111-7111-8111-111111111111';
@@ -229,5 +248,15 @@ Dashboard _dashboard({
         'seguro',
       ],
     ),
+  );
+}
+
+Alert _alert({required AlertReferenceType type, required String id}) {
+  return Alert(
+    kind: AlertKind.ipva,
+    severity: AlertSeverity.venceEmBreve,
+    title: 'IPVA',
+    referenceType: type,
+    referenceId: id,
   );
 }

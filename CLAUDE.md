@@ -51,9 +51,9 @@ These are conventions, not laws from the user — say so if you want to change o
 
 ## State of the repo
 
-**The MVP is feature-complete and audited four times.** Against the local API the app signs in and registers, manages vehicles and switches between them, shows the dashboard and its alerts, records and corrects mileage, keeps maintenance plans and service records, shows a unified timeline and a costs view, runs the `calibrar` onboarding, and lets someone edit their profile or delete the account. Vehicle registration picks brand, model and year from the FIPE catalogue instead of asking for four free-text fields. 604 tests, `flutter analyze` clean, `dart format` clean.
+**The MVP is feature-complete and audited four times.** Against the local API the app signs in and registers, manages vehicles and switches between them, shows the dashboard and its alerts, records and corrects mileage, keeps maintenance plans and service records, tracks IPVA, licenciamento and seguro, shows a unified timeline and a costs view, runs the `calibrar` onboarding, and lets someone edit their profile or delete the account. Vehicle registration picks brand, model and year from the FIPE catalogue instead of asking for four free-text fields.
 
-**What is not done, and why:** there is no app icon and no custom splash, because there is no artwork and none will be invented — see `docs/DECISOES-EM-ABERTO.md`. IPVA, licenciamento and seguro have server routes but no screens; the Cuidados tab says so rather than faking them.
+**What is not done, and why:** there is no app icon and no custom splash, because there is no artwork and none will be invented — see `docs/DECISOES-EM-ABERTO.md`.
 
 What exists, and is the pattern to follow rather than re-invent:
 
@@ -71,7 +71,7 @@ What exists, and is the pattern to follow rather than re-invent:
 
 - Riverpod **without** code generation; `go_router`; Dio; models written by hand.
 - **No `build_runner`, no `freezed`, no `json_serializable`, no `get_it`, no OpenAPI client generator.** Note that this diverges from what the backend's `CLAUDE.md` and `SPEC.md` still claim — see `docs/DECISOES-EM-ABERTO.md`, which explains why and what to fix over there.
-- Dependencies are exactly: `flutter_localizations`, `flutter_riverpod`, `go_router`, `dio`, `flutter_secure_storage`, `shared_preferences`, `intl`, `uuid`. Adding a ninth is a decision, not a detail.
+- Dependencies are exactly: `flutter_localizations`, `flutter_riverpod`, `go_router`, `dio`, `flutter_secure_storage`, `shared_preferences`, `intl`, `uuid`, `url_launcher`. Adding another is a decision, not a detail.
 - `intl` is **pinned by `flutter_localizations` from the SDK** (0.20.2). Bumping it past that breaks version solving.
 - Riverpod 3.x and go_router 18.x are available and deliberately not taken until after the MVP ships. Sequencing, not neglect.
 
@@ -123,7 +123,7 @@ What exists, and is the pattern to follow rather than re-invent:
 
 **`AppEmptyState` and `AppErrorState` scroll, and that is load-bearing.** They wrap `AppCenteredScroll`, which uses `AlwaysScrollableScrollPhysics` even when the content fits, because `RefreshIndicator` needs a scrollable child — without it, pull-to-refresh silently did nothing on the empty and error screens. `AppCenteredScroll` skips its own scroll view when it is handed an unbounded height, since that means an ancestor already scrolls.
 
-**`ApiPaths` is the app's declared API surface, not a copy of the contract.** A route the app does not call does not get a builder there — `test/contract/openapi_paths_test.dart` reads that file and checks every path against the backend's `openapi.yaml`, so a builder nobody calls widens what is being asserted for nothing. Obligations and seguros are the current example: real routes on the server, deliberately absent here.
+**`ApiPaths` is the app's declared API surface, not a copy of the contract.** A route the app does not call does not get a builder there — `test/contract/openapi_paths_test.dart` reads that file and checks every path against the backend's `openapi.yaml`, so a builder nobody calls widens what is being asserted for nothing.
 
 **The design gallery lives under `test/`, not `lib/`.** `test/support/design_gallery.dart` renders every token and base widget on one page, and `test/widget_test.dart` pumps it in both themes — which catches an overflow before a screen does. It sat in `lib/shared/widgets/dev/` for a while even though no route reached it; a widget only a test builds is a test fixture.
 

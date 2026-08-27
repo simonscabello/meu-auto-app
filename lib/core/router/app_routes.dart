@@ -30,9 +30,20 @@ abstract final class AppRoutes {
   /// payload, with a chosen `cost_months`.
   static const costs = '/custos';
 
-  /// One IPVA or licenciamento. Prompt 17 owns the screen; the path is
-  /// already the one the timeline navigates to.
+  /// One IPVA or licenciamento.
+  static const obligationDetail = '/obrigacoes/:obligationId';
+
   static String obligation(String id) => '/obrigacoes/$id';
+
+  static const seguroNew = '/seguros/novo';
+
+  /// Pattern for the GoRoute. The literal lives here so `api_paths_test`
+  /// does not treat `/seguros/` in the router as an API path.
+  static const seguroDetail = '/seguros/:seguroId';
+
+  static String seguro(String id) => '/seguros/$id';
+
+  static String seguroEdit(String id) => '/seguros/$id/editar';
 
   /// One maintenance plan. Lives outside the shell so the tab bar is not
   /// competing with the actions on the detail.

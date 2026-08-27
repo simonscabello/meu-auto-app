@@ -177,6 +177,12 @@ class AppKmField extends StatelessWidget {
 ///
 /// Prefilling the current reading is what makes the odometer sheet a two-tap
 /// job; selecting it is what stops the new number being appended to the old.
+/// Puts [amount] in a controller already wearing the money mask.
+TextEditingController moneyController([Money? amount]) {
+  if (amount == null) return TextEditingController();
+  return TextEditingController(text: amount.format());
+}
+
 TextEditingController kmController(int km) {
   final text = formatKmNumber(km);
   return TextEditingController(text: text)

@@ -15,8 +15,12 @@
   "model": "Argo",
   "model_year": 2019,
   "nickname": "Argolino",
-  "plate": "ABC1D23",
-  "renavam": "12345678901",
+    "plate": "ABC1D23",
+    "refueling": {
+      "fuel_types": ["gasolina", "etanol"],
+      "supported": true
+    },
+    "renavam": "12345678901",
   "updated_at": "2026-08-26T16:15:00.000Z",
   "vehicle_type": "car",
   "version": "1.0 Drive"

@@ -28,6 +28,11 @@ import 'package:meu_auto/features/maintenance/presentation/cuidados_screen.dart'
 import 'package:meu_auto/features/maintenance/presentation/maintenance_form_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/vehicle_profile_screen.dart';
 import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
+import 'package:meu_auto/features/obligation/domain/obligation.dart';
+import 'package:meu_auto/features/obligation/domain/seguro.dart';
+import 'package:meu_auto/features/obligation/presentation/documentos_section.dart';
+import 'package:meu_auto/features/obligation/presentation/obligation_detail_screen.dart';
+import 'package:meu_auto/features/obligation/presentation/seguro_detail_screen.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
@@ -247,6 +252,58 @@ void main() {
           trackedCategories: ['manutencao', 'ipva', 'licenciamento', 'seguro'],
         ),
         selectedMonths: 12,
+      ),
+    ),
+    'documentos empty': () => const Scaffold(
+      body: SingleChildScrollView(
+        child: DocumentosContent(obligations: [], seguros: []),
+      ),
+    ),
+    'obligation detail': () => Scaffold(
+      body: ObligationDetailContent(
+        obligation: Obligation(
+          id: 'o1',
+          vehicleId: 'v1',
+          kind: ObligationKind.ipva,
+          referenceYear: 2026,
+          dueOn: const CivilDate(2026, 3, 15),
+          amountCents: const Money.fromCents(184237),
+          paidOn: const CivilDate(2026, 3, 18),
+          paidAmountCents: const Money.fromCents(190000),
+          notes: 'Pago no banco.',
+          status: ObligationStatus.pago,
+          remainingDays: -3,
+          createdAt: _fixedInstant,
+          updatedAt: _fixedInstant,
+        ),
+        onMarkPaid: _noop,
+        onUndoPayment: _noop,
+        onEdit: _noop,
+        onDelete: _noop,
+      ),
+    ),
+    'seguro detail': () => Scaffold(
+      body: SeguroDetailContent(
+        seguro: Seguro(
+          id: 's1',
+          vehicleId: 'v1',
+          insurerName: 'Porto Seguro',
+          policyNumber: '12345',
+          startsOn: const CivilDate(2026, 1, 10),
+          endsOn: const CivilDate(2027, 1, 10),
+          premiumCents: const Money.fromCents(250000),
+          emergencyPhone: '0800 727 0800',
+          brokerName: 'Ana Costa',
+          brokerPhone: '11999999999',
+          notes: 'Cobertura completa.',
+          status: SeguroStatus.vigente,
+          remainingDays: 136,
+          createdAt: _fixedInstant,
+          updatedAt: _fixedInstant,
+        ),
+        onEmergencyCall: _noop,
+        onEdit: _noop,
+        onDelete: _noop,
       ),
     ),
     'dashboard': () => const Scaffold(

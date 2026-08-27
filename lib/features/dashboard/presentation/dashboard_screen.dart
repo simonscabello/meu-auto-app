@@ -52,20 +52,30 @@ class DashboardView extends ConsumerWidget {
     );
   }
 
-  /// `reference_type` says where an alert lives. Obligations and seguros
-  /// still land on Cuidados until Prompt 17 fills that section.
+  /// `reference_type` says where an alert lives.
   void _openAlert(BuildContext context, Alert alert) {
-    switch (alert.referenceType) {
-      case AlertReferenceType.maintenanceRecord:
-        context.push(AppRoutes.maintenanceRecord(alert.referenceId));
-      case AlertReferenceType.maintenancePlan:
-        context.push(AppRoutes.plan(alert.referenceId));
-      case AlertReferenceType.obligation:
-      case AlertReferenceType.seguro:
-      case AlertReferenceType.desconhecido:
-        context.go(AppRoutes.care);
+    final route = routeForAlert(alert);
+    if (route == AppRoutes.care) {
+      context.go(route);
+      return;
     }
+    context.push(route);
   }
+}
+
+/// Where a dashboard alert should open. Unknown types land on Cuidados
+/// rather than inventing a screen.
+@visibleForTesting
+String routeForAlert(Alert alert) {
+  return switch (alert.referenceType) {
+    AlertReferenceType.maintenanceRecord => AppRoutes.maintenanceRecord(
+      alert.referenceId,
+    ),
+    AlertReferenceType.maintenancePlan => AppRoutes.plan(alert.referenceId),
+    AlertReferenceType.obligation => AppRoutes.obligation(alert.referenceId),
+    AlertReferenceType.seguro => AppRoutes.seguro(alert.referenceId),
+    AlertReferenceType.desconhecido => AppRoutes.care,
+  };
 }
 
 /// The dashboard as pure presentation.

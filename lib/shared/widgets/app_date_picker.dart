@@ -36,6 +36,38 @@ Future<CivilDate?> pickPastDate(
   return CivilDate(picked.year, picked.month, picked.day);
 }
 
+/// A civil date that may be in the future — a due date, a policy start.
+///
+/// [pickPastDate] refuses tomorrow because a service that has not happened
+/// cannot be recorded. IPVA and seguro work the other way: the useful date
+/// is usually ahead. [DateTime.now] here is only the picker bound, never a
+/// status.
+Future<CivilDate?> pickCivilDate(
+  BuildContext context, {
+  required CivilDate? initial,
+  int yearsForward = 3,
+}) async {
+  final now = DateTime.now();
+  final firstDate = DateTime(now.year - _yearsBack);
+  final lastDate = DateTime(now.year + yearsForward, now.month, now.day);
+  var initialDate = initial == null
+      ? now
+      : DateTime(initial.year, initial.month, initial.day);
+  if (initialDate.isBefore(firstDate)) initialDate = firstDate;
+  if (initialDate.isAfter(lastDate)) initialDate = lastDate;
+
+  final picked = await showDatePicker(
+    context: context,
+    initialDate: initialDate,
+    firstDate: firstDate,
+    lastDate: lastDate,
+  );
+  if (picked == null) {
+    return null;
+  }
+  return CivilDate(picked.year, picked.month, picked.day);
+}
+
 /// The "when did this happen" field.
 ///
 /// One shape for the four screens that ask it. Three of them drew a text row

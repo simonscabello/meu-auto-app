@@ -25,13 +25,13 @@ A compensação está no lugar: `test/contract/openapi_paths_test.dart` lê o `o
 
 **O que fazer:** corrigir a frase nos dois arquivos. Enquanto ela estiver lá, o próximo agente que abrir o repositório do backend parte de uma premissa errada sobre como o app consome a API.
 
-### 2. Faltam os GET individuais de três recursos
+### 2. Falta o GET individual de `maintenance-plans/{id}`
 
-`maintenance-plans/{id}`, `obligations/{id}` e `seguros/{id}` têm `PATCH` e `DELETE` no contrato, mas **não têm `GET`**. Conferido no `openapi.yaml`: os três só expõem as duas operações de escrita.
+`obligations/{id}` e `seguros/{id}` passaram a ter GET. `maintenance-plans/{id}` ainda só expõe `PATCH` e `DELETE`.
 
-Consequência prática: para abrir **um** item a partir de um alerta ou de uma entrada da timeline, o app precisa carregar a **lista inteira** do veículo e procurar o id dentro dela. É o que `PlanDetailScreen` faz hoje. Funciona com cinco planos e fica pior a cada plano cadastrado — e um deep link para um item exige baixar tudo antes de mostrar qualquer coisa.
+Consequência: o detalhe de um plano continua procurando o id na lista do veículo. Um alerta de obrigação ou seguro agora abre o GET direto.
 
-**O que fazer:** acrescentar `GET` aos três, devolvendo o mesmo shape que a lista devolve por item.
+**O que fazer:** acrescentar `GET /v1/maintenance-plans/{id}`, devolvendo o mesmo shape que a lista devolve por item.
 
 ### 3. `PATCH` não consegue limpar campo opcional do veículo
 
@@ -82,13 +82,9 @@ dart run flutter_native_splash:create
 
 A cor da splash sai do tema (`AppColors`), não é escolha nova. **Sem a arte, nada disso deve ser rodado.**
 
-### IPVA, licenciamento e seguro não têm tela
+### ~~IPVA, licenciamento e seguro não têm tela~~ — RESOLVIDO
 
-O servidor tem as rotas (`/v1/vehicles/{id}/obligations`, `/v1/vehicles/{id}/seguros`). O app não tem as telas — a aba Cuidados diz "IPVA, licenciamento e seguro entram em breve" em vez de fingir que existem, e `/obrigacoes/:id` redireciona para lá em vez de dar tela em branco.
-
-`ApiPaths` **não** declara essas rotas, justamente para não carregar caminho que ninguém chama.
-
-**O que decidir:** se entra no MVP ou fica para depois. É a maior lacuna funcional restante.
+As telas estão em `lib/features/obligation/`. Cuidados tem a seção "Documentos e prazos"; `/obrigacoes/:id` e `/seguros/:id` abrem o detalhe; o Quick Add oferece registrar os três.
 
 ### Troca de senha para quem está logado
 
@@ -119,15 +115,15 @@ Não existe `POST /v1/me/password` nem equivalente. Quem está logado e quer tro
 | Conta | 3 | 3 | — |
 | Veículos | 8 | 8 | — |
 | Manutenção | 11 | 11 | — |
-| Prazos (obligations, seguros) | 8 | 0 | 8 — não há tela |
+| Prazos (obligations, seguros) | 8 | 8 | — |
 | Telas (read models) | 3 | 2 | 1 — `GET /alerts` |
-| **Total** | **41** | **30** | **11** |
+| **Total** | **41** | **38** | **3** |
 
 **Nenhuma rota inexistente é chamada.** `test/contract/openapi_paths_test.dart` prova isso a cada `flutter test`: lê o `openapi.yaml` do repositório irmão e falha se `ApiPaths` referenciar um path que não está lá. O teste roda de verdade (não é pulado) quando `../meu-auto-backend` está clonado — que é o caso.
 
 Métodos conferidos um a um, não só paths. Dois pontos que valem registro porque parecem erro e não são:
 
-- **`maintenance-plans/{id}` só tem `PATCH` e `DELETE`.** O app nunca faz `GET` nele — `PlanDetailScreen` acha o plano dentro da lista. Não é preguiça, é o que o contrato permite (ver seção 2 acima).
+- **`maintenance-plans/{id}` só tem `PATCH` e `DELETE`.** O app nunca faz `GET` nele — `PlanDetailScreen` acha o plano dentro da lista. Não é preguiça, é o que o contrato permite (ver seção 2 acima). `obligations/{id}` e `seguros/{id}` têm GET e o detalhe usa.
 - **`GET /v1/vehicles/{id}/alerts` não é chamado** porque `GET /dashboard` já devolve `alerts` embutido. Chamar os dois seria uma volta de rede a mais para o mesmo dado, e abriria a chance de as duas telas discordarem.
 
 Query params conferidos contra o contrato: `cost_months` no dashboard, `vehicle_type` e `kind` em `maintenance-items`, `limit`/`cursor` nas três listas paginadas.

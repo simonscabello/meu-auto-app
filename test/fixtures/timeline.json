@@ -2,6 +2,7 @@
   "data": [
     {
       "amount_cents": 42000,
+      "care": true,
       "id": "aaaaaaaa-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
       "kind": "manutencao",
       "mileage_km": 98200,

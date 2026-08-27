@@ -65,10 +65,13 @@ abstract final class ApiPaths {
 
   static String maintenanceRecord(String id) => '/maintenance-records/$id';
 
-  // Obligations and seguros have routes on the server, but no screen here
-  // calls them yet, so no path builder exists for them. This class is the
-  // app's declared API surface and what test/contract checks against the
-  // OpenAPI file; a builder nobody calls would widen that surface for free.
+  static String vehicleObligations(String id) => '/vehicles/$id/obligations';
+
+  static String obligation(String id) => '/obligations/$id';
+
+  static String vehicleSeguros(String id) => '/vehicles/$id/seguros';
+
+  static String seguro(String id) => '/seguros/$id';
 
   static String vehicleDashboard(String id) => '/vehicles/$id/dashboard';
 

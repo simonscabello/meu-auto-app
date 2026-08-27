@@ -19,11 +19,35 @@
     "overdue": 0
   },
   "costs": {
+    "abastecimento_cents": 0,
+    "categories": [
+      {
+        "cents": 150000,
+        "key": "manutencao",
+        "label": "Manutenção"
+      },
+      {
+        "cents": 185000,
+        "key": "obligations",
+        "label": "IPVA e licenciamento"
+      },
+      {
+        "cents": 240000,
+        "key": "seguro",
+        "label": "Seguro"
+      },
+      {
+        "cents": 0,
+        "key": "abastecimento",
+        "label": "Combustível"
+      }
+    ],
     "maintenance_cents": 150000,
     "obligations_cents": 185000,
     "period_months": 12,
     "seguro_cents": 240000,
     "since": "2025-08-26",
+    "total_cents": 575000,
     "tracked_categories": [
       "manutencao",
       "ipva",
@@ -31,6 +55,19 @@
       "seguro"
     ],
     "tracked_cents": 575000
+  },
+  "last_abastecimento": {
+    "consumption": {
+      "status": "unavailable",
+      "unit": "km_per_liter",
+      "value": null
+    },
+    "fuel": "gasolina",
+    "id": "bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb",
+    "occurred_on": "2026-08-10",
+    "price_per_liter_cents": 589,
+    "total_cost_cents": 26505,
+    "volume_ml": 45000
   },
   "odometer": {
     "current_km": 106650,
