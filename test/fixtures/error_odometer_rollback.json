@@ -1,0 +1,12 @@
+{
+  "error": {
+    "code": "odometer_rollback",
+    "details": {
+      "hint": "Se o painel foi trocado ou o valor anterior estava errado, reenvie com source \"correction\".",
+      "previous_mileage_km": 98200,
+      "previous_occurred_on": "2026-08-10",
+      "submitted_mileage_km": 90000
+    },
+    "message": "A quilometragem informada é menor que a do registro anterior."
+  }
+}

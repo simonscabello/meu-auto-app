@@ -1,0 +1,10 @@
+{
+  "id": "aaaaaaaa-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
+  "maintenance_item_id": "bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb",
+  "interval_km": 8000,
+  "interval_months": 12,
+  "interval_days": null,
+  "alert_km": 800,
+  "alert_days": 15,
+  "origin": "user"
+}

@@ -1,0 +1,34 @@
+{
+  "reading": {
+    "created_at": "2026-08-10T14:32:00Z",
+    "id": "11111111-1111-7111-8111-111111111111",
+    "mileage_km": 48320,
+    "notes": "Painel conferido",
+    "occurred_on": "2026-08-10",
+    "source": "manual",
+    "vehicle_id": "22222222-2222-7222-8222-222222222222"
+  },
+  "vehicle": {
+    "brand": "Fiat",
+    "catalog_brand_id": null,
+    "catalog_model_id": null,
+    "catalog_model_year_id": null,
+    "chassis": "9BD35822AH1234567",
+    "color": "Prata",
+    "created_at": "2026-08-26T16:15:00.000Z",
+    "current_mileage_at": "2026-08-10",
+    "current_mileage_km": 48320,
+    "fipe_code": null,
+    "fuel_type": "flex",
+    "id": "22222222-2222-7222-8222-222222222222",
+    "manufacture_year": 2018,
+    "model": "Argo",
+    "model_year": 2019,
+    "nickname": "Argolino",
+    "plate": "ABC1D23",
+    "renavam": "12345678901",
+    "updated_at": "2026-08-10T14:32:00Z",
+    "vehicle_type": "car",
+    "version": "1.0 Drive"
+  }
+}

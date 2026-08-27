@@ -1,0 +1,24 @@
+{
+  "data": [
+    {
+      "alert_days": 15,
+      "alert_km": 1000,
+      "due_at_km": 108200,
+      "due_on": "2026-09-10",
+      "id": "aaaaaaaa-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
+      "interval_days": null,
+      "interval_km": 10000,
+      "interval_months": 12,
+      "item_kind": "maintenance",
+      "item_name": "Troca de óleo do motor",
+      "item_slug": "troca_oleo",
+      "last_mileage_km": 98200,
+      "last_occurred_on": "2025-08-10",
+      "maintenance_item_id": "bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb",
+      "origin": "suggested",
+      "remaining_days": 15,
+      "remaining_km": 1550,
+      "status": "em_dia"
+    }
+  ]
+}

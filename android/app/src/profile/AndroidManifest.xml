@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The INTERNET permission is required for development. Specifically,
+         the Flutter tool needs it to communicate with the running application
+         to allow setting breakpoints, to provide hot reload, etc.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Cleartext HTTP is a profile-build affordance and nothing else. The
+         exception list lives in res/xml and is attached here, not in the main
+         manifest, so the release APK carries no exception at all: with
+         targetSdk 28+ and no network security config, Android denies cleartext
+         outright. See docs/RODANDO.md. -->
+    <application
+        android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

@@ -1,0 +1,83 @@
+---
+description: Regras permanentes do app Meu Auto
+alwaysApply: true
+---
+
+# Meu Auto — regras permanentes
+
+## Onde as coisas ficam
+- Este repositório é `meu-auto-app` (Flutter, iOS + Android).
+- O backend é um repositório IRMÃO, em `../meu-auto-backend` (Go + PostgreSQL). Para nós é somente leitura.
+- A FONTE DA VERDADE do contrato HTTP é `../meu-auto-backend/api/openapi.yaml`.
+  Regras de negócio: `../meu-auto-backend/SPEC.md` (RN-01 a RN-10).
+  Orientação e armadilhas: `../meu-auto-backend/CLAUDE.md`.
+  Formato real das respostas: `../meu-auto-backend/test/golden/*.json`.
+- `PRODUCT.md`, na raiz deste repo, é a verdade de produto.
+- NUNCA altere nada em `../meu-auto-backend`. Se encontrar incompatibilidade real, registre em
+  `docs/DECISOES-EM-ABERTO.md` e siga com a alternativa menos custosa.
+
+## A regra que mais importa
+O APP NÃO CALCULA ESTADO DE DOMÍNIO.
+O backend já devolve pronto: `status`, `due_on`, `due_at_km`, `remaining_days`, `remaining_km`,
+`warranty_until`, `warranty_until_km`, `severity`.
+Não reimplemente aritmética de data, de intervalo, de vencimento ou de garantia em Dart.
+Se uma tela precisa de um número que a API não devolve, o certo é anotar em
+`docs/DECISOES-EM-ABERTO.md` — não calcular localmente.
+A única lógica permitida no app é de APRESENTAÇÃO: transformar número em frase, formatar moeda,
+agrupar lista, ordenar para exibição.
+
+## Tipos e formatos
+- Dinheiro: inteiro em CENTAVOS, sufixo `_cents`. Nunca double. Use `Money` de `lib/core/domain`.
+- Distância: inteiro em quilômetros.
+- Data civil (`occurred_on`, `due_on`, `starts_on`, `ends_on`, `paid_on`): string `YYYY-MM-DD`,
+  sem hora e sem fuso. Use `CivilDate`. NUNCA passe por `DateTime.parse().toLocal()` — desloca o dia.
+- Timestamp (`created_at`, `updated_at`, `expires_at`): RFC 3339, instante de verdade;
+  `DateTime.parse().toLocal()` é correto aqui.
+- Id: UUID em string.
+
+## Contrato HTTP
+- Erro é sempre `{"error":{"code","message","details"}}`.
+  Decida comportamento pelo `code`; exiba o `message`, que já vem em pt-BR.
+- `422` com `code: "validation_failed"` traz `details.fields`, um mapa campo→mensagem com a mesma
+  chave do JSON enviado. Ligue nos campos do formulário.
+- Recurso de outro usuário responde 404, nunca 403. Não crie tela de "sem permissão".
+- Paginação é por cursor opaco. Repasse `next_cursor` sem interpretar. `null` é a última página.
+- POST de recurso aceita `id` UUIDv7 gerado pelo cliente e fica idempotente. Sempre gere e envie.
+- VALOR DESCONHECIDO DE ENUM NÃO PODE ESTOURAR. Todo parse de enum tem um caso default seguro.
+
+## O que o backend NÃO tem — não construa
+Abastecimento e combustível. Despesas avulsas (estacionamento, pedágio, lavagem, multa).
+Fotos, recibos, anexos, CRLV. Notificações push. Motos. Troca de e-mail.
+Transferência de veículo. Operação offline. Consumo médio e custo por km.
+Se um prompt parecer pedir uma dessas, pare e pergunte antes de implementar.
+
+## Stack — não adicione dependência fora desta lista sem perguntar
+flutter_riverpod, go_router, dio, flutter_secure_storage, shared_preferences, intl, uuid, url_launcher.
+NÃO USE: build_runner, freezed, json_serializable, riverpod_generator, get_it, flutter_dotenv,
+banco de dados local, gerador de client OpenAPI.
+`fromJson` e `toJson` são escritos à mão.
+
+## Estrutura
+lib/core/{config,domain,network,session,router,theme}
+lib/features/<feature>/{domain,data,application,presentation}
+lib/shared/widgets   (design system, sem conhecimento de domínio)
+test/ espelha lib/
+
+## Idioma
+- Toda string visível ao usuário é pt-BR.
+- Código, identificadores e comentários em inglês, EXCETO os termos do domínio brasileiro, que ficam
+  em português porque traduzir perde o sentido legal: ipva, licenciamento, crlv, revisao, seguro,
+  multa, abastecimento. Escreva `seguroRepository`, não `insuranceRepository`.
+
+## Antes de dizer que terminou
+1. `flutter analyze` sem nenhum aviso.
+2. `flutter test` verde.
+3. Nenhum dado fictício no caminho de produção.
+4. Toda tela que carrega algo tem os quatro estados: carregando, vazio, erro, conteúdo.
+5. Nenhuma URL de API escrita no código — só via `AppConfig`.
+
+## Estilo de trabalho
+- Antes de criar abstração nova, procure a existente. Reutilize o design system, o `ApiClient`,
+  o `ApiFailure` e os formatadores.
+- Mudanças pequenas e delimitadas. Não refatore o que o prompt não pediu.
+- Se um mock for necessário para desenvolvimento visual, marque com `// MOCK:` e remova ao ligar na API.

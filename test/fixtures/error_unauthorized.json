@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "Sessão inválida ou expirada. Entre novamente."
+  }
+}

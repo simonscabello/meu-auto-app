@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "internal",
+    "details": {
+      "request_id": "req-abc-123"
+    },
+    "message": "Ocorreu um erro inesperado. Tente novamente."
+  }
+}

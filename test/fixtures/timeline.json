@@ -1,0 +1,14 @@
+{
+  "data": [
+    {
+      "amount_cents": 42000,
+      "id": "aaaaaaaa-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
+      "kind": "manutencao",
+      "mileage_km": 98200,
+      "occurred_on": "2026-08-10",
+      "subtitle": "Oficina do João",
+      "title": "Troca de óleo do motor, Filtro de óleo"
+    }
+  ],
+  "next_cursor": null
+}

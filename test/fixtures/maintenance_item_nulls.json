@@ -1,0 +1,11 @@
+{
+  "default_interval_days": null,
+  "default_interval_km": null,
+  "default_interval_months": null,
+  "id": "55555555-5555-7555-8555-555555555555",
+  "is_custom": false,
+  "kind": "maintenance",
+  "name": "Manutenção personalizada",
+  "slug": "personalizada",
+  "vehicle_type": "car"
+}

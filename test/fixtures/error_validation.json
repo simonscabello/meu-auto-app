@@ -1,0 +1,13 @@
+{
+  "error": {
+    "code": "validation_failed",
+    "details": {
+      "fields": {
+        "brand": "Informe a marca.",
+        "model": "Informe o modelo.",
+        "plate": "Informe uma placa válida."
+      }
+    },
+    "message": "Não foi possível criar o veículo."
+  }
+}

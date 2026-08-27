@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "default_interval_days": null,
+      "default_interval_km": 10000,
+      "default_interval_months": 12,
+      "id": "55555555-5555-7555-8555-555555555555",
+      "is_custom": false,
+      "kind": "maintenance",
+      "name": "Troca de óleo do motor",
+      "slug": "troca_oleo",
+      "vehicle_type": "car"
+    }
+  ]
+}

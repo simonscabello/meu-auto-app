@@ -1,0 +1,76 @@
+import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+
+/// Presentation grouping of a list the server already ordered by urgency.
+///
+/// Within each group the incoming order is kept. A care item that is overdue
+/// or due soon stays in those groups so the urgent reading is one list; the
+/// remaining care items get their own section rather than mixing with
+/// maintenance that is on track or still missing a baseline.
+final class CuidadosGroups {
+  const CuidadosGroups({
+    required this.needAttention,
+    required this.dueSoon,
+    required this.everydayCare,
+    required this.onTrack,
+    required this.needsBaseline,
+    required this.historyOnly,
+  });
+
+  final List<MaintenancePlan> needAttention;
+  final List<MaintenancePlan> dueSoon;
+  final List<MaintenancePlan> everydayCare;
+  final List<MaintenancePlan> onTrack;
+  final List<MaintenancePlan> needsBaseline;
+  final List<MaintenancePlan> historyOnly;
+
+  bool get isEmpty =>
+      needAttention.isEmpty &&
+      dueSoon.isEmpty &&
+      everydayCare.isEmpty &&
+      onTrack.isEmpty &&
+      needsBaseline.isEmpty &&
+      historyOnly.isEmpty;
+}
+
+CuidadosGroups groupCuidadosPlans(List<MaintenancePlan> plans) {
+  final needAttention = <MaintenancePlan>[];
+  final dueSoon = <MaintenancePlan>[];
+  final everydayCare = <MaintenancePlan>[];
+  final onTrack = <MaintenancePlan>[];
+  final needsBaseline = <MaintenancePlan>[];
+  final historyOnly = <MaintenancePlan>[];
+
+  for (final plan in plans) {
+    if (plan.status == MaintenanceStatus.vencido) {
+      needAttention.add(plan);
+      continue;
+    }
+    if (plan.status == MaintenanceStatus.venceEmBreve) {
+      dueSoon.add(plan);
+      continue;
+    }
+    if (plan.itemKind == MaintenanceItemKind.care) {
+      everydayCare.add(plan);
+      continue;
+    }
+    if (plan.status == MaintenanceStatus.semBaseline) {
+      needsBaseline.add(plan);
+      continue;
+    }
+    if (plan.status == MaintenanceStatus.semPeriodicidade) {
+      historyOnly.add(plan);
+      continue;
+    }
+    onTrack.add(plan);
+  }
+
+  return CuidadosGroups(
+    needAttention: needAttention,
+    dueSoon: dueSoon,
+    everydayCare: everydayCare,
+    onTrack: onTrack,
+    needsBaseline: needsBaseline,
+    historyOnly: historyOnly,
+  );
+}

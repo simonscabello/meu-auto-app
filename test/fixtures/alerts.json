@@ -1,0 +1,16 @@
+{
+  "data": [
+    {
+      "due_at_km": 108200,
+      "due_on": "2026-09-01",
+      "kind": "manutencao",
+      "reference_id": "aaaaaaaa-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
+      "reference_type": "maintenance_plan",
+      "remaining_days": 6,
+      "remaining_km": 1550,
+      "severity": "vence_em_breve",
+      "subtitle": "Troca de óleo do motor",
+      "title": "Troca de óleo do motor"
+    }
+  ]
+}

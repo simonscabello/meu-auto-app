@@ -1,0 +1,42 @@
+{
+  "alerts": {
+    "due_soon": 1,
+    "items": [
+      {
+        "due_at_km": 108200,
+        "due_on": "2026-09-01",
+        "kind": "manutencao",
+        "reference_id": "aaaaaaaa-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
+        "reference_type": "maintenance_plan",
+        "remaining_days": 6,
+        "remaining_km": 1550,
+        "severity": "vence_em_breve",
+        "subtitle": "Troca de óleo do motor",
+        "title": "Troca de óleo do motor"
+      }
+    ],
+    "needs_baseline": 0,
+    "overdue": 0
+  },
+  "costs": {
+    "maintenance_cents": 150000,
+    "obligations_cents": 185000,
+    "period_months": 12,
+    "seguro_cents": 240000,
+    "since": "2025-08-26",
+    "tracked_categories": ["manutencao", "ipva", "licenciamento", "seguro"],
+    "tracked_cents": 575000
+  },
+  "odometer": {
+    "current_km": 106650,
+    "recorded_on": "2026-08-10"
+  },
+  "vehicle": {
+    "brand": "Fiat",
+    "id": "22222222-2222-7222-8222-222222222222",
+    "model": "Argo",
+    "nickname": "Argolino",
+    "plate": "ABC1D23",
+    "version": "1.0 Drive"
+  }
+}

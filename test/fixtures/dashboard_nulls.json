@@ -1,0 +1,42 @@
+{
+  "alerts": {
+    "due_soon": 1,
+    "items": [
+      {
+        "due_at_km": null,
+        "due_on": null,
+        "kind": "ipva",
+        "reference_id": "bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb",
+        "reference_type": "obligation",
+        "remaining_days": null,
+        "remaining_km": null,
+        "severity": "vence_em_breve",
+        "subtitle": null,
+        "title": "IPVA 2026"
+      }
+    ],
+    "needs_baseline": 18,
+    "overdue": 0
+  },
+  "costs": {
+    "maintenance_cents": 0,
+    "obligations_cents": 0,
+    "period_months": 12,
+    "seguro_cents": 0,
+    "since": "2025-08-26",
+    "tracked_categories": ["manutencao", "ipva", "licenciamento", "seguro"],
+    "tracked_cents": 0
+  },
+  "odometer": {
+    "current_km": 0,
+    "recorded_on": null
+  },
+  "vehicle": {
+    "brand": "Fiat",
+    "id": "22222222-2222-7222-8222-222222222222",
+    "model": "Argo",
+    "nickname": null,
+    "plate": null,
+    "version": null
+  }
+}
