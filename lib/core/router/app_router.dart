@@ -5,6 +5,8 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/router/app_shell.dart';
 import 'package:meu_auto/core/router/auth_redirect.dart';
 import 'package:meu_auto/core/router/password_reset_link.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_detail_screen.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_list_screen.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
 import 'package:meu_auto/features/auth/presentation/login_screen.dart';
@@ -113,6 +115,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return CostsScreen(vehicleId: vehicle.id);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.abastecimentos,
+        builder: (context, state) {
+          final vehicle = ref.read(selectedVehicleProvider).value;
+          if (vehicle == null) {
+            return const SizedBox.shrink();
+          }
+          return AbastecimentoListScreen(vehicleId: vehicle.id);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.abastecimentoDetail,
+        builder: (context, state) => AbastecimentoDetailScreen(
+          abastecimentoId: state.pathParameters['abastecimentoId']!,
+        ),
       ),
       GoRoute(
         path: AppRoutes.obligationDetail,

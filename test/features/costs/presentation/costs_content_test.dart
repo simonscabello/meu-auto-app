@@ -7,7 +7,7 @@ import 'package:meu_auto/features/costs/presentation/costs_screen.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 
 void main() {
-  testWidgets('the headline is tracked_cents, not a client sum', (
+  testWidgets('the headline is the server total, not a client sum', (
     tester,
   ) async {
     await _pump(
@@ -30,6 +30,76 @@ void main() {
     expect(find.textContaining('custo total'), findsNothing);
     expect(find.textContaining('gasto do mês'), findsNothing);
     expect(find.textContaining('este mês'), findsNothing);
+  });
+
+  testWidgets('categories[] labels and amounts drive the bars', (tester) async {
+    await _pump(
+      tester,
+      _costs(
+        trackedCents: 10000,
+        totalCents: 866287,
+        categories: const [
+          CostCategory(
+            key: 'manutencao',
+            label: 'Manutenção',
+            cents: Money.fromCents(150000),
+          ),
+          CostCategory(
+            key: 'obligations',
+            label: 'IPVA e licenciamento',
+            cents: Money.fromCents(185000),
+          ),
+          CostCategory(
+            key: 'seguro',
+            label: 'Seguro',
+            cents: Money.fromCents(240000),
+          ),
+          CostCategory(
+            key: 'abastecimento',
+            label: 'Combustível',
+            cents: Money.fromCents(291287),
+          ),
+        ],
+      ),
+    );
+
+    expect(find.text(r'R$ 8.662,87'), findsOneWidget);
+    expect(find.text('Manutenção'), findsOneWidget);
+    expect(find.text('IPVA e licenciamento'), findsOneWidget);
+    expect(find.text('Seguro'), findsOneWidget);
+    expect(find.text('Combustível'), findsOneWidget);
+    expect(find.text(r'R$ 2.912,87'), findsOneWidget);
+    expect(
+      find.text('despesas do dia a dia ainda não entram nesta conta.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Combustível ainda não'), findsNothing);
+  });
+
+  testWidgets('falls back to the old fields when categories[] is absent', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _costs(
+        maintenanceCents: 112000,
+        obligationsCents: 32000,
+        seguroCents: 10000,
+        trackedCents: 154000,
+      ),
+    );
+
+    expect(find.text(r'R$ 1.540,00'), findsOneWidget);
+    expect(find.text('Manutenção'), findsOneWidget);
+    expect(find.text('IPVA e licenciamento'), findsOneWidget);
+    expect(find.text('Seguro'), findsOneWidget);
+    expect(find.text('Combustível'), findsNothing);
+    expect(
+      find.text(
+        'Combustível e despesas do dia a dia ainda não entram nesta conta.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a period with no entries shows zero, not an error', (
@@ -105,6 +175,8 @@ DashboardCosts _costs({
   int obligationsCents = 0,
   int seguroCents = 0,
   int trackedCents = 0,
+  int? totalCents,
+  List<CostCategory> categories = const [],
 }) {
   return DashboardCosts(
     periodMonths: periodMonths,
@@ -114,5 +186,7 @@ DashboardCosts _costs({
     seguroCents: Money.fromCents(seguroCents),
     trackedCents: Money.fromCents(trackedCents),
     trackedCategories: const ['manutencao', 'ipva', 'licenciamento', 'seguro'],
+    totalCents: totalCents == null ? null : Money.fromCents(totalCents),
+    categories: categories,
   );
 }

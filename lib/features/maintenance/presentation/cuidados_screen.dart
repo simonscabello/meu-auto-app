@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:meu_auto/core/domain/civil_date.dart';
+import 'package:meu_auto/core/domain/client_id.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
+import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/cuidados_groups.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_record_draft.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/maintenance/presentation/plan_create_sheet.dart';
@@ -20,6 +29,7 @@ import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
+import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 import 'package:meu_auto/shared/widgets/app_status_chip.dart';
 
 class CuidadosScreen extends ConsumerWidget {
@@ -77,20 +87,71 @@ class CuidadosScreen extends ConsumerWidget {
   }
 }
 
-class CuidadosView extends ConsumerWidget {
-  const CuidadosView({super.key, required this.vehicleId});
+class CuidadosView extends ConsumerStatefulWidget {
+  const CuidadosView({super.key, required this.vehicleId, this.newId});
 
   final String vehicleId;
+  final String Function()? newId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final plans = ref.watch(maintenancePlansProvider(vehicleId));
+  ConsumerState<CuidadosView> createState() => _CuidadosViewState();
+}
+
+class _CuidadosViewState extends ConsumerState<CuidadosView> {
+  final _justRecorded = <String>{};
+  final _submitting = <String>{};
+  final _inFlightIds = <String, String>{};
+
+  String get _vehicleId => widget.vehicleId;
+
+  Future<void> _markDone(MaintenancePlan plan) async {
+    if (_submitting.contains(plan.id)) return;
+    _submitting.add(plan.id);
+    setState(() {});
+    final id = _inFlightIds.putIfAbsent(
+      plan.id,
+      () => widget.newId?.call() ?? newClientId(),
+    );
+
+    try {
+      await ref
+          .read(maintenanceRecordRepositoryProvider)
+          .create(
+            _vehicleId,
+            MaintenanceRecordDraft(
+              id: id,
+              occurredOn: CivilDate.todayLocal(),
+              kind: MaintenanceRecordKind.performed,
+              items: [MaintenanceRecordLineDraft(item: plan.toCatalogueItem())],
+            ),
+          );
+      invalidateAfterMaintenanceWrite(ref, _vehicleId);
+      if (!mounted) return;
+      setState(() {
+        _submitting.remove(plan.id);
+        _justRecorded.add(plan.id);
+        _inFlightIds.remove(plan.id);
+      });
+    } on ApiFailure catch (failure) {
+      if (!mounted) return;
+      setState(() => _submitting.remove(plan.id));
+      showAppSnackBar(
+        ScaffoldMessenger.of(context),
+        message: failure.message,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final plans = ref.watch(maintenancePlansProvider(_vehicleId));
 
     return plans.when(
+      skipLoadingOnReload: true,
       loading: () => const _CuidadosSkeleton(),
       error: (error, _) => AppErrorState.fromError(
         error: error,
-        onRetry: () => ref.invalidate(maintenancePlansProvider(vehicleId)),
+        onRetry: () => ref.invalidate(maintenancePlansProvider(_vehicleId)),
       ),
       data: (list) {
         if (list.isEmpty) {
@@ -100,23 +161,26 @@ class CuidadosView extends ConsumerWidget {
             children: [
               _PlansEmpty(
                 onCreate: () =>
-                    PlanCreateSheet.show(context, vehicleId: vehicleId),
+                    PlanCreateSheet.show(context, vehicleId: _vehicleId),
               ),
-              DocumentosSection(vehicleId: vehicleId),
+              DocumentosSection(vehicleId: _vehicleId),
             ],
           );
         }
         return CuidadosContent(
           plans: list,
-          trailing: DocumentosSection(vehicleId: vehicleId),
+          justRecordedIds: _justRecorded,
+          submittingIds: _submitting,
+          trailing: DocumentosSection(vehicleId: _vehicleId),
           onPlanTap: (plan) => context.push(AppRoutes.plan(plan.id)),
           onBaselineTap: (plan) => context.push(
             AppRoutes.maintenanceNew,
             extra: plan.toCatalogueItem(),
           ),
           onNeedsBaselineGroupTap: () =>
-              context.push(AppRoutes.calibrar(vehicleId)),
+              context.push(AppRoutes.calibrar(_vehicleId)),
           onProfileTap: () => context.push(AppRoutes.vehicleProfile),
+          onMarkDone: _markDone,
         );
       },
     );
@@ -133,14 +197,20 @@ class CuidadosContent extends StatelessWidget {
     this.onBaselineTap,
     this.onNeedsBaselineGroupTap,
     this.onProfileTap,
+    this.onMarkDone,
+    this.justRecordedIds = const {},
+    this.submittingIds = const {},
   });
 
   final List<MaintenancePlan> plans;
   final Widget? trailing;
   final ValueChanged<MaintenancePlan>? onPlanTap;
   final ValueChanged<MaintenancePlan>? onBaselineTap;
-  final VoidCallback? onNeedsBaselineGroupTap;
   final VoidCallback? onProfileTap;
+  final VoidCallback? onNeedsBaselineGroupTap;
+  final Future<void> Function(MaintenancePlan plan)? onMarkDone;
+  final Set<String> justRecordedIds;
+  final Set<String> submittingIds;
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +225,9 @@ class CuidadosContent extends StatelessWidget {
           plans: groups.needAttention,
         ),
         ..._openGroup(context, title: 'Vencem em breve', plans: groups.dueSoon),
-        ..._openGroup(
+        if (_showEverydayCareEmpty(groups)) ...[
+          const _EverydayCareEmpty(),
+        ] else ..._openGroup(
           context,
           title: 'Cuidados do dia a dia',
           plans: groups.everydayCare,
@@ -165,6 +237,9 @@ class CuidadosContent extends StatelessWidget {
             title: 'Em dia',
             plans: groups.onTrack,
             onTap: _tapOf,
+            onMarkDone: onMarkDone,
+            justRecordedIds: justRecordedIds,
+            submittingIds: submittingIds,
           ),
         ..._openGroup(
           context,
@@ -181,6 +256,9 @@ class CuidadosContent extends StatelessWidget {
                 'Quando fizer, registre aqui e a contagem começa.',
             plans: groups.historySettled,
             onTap: _tapOf,
+            onMarkDone: onMarkDone,
+            justRecordedIds: justRecordedIds,
+            submittingIds: submittingIds,
           ),
         if (groups.historyOnly.isNotEmpty)
           _CollapsedGroup(
@@ -189,6 +267,9 @@ class CuidadosContent extends StatelessWidget {
                 'Esses itens agrupam o que já foi feito e nunca vencem.',
             plans: groups.historyOnly,
             onTap: _tapOf,
+            onMarkDone: onMarkDone,
+            justRecordedIds: justRecordedIds,
+            submittingIds: submittingIds,
           ),
         ?trailing,
         if (onProfileTap != null) ...[
@@ -215,7 +296,14 @@ class CuidadosContent extends StatelessWidget {
       ),
       const SizedBox(height: AppSpacing.s8),
       for (final plan in plans) ...[
-        _PlanTile(plan: plan, onTap: _tapOf(plan)),
+        _PlanTile(
+          key: ValueKey(plan.id),
+          plan: plan,
+          onTap: _tapOf(plan),
+          onMarkDone: onMarkDone,
+          justRecorded: justRecordedIds.contains(plan.id),
+          submitting: submittingIds.contains(plan.id),
+        ),
         const SizedBox(height: AppSpacing.s8),
       ],
       const SizedBox(height: AppSpacing.s8),
@@ -223,26 +311,81 @@ class CuidadosContent extends StatelessWidget {
   }
 
   VoidCallback? _tapOf(MaintenancePlan plan) {
-    if (plan.status == MaintenanceStatus.semBaseline) {
+    if (plan.status == MaintenanceStatus.semBaseline &&
+        plan.itemKind != MaintenanceItemKind.care) {
       return onBaselineTap == null ? null : () => onBaselineTap!(plan);
     }
     return onPlanTap == null ? null : () => onPlanTap!(plan);
   }
 }
 
+bool _showEverydayCareEmpty(CuidadosGroups groups) {
+  if (groups.everydayCare.isNotEmpty) return false;
+  for (final plan in [...groups.needAttention, ...groups.dueSoon]) {
+    if (plan.itemKind == MaintenanceItemKind.care) return false;
+  }
+  return true;
+}
+
+class _EverydayCareEmpty extends StatelessWidget {
+  const _EverydayCareEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSectionHeader(title: 'Cuidados do dia a dia'),
+          const SizedBox(height: AppSpacing.s8),
+          Text('Tudo em dia', style: theme.textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.s4),
+          Text(
+            'Nenhum cuidado precisa da sua atenção agora.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PlanTile extends StatelessWidget {
-  const _PlanTile({required this.plan, this.onTap});
+  const _PlanTile({
+    super.key,
+    required this.plan,
+    this.onTap,
+    this.onMarkDone,
+    this.justRecorded = false,
+    this.submitting = false,
+  });
 
   final MaintenancePlan plan;
   final VoidCallback? onTap;
+  final Future<void> Function(MaintenancePlan plan)? onMarkDone;
+  final bool justRecorded;
+  final bool submitting;
+
+  bool get _showDone =>
+      showsCareDoneAction(plan) && !justRecorded && onMarkDone != null;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final phrase = planStatusPhrase(plan);
+    final nextCheck = careNextCheckPhrase(plan.remainingDays);
+    final muted = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final label = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
 
     return AppCard(
-      onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -252,29 +395,56 @@ class _PlanTile extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(plan.itemName, style: theme.textTheme.titleSmall),
-                const SizedBox(height: AppSpacing.s4),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: AppSpacing.s8,
-                  runSpacing: AppSpacing.s4,
-                  children: [
-                    AppStatusChip(status: AppStatus.fromWire(plan.status.wire)),
-                    if (phrase.isNotEmpty)
-                      Text(
-                        phrase,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(plan.itemName, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: AppSpacing.s4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSpacing.s8,
+                    runSpacing: AppSpacing.s4,
+                    children: [
+                      AppStatusChip(
+                        status: AppStatus.fromWire(plan.status.wire),
                       ),
+                      if (phrase.isNotEmpty) Text(phrase, style: muted),
+                    ],
+                  ),
+                  if (justRecorded) ...[
+                    const SizedBox(height: AppSpacing.s8),
+                    Text(careRecordedTodayPhrase, style: muted),
+                    if (nextCheck != null) Text(nextCheck, style: muted),
+                  ] else if (plan.itemKind == MaintenanceItemKind.care) ...[
+                    if (plan.lastOccurredOn != null) ...[
+                      const SizedBox(height: AppSpacing.s8),
+                      Text('Última verificação', style: label),
+                      Text(
+                        formatCivilDateLong(plan.lastOccurredOn!),
+                        style: muted,
+                      ),
+                    ],
+                    if (plan.dueOn != null) ...[
+                      const SizedBox(height: AppSpacing.s8),
+                      Text('Próxima', style: label),
+                      Text(formatCivilDateLong(plan.dueOn!), style: muted),
+                    ],
                   ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          if (_showDone) ...[
+            const SizedBox(width: AppSpacing.s8),
+            AppButton(
+              label: 'Feito',
+              loading: submitting,
+              onPressed: submitting ? null : () => onMarkDone!(plan),
+            ),
+          ],
         ],
       ),
     );
@@ -287,12 +457,18 @@ class _CollapsedGroup extends StatelessWidget {
     required this.plans,
     required this.onTap,
     this.explanation,
+    this.onMarkDone,
+    this.justRecordedIds = const {},
+    this.submittingIds = const {},
   });
 
   final String title;
   final String? explanation;
   final List<MaintenancePlan> plans;
   final VoidCallback? Function(MaintenancePlan plan) onTap;
+  final Future<void> Function(MaintenancePlan plan)? onMarkDone;
+  final Set<String> justRecordedIds;
+  final Set<String> submittingIds;
 
   @override
   Widget build(BuildContext context) {
@@ -318,7 +494,14 @@ class _CollapsedGroup extends StatelessWidget {
             const SizedBox(height: AppSpacing.s8),
           ],
           for (final plan in plans) ...[
-            _PlanTile(plan: plan, onTap: onTap(plan)),
+            _PlanTile(
+              key: ValueKey(plan.id),
+              plan: plan,
+              onTap: onTap(plan),
+              onMarkDone: onMarkDone,
+              justRecorded: justRecordedIds.contains(plan.id),
+              submitting: submittingIds.contains(plan.id),
+            ),
             const SizedBox(height: AppSpacing.s8),
           ],
         ],

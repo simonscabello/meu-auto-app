@@ -30,15 +30,30 @@ void main() {
       expect(entry.subtitle, isNull);
       expect(entry.amountCents, isNull);
       expect(entry.mileageKm, isNull);
+      expect(entry.care, isNull);
       expect(entry.kind, TimelineEntryKind.odometro);
     });
 
     test('unknown kind falls back without throwing', () {
       final entry = TimelineEntry.fromJson({
         ...complete,
-        'kind': 'abastecimento',
+        'kind': 'multa',
       });
       expect(entry.kind, TimelineEntryKind.desconhecido);
+    });
+
+    test('abastecimento is a known kind', () {
+      final entry = TimelineEntry.fromJson({
+        ...complete,
+        'kind': 'abastecimento',
+      });
+      expect(entry.kind, TimelineEntryKind.abastecimento);
+    });
+
+    test('care arrives as a flag, not as a kind', () {
+      final entry = TimelineEntry.fromJson(complete);
+      expect(entry.kind, TimelineEntryKind.manutencao);
+      expect(entry.care, isTrue);
     });
 
     test('fails clearly when a required field is missing', () {

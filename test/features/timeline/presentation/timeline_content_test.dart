@@ -8,6 +8,7 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
+import 'package:meu_auto/shared/widgets/app_card.dart';
 
 void main() {
   setUpAll(ensurePtBrFormatting);
@@ -44,21 +45,38 @@ void main() {
         isNull,
       );
     });
+
+    test('an abastecimento row opens the fill', () {
+      expect(
+        routeForTimelineEntry(_entry(kind: TimelineEntryKind.abastecimento)),
+        AppRoutes.abastecimento(_id),
+      );
+    });
+
+    test('a care flag does not change the maintenance route', () {
+      expect(
+        routeForTimelineEntry(
+          _entry(kind: TimelineEntryKind.manutencao, care: true),
+        ),
+        AppRoutes.maintenanceRecord(_id),
+      );
+    });
   });
 
-  group('groupTimelineByMonth', () {
-    test('inserts a header wherever the month changes', () {
-      final groups = groupTimelineByMonth([
-        _entry(occurredOn: const CivilDate(2026, 8, 20)),
-        _entry(occurredOn: const CivilDate(2026, 8, 10)),
-        _entry(occurredOn: const CivilDate(2026, 7, 1)),
+  group('groupTimelineByDate', () {
+    test('inserts a header wherever the civil day changes', () {
+      final groups = groupTimelineByDate([
+        _entry(occurredOn: const CivilDate(2026, 8, 12)),
+        _entry(occurredOn: const CivilDate(2026, 8, 12), id: 'same-day'),
+        _entry(occurredOn: const CivilDate(2026, 8, 3)),
+        _entry(occurredOn: const CivilDate(2026, 7, 15)),
       ]);
 
-      expect(groups, hasLength(2));
-      expect(groups[0].label, 'Agosto de 2026');
+      expect(groups, hasLength(3));
+      expect(groups[0].label, '12 AGO');
       expect(groups[0].entries, hasLength(2));
-      expect(groups[1].label, 'Julho de 2026');
-      expect(groups[1].entries, hasLength(1));
+      expect(groups[1].label, '03 AGO');
+      expect(groups[2].label, '15 JUL');
     });
   });
 
@@ -83,7 +101,7 @@ void main() {
       expect(find.text('Oficina do João'), findsOneWidget);
       expect(find.text(r'R$ 420,00'), findsOneWidget);
       expect(find.text('98.200 km'), findsOneWidget);
-      expect(find.text('Agosto de 2026'), findsOneWidget);
+      expect(find.text('10 AGO'), findsOneWidget);
     });
 
     testWidgets('labels a null title from kind', (tester) async {
@@ -100,8 +118,90 @@ void main() {
       expect(find.text('Quilometragem registrada'), findsOneWidget);
       expect(find.text('IPVA'), findsOneWidget);
       expect(find.text('2026'), findsOneWidget);
-      expect(find.text('Agosto de 2026'), findsOneWidget);
-      expect(find.text('Março de 2026'), findsOneWidget);
+      expect(find.text('10 AGO'), findsOneWidget);
+      expect(find.text('15 MAR'), findsOneWidget);
+    });
+
+    testWidgets('an abastecimento row shows the fuel and the amount', (
+      tester,
+    ) async {
+      await _pump(tester, [
+        _entry(
+          kind: TimelineEntryKind.abastecimento,
+          subtitle: 'gasolina',
+          amountCents: const Money.fromCents(24130),
+          mileageKm: 96420,
+        ),
+      ]);
+
+      expect(find.text('Abastecimento'), findsOneWidget);
+      expect(find.text('Gasolina'), findsOneWidget);
+      expect(find.text(r'R$ 241,30'), findsOneWidget);
+      expect(find.text('96.420 km'), findsOneWidget);
+    });
+
+    testWidgets('a care record is labelled Cuidado, not Manutenção', (
+      tester,
+    ) async {
+      await _pump(tester, [
+        _entry(kind: TimelineEntryKind.manutencao, care: true),
+      ]);
+
+      expect(find.text('Cuidado'), findsOneWidget);
+      expect(find.text('Manutenção'), findsNothing);
+    });
+
+    testWidgets('a row without amount or km does not reserve empty columns', (
+      tester,
+    ) async {
+      await _pump(tester, [
+        _entry(
+          kind: TimelineEntryKind.manutencao,
+          care: true,
+          title: 'Pneus calibrados',
+        ),
+      ]);
+
+      expect(find.text('Pneus calibrados'), findsOneWidget);
+      expect(find.textContaining('R\$'), findsNothing);
+      expect(find.textContaining('km'), findsNothing);
+
+      final row = tester.widget<Row>(
+        find.descendant(
+          of: find.byType(AppCard),
+          matching: find.byType(Row),
+        ).first,
+      );
+      expect(row.children, hasLength(3));
+    });
+
+    testWidgets('an unknown kind does not navigate', (tester) async {
+      var opened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: TimelineContent(
+              state: PagedState(
+                items: [
+                  _entry(
+                    kind: TimelineEntryKind.desconhecido,
+                    title: 'Algo novo',
+                  ),
+                ],
+                hasMore: false,
+              ),
+              onOpen: (_) => opened = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Algo novo'));
+      await tester.pump();
+
+      expect(opened, isFalse);
     });
 
     testWidgets('the empty history invites the first records', (tester) async {
@@ -160,6 +260,7 @@ TimelineEntry _entry({
   String? subtitle,
   Money? amountCents,
   int? mileageKm,
+  bool? care,
 }) {
   return TimelineEntry(
     kind: kind,
@@ -169,5 +270,6 @@ TimelineEntry _entry({
     subtitle: subtitle,
     amountCents: amountCents,
     mileageKm: mileageKm,
+    care: care,
   );
 }

@@ -71,9 +71,9 @@ final class MaintenanceRecordDraft {
   const MaintenanceRecordDraft({
     required this.id,
     required this.occurredOn,
-    required this.mileageKm,
     required this.kind,
     required this.items,
+    this.mileageKm,
     this.workshopName,
     this.totalCostCents,
     this.notes,
@@ -85,7 +85,7 @@ final class MaintenanceRecordDraft {
 
   final String id;
   final CivilDate occurredOn;
-  final int mileageKm;
+  final int? mileageKm;
   final MaintenanceRecordKind kind;
   final String? workshopName;
   final Money? totalCostCents;
@@ -135,7 +135,7 @@ final class MaintenanceRecordDraft {
     return {
       'id': id,
       'occurred_on': occurredOn.toJson(),
-      'mileage_km': mileageKm,
+      'mileage_km': ?mileageKm,
       'kind': kindWire,
       'workshop_name': ?workshop,
       'total_cost_cents': ?totalCostCents?.cents,

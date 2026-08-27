@@ -155,9 +155,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.s12),
-            TextButton(
+            AppButton(
+              label: 'Já tem conta? Entrar',
+              variant: AppButtonVariant.tertiary,
               onPressed: _submitting ? null : () => context.go(AppRoutes.login),
-              child: const Text('Já tem conta? Entrar'),
             ),
           ],
         ),

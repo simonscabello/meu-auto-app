@@ -8,10 +8,14 @@ import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
+import 'package:meu_auto/features/abastecimento/presentation/last_abastecimento_card.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
+import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_metric.dart';
@@ -29,6 +33,7 @@ class DashboardView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider(vehicleId));
+    final vehicle = ref.watch(selectedVehicleProvider).value;
 
     return dashboard.when(
       loading: () => const _DashboardSkeleton(),
@@ -38,6 +43,7 @@ class DashboardView extends ConsumerWidget {
       ),
       data: (data) => DashboardContent(
         dashboard: data,
+        refuelingSupported: vehicle?.refueling.supported ?? false,
         onOdometerTap: () => OdometerSheet.show(
           context,
           vehicleId: vehicleId,
@@ -48,6 +54,16 @@ class DashboardView extends ConsumerWidget {
         onSeeAllAlerts: () => context.go(AppRoutes.care),
         onAlertTap: (alert) => _openAlert(context, alert),
         onCostsTap: () => context.push(AppRoutes.costs),
+        onAbastecimentoTap: () => context.push(AppRoutes.abastecimentos),
+        onRegisterAbastecimento: vehicle == null
+            ? null
+            : () => AbastecimentoFormSheet.show(
+                context,
+                vehicleId: vehicle.id,
+                currentMileageKm: vehicle.currentMileageKm,
+                fuelTypes: vehicle.refueling.offeredFuels,
+                lastFuel: data.lastAbastecimento?.fuel,
+              ),
       ),
     );
   }
@@ -81,27 +97,33 @@ String routeForAlert(Alert alert) {
 /// The dashboard as pure presentation.
 ///
 /// Every number here arrived computed by the server — `overdue`, `due_soon`,
-/// `remaining_km`, `remaining_days`, `tracked_cents`. Nothing in this file
+/// `remaining_km`, `remaining_days`, `total_cents`. Nothing in this file
 /// derives a due date, a status or a total; it turns figures into sentences.
 class DashboardContent extends StatelessWidget {
   const DashboardContent({
     super.key,
     required this.dashboard,
+    this.refuelingSupported = false,
     this.onOdometerTap,
     this.onConfigureTap,
     this.onProfileTap,
     this.onSeeAllAlerts,
     this.onAlertTap,
     this.onCostsTap,
+    this.onAbastecimentoTap,
+    this.onRegisterAbastecimento,
   });
 
   final Dashboard dashboard;
+  final bool refuelingSupported;
   final VoidCallback? onOdometerTap;
   final VoidCallback? onConfigureTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onSeeAllAlerts;
   final ValueChanged<Alert>? onAlertTap;
   final VoidCallback? onCostsTap;
+  final VoidCallback? onAbastecimentoTap;
+  final VoidCallback? onRegisterAbastecimento;
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +157,15 @@ class DashboardContent extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s8),
           ],
+        ],
+        if (refuelingSupported) ...[
+          const SizedBox(height: AppSpacing.s24),
+          LastAbastecimentoCard(
+            supported: true,
+            last: dashboard.lastAbastecimento,
+            onTap: onAbastecimentoTap,
+            onRegister: onRegisterAbastecimento,
+          ),
         ],
         if (alerts.needsBaseline > 0) ...[
           const SizedBox(height: AppSpacing.s16),
@@ -232,6 +263,7 @@ const _categoryLabels = {
   'ipva': 'IPVA',
   'licenciamento': 'licenciamento',
   'seguro': 'seguro',
+  'obligations': 'IPVA e licenciamento',
   'abastecimento': 'combustível',
   'expenses': 'despesas',
 };
@@ -491,10 +523,11 @@ class _SetupCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.s8),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: AppButton(
+              label: 'Configurar',
+              variant: AppButtonVariant.tertiary,
+              foregroundColor: visual.foreground,
               onPressed: onTap,
-              style: TextButton.styleFrom(foregroundColor: visual.foreground),
-              child: const Text('Configurar'),
             ),
           ),
         ],
@@ -543,7 +576,7 @@ class _CostsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final includes = includedCategoriesLine(costs.trackedCategories);
+    final includes = includedCategoriesLine(costs.noteCategoryKeys);
 
     return AppCard(
       onTap: onTap,
@@ -558,7 +591,7 @@ class _CostsCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.s4),
           Text(
-            costs.trackedCents.format(),
+            costs.totalCents.format(),
             style: theme.textTheme.headlineSmall?.copyWith(
               fontFeatures: AppTypography.tabular,
             ),

@@ -66,7 +66,7 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
 }
 
 /// Pure presentation of the cost summary. Every figure arrived from the
-/// server — [DashboardCosts.trackedCents] is the total, and the bars only
+/// server — [DashboardCosts.totalCents] is the total, and the bars only
 /// scale against it. Nothing here adds the categories up.
 class CostsContent extends StatelessWidget {
   const CostsContent({
@@ -83,10 +83,11 @@ class CostsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tracked = costs.trackedCents.cents;
-    final empty = tracked <= 0;
-    final excluded = excludedCategoriesNote(costs.trackedCategories);
+    final total = costs.totalCents.cents;
+    final empty = total <= 0;
+    final excluded = excludedCategoriesNote(costs.noteCategoryKeys);
     final window = costWindowLabel(costs.periodMonths);
+    final bars = costs.bars;
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.s16),
@@ -118,7 +119,7 @@ class CostsContent extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.s4),
               Text(
-                costs.trackedCents.format(),
+                costs.totalCents.format(),
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontFeatures: AppTypography.tabular,
                 ),
@@ -141,23 +142,14 @@ class CostsContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.s24),
-        _CategoryBar(
-          label: 'Manutenção',
-          amount: costs.maintenanceCents,
-          trackedCents: tracked,
-        ),
-        const SizedBox(height: AppSpacing.s16),
-        _CategoryBar(
-          label: 'IPVA e licenciamento',
-          amount: costs.obligationsCents,
-          trackedCents: tracked,
-        ),
-        const SizedBox(height: AppSpacing.s16),
-        _CategoryBar(
-          label: 'Seguro',
-          amount: costs.seguroCents,
-          trackedCents: tracked,
-        ),
+        for (var i = 0; i < bars.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.s16),
+          _CategoryBar(
+            label: bars[i].label,
+            amount: bars[i].cents,
+            trackedCents: total,
+          ),
+        ],
         if (excluded != null) ...[
           const SizedBox(height: AppSpacing.s24),
           Text(

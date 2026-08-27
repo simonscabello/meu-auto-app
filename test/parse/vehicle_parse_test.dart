@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/network/api_envelope.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 
 import '../support/fixtures.dart';
@@ -23,6 +24,11 @@ void main() {
       expect(vehicle.currentMileageKm, 45200);
       expect(vehicle.currentMileageAt, const CivilDate(2026, 8, 20));
       expect(vehicle.nickname, 'Argolino');
+      expect(vehicle.refueling.supported, isTrue);
+      expect(vehicle.refueling.fuelTypes, [
+        AbastecimentoFuel.gasolina,
+        AbastecimentoFuel.etanol,
+      ]);
     });
 
     test('parses when every optional is null', () {
@@ -40,6 +46,8 @@ void main() {
       expect(vehicle.fipeCode, isNull);
       expect(vehicle.currentMileageAt, isNull);
       expect(vehicle.currentMileageKm, 0);
+      expect(vehicle.refueling.supported, isTrue);
+      expect(vehicle.refueling.fuelTypes, isEmpty);
     });
 
     test('unknown vehicle_type and fuel_type fall back without throwing', () {

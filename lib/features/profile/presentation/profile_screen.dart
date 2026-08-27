@@ -335,10 +335,11 @@ class ProfileContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.s40),
         Divider(color: theme.colorScheme.outlineVariant),
         const SizedBox(height: AppSpacing.s16),
-        TextButton(
+        AppButton(
+          label: 'Excluir minha conta',
+          variant: AppButtonVariant.tertiary,
+          foregroundColor: theme.colorScheme.error,
           onPressed: busy ? null : onDeleteAccount,
-          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
-          child: const Text('Excluir minha conta'),
         ),
       ],
     );

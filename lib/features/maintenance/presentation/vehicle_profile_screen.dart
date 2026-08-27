@@ -269,11 +269,12 @@ class VehicleProfileContent extends StatelessWidget {
                       ],
                     ),
                   ),
-                  TextButton(
+                  AppButton(
+                    label: 'Tem sim',
+                    variant: AppButtonVariant.tertiary,
                     onPressed: onRestore == null
                         ? null
                         : () => onRestore!(plan),
-                    child: const Text('Tem sim'),
                   ),
                 ],
               ),

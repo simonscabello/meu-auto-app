@@ -240,7 +240,9 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
             ),
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
+              child: AppButton(
+                label: 'Ver histórico',
+                variant: AppButtonVariant.tertiary,
                 onPressed: _submitting
                     ? null
                     : () {
@@ -248,7 +250,6 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
                         Navigator.of(context).pop();
                         router.push(AppRoutes.odometer);
                       },
-                child: const Text('Ver histórico'),
               ),
             ),
           ],

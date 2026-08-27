@@ -1,6 +1,8 @@
 import 'package:meu_auto/core/domain/client_id.dart';
 import 'package:meu_auto/core/network/api_client.dart';
 import 'package:meu_auto/core/network/api_envelope.dart';
+import 'package:meu_auto/core/network/api_error_code.dart';
+import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_paths.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
@@ -29,6 +31,29 @@ final class MaintenancePlanRepository {
           : null,
     );
     return listOf(body, MaintenancePlan.fromJson);
+  }
+
+  /// One plan by id. Same shape as a list item, due already computed.
+  Future<MaintenancePlan> get(String planId) async {
+    final body = await api.get(ApiPaths.maintenancePlan(planId));
+    return MaintenancePlan.fromJson(body);
+  }
+
+  /// Current servers answer [get]. Older ones 404; the list still has the row.
+  Future<MaintenancePlan> getWithFallback({
+    required String planId,
+    required String vehicleId,
+  }) async {
+    try {
+      return await get(planId);
+    } on ApiFailure catch (failure) {
+      if (failure.code != ApiErrorCode.notFound) rethrow;
+      final plans = await list(vehicleId);
+      for (final plan in plans) {
+        if (plan.id == planId) return plan;
+      }
+      rethrow;
+    }
   }
 
   /// 200 (retry of the same client `id`) and 201 are the same success.

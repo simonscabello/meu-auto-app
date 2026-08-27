@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
+import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_form_sheet.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
@@ -28,6 +30,26 @@ class QuickAddSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (vehicle != null && vehicle.refueling.supported)
+              ListTile(
+                leading: const Icon(Icons.local_gas_station_outlined),
+                title: const Text('Registrar abastecimento'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final lastFuel = ref
+                      .read(dashboardProvider(vehicle.id))
+                      .value
+                      ?.lastAbastecimento
+                      ?.fuel;
+                  AbastecimentoFormSheet.show(
+                    context,
+                    vehicleId: vehicle.id,
+                    currentMileageKm: vehicle.currentMileageKm,
+                    fuelTypes: vehicle.refueling.offeredFuels,
+                    lastFuel: lastFuel,
+                  );
+                },
+              ),
             if (vehicle != null)
               ListTile(
                 leading: const Icon(Icons.speed_outlined),

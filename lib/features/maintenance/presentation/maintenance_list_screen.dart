@@ -12,6 +12,7 @@ import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
+import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
@@ -245,8 +246,7 @@ class _RecordTile extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.s4),
                 Text(
-                  '${formatCivilDate(record.occurredOn)} · '
-                  '${formatKm(record.mileageKm)}',
+                  _recordWhen(record),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -271,6 +271,12 @@ class _RecordTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _recordWhen(MaintenanceRecord record) {
+  final km = record.mileageKm;
+  if (km == null) return formatCivilDate(record.occurredOn);
+  return '${formatCivilDate(record.occurredOn)} · ${formatKm(km)}';
 }
 
 /// Marks a record the owner entered from memory rather than from a receipt.
@@ -323,7 +329,11 @@ class _Footer extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            TextButton(onPressed: onRetry, child: const Text('Tentar de novo')),
+            AppButton(
+              label: 'Tentar de novo',
+              variant: AppButtonVariant.tertiary,
+              onPressed: onRetry,
+            ),
           ],
         ),
       );

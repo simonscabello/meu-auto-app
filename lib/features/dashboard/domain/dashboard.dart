@@ -1,6 +1,7 @@
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/enum_parse.dart';
 import 'package:meu_auto/core/domain/money.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 
 enum AlertKind {
@@ -191,6 +192,26 @@ final class DashboardProfile {
   );
 }
 
+final class CostCategory {
+  const CostCategory({
+    required this.key,
+    required this.label,
+    required this.cents,
+  });
+
+  final String key;
+  final String label;
+  final Money cents;
+
+  factory CostCategory.fromJson(Map<String, dynamic> json) {
+    return CostCategory(
+      key: json['key'] as String,
+      label: json['label'] as String,
+      cents: Money.fromCents(json['cents'] as int),
+    );
+  }
+}
+
 final class DashboardCosts {
   const DashboardCosts({
     required this.periodMonths,
@@ -200,7 +221,10 @@ final class DashboardCosts {
     required this.seguroCents,
     required this.trackedCents,
     required this.trackedCategories,
-  });
+    this.abastecimentoCents,
+    Money? totalCents,
+    this.categories = const [],
+  }) : totalCents = totalCents ?? trackedCents;
 
   final int periodMonths;
   final CivilDate since;
@@ -209,9 +233,42 @@ final class DashboardCosts {
   final Money seguroCents;
   final Money trackedCents;
   final List<String> trackedCategories;
+  final Money? abastecimentoCents;
+  final Money totalCents;
+  final List<CostCategory> categories;
+
+/// Bars to draw. [categories] when the server sent them; otherwise the
+  /// three frozen fields an older payload still carries.
+  List<CostCategory> get bars {
+    if (categories.isNotEmpty) return categories;
+    return [
+      CostCategory(
+        key: 'manutencao',
+        label: 'Manutenção',
+        cents: maintenanceCents,
+      ),
+      CostCategory(
+        key: 'obligations',
+        label: 'IPVA e licenciamento',
+        cents: obligationsCents,
+      ),
+      CostCategory(key: 'seguro', label: 'Seguro', cents: seguroCents),
+    ];
+  }
+
+  /// Keys the cost-exclusion note should look at.
+  List<String> get noteCategoryKeys {
+    if (categories.isNotEmpty) {
+      return [for (final category in categories) category.key];
+    }
+    return trackedCategories;
+  }
 
   factory DashboardCosts.fromJson(Map<String, dynamic> json) {
-    final rawCategories = json['tracked_categories'];
+    final rawTracked = json['tracked_categories'];
+    final rawCategories = json['categories'];
+    final total = json['total_cents'];
+    final abastecimento = json['abastecimento_cents'];
     return DashboardCosts(
       periodMonths: json['period_months'] as int,
       since: CivilDate.parse(json['since'] as String),
@@ -220,9 +277,19 @@ final class DashboardCosts {
       seguroCents: Money.fromCents(json['seguro_cents'] as int),
       trackedCents: Money.fromCents(json['tracked_cents'] as int),
       trackedCategories: [
+        if (rawTracked is List)
+          for (final item in rawTracked)
+            if (item is String) item,
+      ],
+      abastecimentoCents: abastecimento is int
+          ? Money.fromCents(abastecimento)
+          : null,
+      totalCents: total is int ? Money.fromCents(total) : null,
+      categories: [
         if (rawCategories is List)
           for (final item in rawCategories)
-            if (item is String) item,
+            if (item is Map)
+              CostCategory.fromJson(Map<String, dynamic>.from(item)),
       ],
     );
   }
@@ -235,6 +302,7 @@ final class Dashboard {
     required this.alerts,
     required this.profile,
     required this.costs,
+    this.lastAbastecimento,
   });
 
   final DashboardVehicle vehicle;
@@ -242,9 +310,11 @@ final class Dashboard {
   final DashboardAlerts alerts;
   final DashboardProfile profile;
   final DashboardCosts costs;
+  final LastAbastecimento? lastAbastecimento;
 
   factory Dashboard.fromJson(Map<String, dynamic> json) {
     final rawProfile = json['profile'];
+    final rawLast = json['last_abastecimento'];
     return Dashboard(
       vehicle: DashboardVehicle.fromJson(_asMap(json['vehicle'])),
       odometer: DashboardOdometer.fromJson(_asMap(json['odometer'])),
@@ -255,6 +325,9 @@ final class Dashboard {
           ? DashboardProfile.fromJson(Map<String, dynamic>.from(rawProfile))
           : DashboardProfile.empty,
       costs: DashboardCosts.fromJson(_asMap(json['costs'])),
+      lastAbastecimento: rawLast is Map
+          ? LastAbastecimento.fromJson(Map<String, dynamic>.from(rawLast))
+          : null,
     );
   }
 }

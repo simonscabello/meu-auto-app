@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
@@ -109,6 +110,41 @@ void main() {
     ) async {
       await _pump(tester, _dashboard(categories: ['manutencao', 'pedagio']));
       expect(find.text('Inclui manutenção e pedagio'), findsOneWidget);
+    });
+  });
+
+  group('last abastecimento', () {
+    testWidgets('sits after próximos cuidados and before custos', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _dashboard(
+          dueSoon: 1,
+          items: [_alert(title: 'Bateria')],
+          last: _lastFill(),
+        ),
+        refuelingSupported: true,
+      );
+
+      expect(
+        tester.getTopLeft(find.text('Último abastecimento')).dy,
+        greaterThan(tester.getTopLeft(find.text('Próximos cuidados')).dy),
+      );
+      expect(
+        tester.getTopLeft(find.textContaining('Custo registrado')).dy,
+        greaterThan(tester.getTopLeft(find.text('Último abastecimento')).dy),
+      );
+    });
+
+    testWidgets('an electric vehicle does not get the block', (tester) async {
+      await _pump(
+        tester,
+        _dashboard(last: _lastFill()),
+        refuelingSupported: false,
+      );
+
+      expect(find.text('Último abastecimento'), findsNothing);
     });
   });
 
@@ -248,11 +284,20 @@ void main() {
   });
 }
 
-Future<void> _pump(WidgetTester tester, Dashboard dashboard) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Dashboard dashboard, {
+  bool refuelingSupported = false,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light,
-      home: Scaffold(body: DashboardContent(dashboard: dashboard)),
+      home: Scaffold(
+        body: DashboardContent(
+          dashboard: dashboard,
+          refuelingSupported: refuelingSupported,
+        ),
+      ),
     ),
   );
 }
@@ -288,6 +333,7 @@ Dashboard _dashboard({
     'seguro',
   ],
   DashboardProfile profile = DashboardProfile.empty,
+  LastAbastecimento? last,
 }) {
   return Dashboard(
     vehicle: const DashboardVehicle(
@@ -316,6 +362,23 @@ Dashboard _dashboard({
       seguroCents: const Money.fromCents(10000),
       trackedCents: const Money.fromCents(154000),
       trackedCategories: categories,
+    ),
+    lastAbastecimento: last,
+  );
+}
+
+LastAbastecimento _lastFill() {
+  return const LastAbastecimento(
+    id: 'bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb',
+    occurredOn: CivilDate(2026, 8, 10),
+    totalCostCents: Money.fromCents(23840),
+    volumeMl: 34700,
+    pricePerLiterCents: Money.fromCents(687),
+    fuel: AbastecimentoFuel.gasolina,
+    consumption: Consumption(
+      value: 17.82,
+      unit: 'km_per_liter',
+      status: ConsumptionStatus.ok,
     ),
   );
 }

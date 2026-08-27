@@ -66,7 +66,9 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
     super.initState();
     final record = widget.record;
     _occurredOn = record.occurredOn;
-    _mileage = kmController(record.mileageKm);
+    _mileage = record.mileageKm == null
+        ? TextEditingController()
+        : kmController(record.mileageKm!);
     _workshop = TextEditingController(text: record.workshopName ?? '');
     _notes = TextEditingController(text: record.notes ?? '');
     _cost = TextEditingController(

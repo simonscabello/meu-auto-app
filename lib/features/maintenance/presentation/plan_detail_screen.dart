@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
+import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
@@ -16,7 +17,7 @@ import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
-import 'package:meu_auto/features/maintenance/presentation/plan_interval_sheet.dart';
+import 'package:meu_auto/features/maintenance/presentation/plan_periodicity.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
@@ -40,10 +41,12 @@ class PlanDetailScreen extends ConsumerWidget {
       return const AppScaffold(title: 'Plano', body: SizedBox.shrink());
     }
 
-    final plans = ref.watch(maintenancePlansProvider(vehicle.id));
+    final planAsync = ref.watch(
+      maintenancePlanProvider((vehicleId: vehicle.id, planId: planId)),
+    );
     final records = ref.watch(maintenanceRecordsProvider(vehicle.id));
 
-    return plans.when(
+    return planAsync.when(
       loading: () => const AppScaffold(
         title: 'Plano',
         body: Padding(
@@ -51,26 +54,33 @@ class PlanDetailScreen extends ConsumerWidget {
           child: AppSkeletonList(count: 4, itemHeight: 96),
         ),
       ),
-      error: (error, _) => AppScaffold(
-        title: 'Plano',
-        body: AppErrorState.fromError(
-          error: error,
-          onRetry: () => ref.invalidate(maintenancePlansProvider(vehicle.id)),
-        ),
-      ),
-      data: (list) {
-        final plan = _findPlan(list, planId);
-        if (plan == null) {
-          return AppScaffold(
-            title: 'Plano',
-            body: AppErrorState(
-              message: 'Este plano não está mais ativo.',
-              onRetry: () =>
-                  ref.invalidate(maintenancePlansProvider(vehicle.id)),
-            ),
-          );
-        }
-
+      error: (error, _) {
+        final inactive =
+            error is ApiFailure && error.code == ApiErrorCode.notFound;
+        return AppScaffold(
+          title: 'Plano',
+          body: inactive
+              ? AppErrorState(
+                  message: 'Este plano não está mais ativo.',
+                  onRetry: () => ref.invalidate(
+                    maintenancePlanProvider((
+                      vehicleId: vehicle.id,
+                      planId: planId,
+                    )),
+                  ),
+                )
+              : AppErrorState.fromError(
+                  error: error,
+                  onRetry: () => ref.invalidate(
+                    maintenancePlanProvider((
+                      vehicleId: vehicle.id,
+                      planId: planId,
+                    )),
+                  ),
+                ),
+        );
+      },
+      data: (plan) {
         final history = _historyOf(records, plan.maintenanceItemId);
         final historyLoading = records.isLoading && records.value == null;
 
@@ -84,7 +94,7 @@ class PlanDetailScreen extends ConsumerWidget {
               AppRoutes.maintenanceNew,
               extra: plan.toCatalogueItem(),
             ),
-            onAdjustInterval: () => PlanIntervalSheet.show(
+            onAdjustInterval: () => showPlanPeriodicitySheet(
               context,
               vehicleId: vehicle.id,
               plan: plan,
@@ -113,13 +123,6 @@ class PlanDetailScreen extends ConsumerWidget {
     if (page == null) return const [];
     return historyOfItem(page.items, itemId);
   }
-}
-
-MaintenancePlan? _findPlan(List<MaintenancePlan> plans, String id) {
-  for (final plan in plans) {
-    if (plan.id == id) return plan;
-  }
-  return null;
 }
 
 Future<void> _clearIntervals(
@@ -429,27 +432,31 @@ class PlanDetailContent extends StatelessWidget {
         // reminder do not have the part.
         if (canAnswerHistory) ...[
           const SizedBox(height: AppSpacing.s8),
-          TextButton(
+          AppButton(
+            label: 'Não sei quando foi',
+            variant: AppButtonVariant.tertiary,
             onPressed: () =>
                 onHistoryUnknown!(MaintenanceHistoryStatus.unknown),
-            child: const Text('Não sei quando foi'),
           ),
-          TextButton(
+          AppButton(
+            label: 'Nunca foi feito',
+            variant: AppButtonVariant.tertiary,
             onPressed: () => onHistoryUnknown!(MaintenanceHistoryStatus.never),
-            child: const Text('Nunca foi feito'),
           ),
         ],
         if (onKeepHistoryOnly != null) ...[
           const SizedBox(height: AppSpacing.s8),
-          TextButton(
+          AppButton(
+            label: 'Só quero guardar o histórico',
+            variant: AppButtonVariant.tertiary,
             onPressed: onKeepHistoryOnly,
-            child: const Text('Só quero guardar o histórico'),
           ),
         ],
         if (onNotApplicable != null)
-          TextButton(
+          AppButton(
+            label: 'Meu carro não usa isso',
+            variant: AppButtonVariant.tertiary,
             onPressed: onNotApplicable,
-            child: const Text('Meu carro não usa isso'),
           ),
         const SizedBox(height: AppSpacing.s8),
         AppButton(
@@ -483,12 +490,11 @@ class _HistoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final previousRecord = previous;
-    final delta = previousRecord == null
+    final km = record.mileageKm;
+    final previousKm = previousRecord?.mileageKm;
+    final delta = km == null || previousKm == null
         ? null
-        : mileageSincePreviousPhrase(
-            record.mileageKm,
-            previousRecord.mileageKm,
-          );
+        : mileageSincePreviousPhrase(km, previousKm);
 
     return AppCard(
       onTap: onTap,
@@ -496,7 +502,9 @@ class _HistoryTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${formatCivilDateLong(record.occurredOn)} · ${formatKm(record.mileageKm)}',
+            km == null
+                ? formatCivilDateLong(record.occurredOn)
+                : '${formatCivilDateLong(record.occurredOn)} · ${formatKm(km)}',
             style: theme.textTheme.titleSmall,
           ),
           if (delta != null) ...[

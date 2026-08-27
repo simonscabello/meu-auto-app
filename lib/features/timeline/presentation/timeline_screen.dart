@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/application/load_more_scroll.dart';
+import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento_copy.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
@@ -157,20 +160,20 @@ class TimelineContent extends StatelessWidget {
       );
     }
 
-    final months = groupTimelineByMonth(state.items);
+    final days = groupTimelineByDate(state.items);
 
     return CustomScrollView(
       controller: scroll,
       slivers: [
-        for (final month in months) ...[
+        for (final day in days) ...[
           SliverPersistentHeader(
             pinned: true,
-            delegate: _MonthHeaderDelegate(label: month.label),
+            delegate: _MonthHeaderDelegate(label: day.label),
           ),
           SliverList.builder(
-            itemCount: month.entries.length,
+            itemCount: day.entries.length,
             itemBuilder: (context, index) {
-              final entry = month.entries[index];
+              final entry = day.entries[index];
               final canOpen =
                   onOpen != null && routeForTimelineEntry(entry) != null;
               return Padding(
@@ -196,27 +199,25 @@ class TimelineContent extends StatelessWidget {
   }
 }
 
-final class TimelineMonthGroup {
-  const TimelineMonthGroup({required this.label, required this.entries});
+final class TimelineDateGroup {
+  const TimelineDateGroup({required this.label, required this.entries});
 
   final String label;
   final List<TimelineEntry> entries;
 }
 
 /// The list already arrives newest first, so a group closes wherever the
-/// month changes — no sorting, no second pass.
+/// civil day changes — no sorting, no second pass.
 @visibleForTesting
-List<TimelineMonthGroup> groupTimelineByMonth(List<TimelineEntry> entries) {
-  final groups = <TimelineMonthGroup>[];
-  int? year;
-  int? month;
+List<TimelineDateGroup> groupTimelineByDate(List<TimelineEntry> entries) {
+  final groups = <TimelineDateGroup>[];
+  CivilDate? day;
   for (final entry in entries) {
-    if (entry.occurredOn.year != year || entry.occurredOn.month != month) {
-      year = entry.occurredOn.year;
-      month = entry.occurredOn.month;
+    if (entry.occurredOn != day) {
+      day = entry.occurredOn;
       groups.add(
-        TimelineMonthGroup(
-          label: formatCivilMonthHeader(entry.occurredOn),
+        TimelineDateGroup(
+          label: formatCivilDayMonthShort(entry.occurredOn),
           entries: <TimelineEntry>[],
         ),
       );
@@ -235,6 +236,7 @@ String? routeForTimelineEntry(TimelineEntry entry) {
     TimelineEntryKind.odometro => AppRoutes.odometer,
     TimelineEntryKind.ipva => AppRoutes.obligation(entry.id),
     TimelineEntryKind.licenciamento => AppRoutes.obligation(entry.id),
+    TimelineEntryKind.abastecimento => AppRoutes.abastecimento(entry.id),
     TimelineEntryKind.desconhecido => null,
   };
 }
@@ -328,7 +330,7 @@ class _EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final subtitle = entry.subtitle?.trim();
+    final subtitle = _subtitleOf(entry);
     final amount = entry.amountCents;
     final showAmount = amount != null && amount.cents > 0;
     final mileage = entry.mileageKm;
@@ -338,7 +340,7 @@ class _EntryTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(_iconFor(entry.kind), color: theme.colorScheme.onSurfaceVariant),
+          Icon(_iconFor(entry), color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
             child: Column(
@@ -393,14 +395,25 @@ class _EntryTile extends StatelessWidget {
   }
 }
 
-IconData _iconFor(TimelineEntryKind kind) {
-  return switch (kind) {
+IconData _iconFor(TimelineEntry entry) {
+  if (entry.care == true) return Icons.checklist;
+  return switch (entry.kind) {
     TimelineEntryKind.manutencao => Icons.build,
     TimelineEntryKind.odometro => Icons.speed,
     TimelineEntryKind.ipva => Icons.receipt_long,
     TimelineEntryKind.licenciamento => Icons.description,
+    TimelineEntryKind.abastecimento => Icons.local_gas_station,
     TimelineEntryKind.desconhecido => Icons.history,
   };
+}
+
+String? _subtitleOf(TimelineEntry entry) {
+  final raw = entry.subtitle?.trim();
+  if (raw == null || raw.isEmpty) return null;
+  if (entry.kind != TimelineEntryKind.abastecimento) return raw;
+  final fuel = AbastecimentoFuel.fromWire(raw);
+  if (fuel == AbastecimentoFuel.desconhecido) return raw;
+  return abastecimentoFuelLabel(fuel);
 }
 
 class _Footer extends StatelessWidget {
@@ -424,7 +437,11 @@ class _Footer extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            TextButton(onPressed: onRetry, child: const Text('Tentar de novo')),
+            AppButton(
+              label: 'Tentar de novo',
+              variant: AppButtonVariant.tertiary,
+              onPressed: onRetry,
+            ),
           ],
         ),
       );

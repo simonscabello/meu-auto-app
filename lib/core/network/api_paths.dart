@@ -73,6 +73,11 @@ abstract final class ApiPaths {
 
   static String seguro(String id) => '/seguros/$id';
 
+  static String vehicleAbastecimentos(String id) =>
+      '/vehicles/$id/abastecimentos';
+
+  static String abastecimento(String id) => '/abastecimentos/$id';
+
   static String vehicleDashboard(String id) => '/vehicles/$id/dashboard';
 
   static String vehicleTimeline(String id) => '/vehicles/$id/timeline';

@@ -1,5 +1,6 @@
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/enum_parse.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 
 enum VehicleType {
   car,
@@ -74,6 +75,7 @@ final class Vehicle {
     this.catalogModelYearId,
     required this.currentMileageKm,
     this.currentMileageAt,
+    this.refueling = RefuelingCapability.unspecified,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -117,6 +119,11 @@ final class Vehicle {
 
   final int currentMileageKm;
   final CivilDate? currentMileageAt;
+
+  /// What this vehicle accepts at a pump. The server decides; the app never
+  /// infers ethanol from flex.
+  final RefuelingCapability refueling;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -151,6 +158,7 @@ final class Vehicle {
       currentMileageAt: CivilDate.tryParse(
         json['current_mileage_at'] as String?,
       ),
+      refueling: RefuelingCapability.fromJson(json['refueling']),
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
     );

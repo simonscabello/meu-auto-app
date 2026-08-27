@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 
-enum AppButtonVariant { primary, secondary, destructive }
+enum AppButtonVariant { primary, secondary, destructive, tertiary }
 
 class AppButton extends StatelessWidget {
   const AppButton({
@@ -10,6 +10,7 @@ class AppButton extends StatelessWidget {
     required this.onPressed,
     this.variant = AppButtonVariant.primary,
     this.loading = false,
+    this.foregroundColor,
   });
 
   final String label;
@@ -17,11 +18,20 @@ class AppButton extends StatelessWidget {
   final AppButtonVariant variant;
   final bool loading;
 
+  /// Overrides the label colour. Used by tertiary actions that sit on a
+  /// tinted surface (setup card) or that must read as destructive without
+  /// becoming a filled button.
+  final Color? foregroundColor;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final handlePress = loading ? null : onPressed;
     final child = _ButtonLabel(label: label, loading: loading);
+    const tapTarget = Size(
+      AppSpacing.minTapTarget,
+      AppSpacing.minTapTarget,
+    );
 
     return switch (variant) {
       AppButtonVariant.primary => FilledButton(
@@ -39,10 +49,17 @@ class AppButton extends StatelessWidget {
           foregroundColor: scheme.onError,
           disabledBackgroundColor: scheme.error.withValues(alpha: 0.38),
           disabledForegroundColor: scheme.onError.withValues(alpha: 0.38),
-          minimumSize: const Size(
-            AppSpacing.minTapTarget,
-            AppSpacing.minTapTarget,
-          ),
+          minimumSize: tapTarget,
+        ),
+        child: child,
+      ),
+      AppButtonVariant.tertiary => TextButton(
+        onPressed: handlePress,
+        style: TextButton.styleFrom(
+          minimumSize: tapTarget,
+          tapTargetSize: MaterialTapTargetSize.padded,
+          foregroundColor: foregroundColor,
+          disabledForegroundColor: foregroundColor?.withValues(alpha: 0.38),
         ),
         child: child,
       ),

@@ -6,7 +6,7 @@ class AppMetric extends StatelessWidget {
   const AppMetric({
     super.key,
     required this.value,
-    required this.label,
+    this.label = '',
     this.unit,
   });
 
@@ -40,13 +40,15 @@ class AppMetric extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.s4),
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        if (label.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.s4),
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

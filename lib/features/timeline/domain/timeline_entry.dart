@@ -7,6 +7,7 @@ enum TimelineEntryKind {
   odometro,
   ipva,
   licenciamento,
+  abastecimento,
   desconhecido;
 
   static TimelineEntryKind fromWire(String? raw) =>
@@ -22,6 +23,7 @@ final class TimelineEntry {
     this.subtitle,
     this.amountCents,
     this.mileageKm,
+    this.care,
   });
 
   final TimelineEntryKind kind;
@@ -31,6 +33,10 @@ final class TimelineEntry {
   final String? subtitle;
   final Money? amountCents;
   final int? mileageKm;
+
+  /// `true` when every line of a maintenance record is a care item. `false`
+  /// on a service. `null` on every other kind. [kind] stays `manutencao`.
+  final bool? care;
 
   factory TimelineEntry.fromJson(Map<String, dynamic> json) {
     final amount = json['amount_cents'];
@@ -42,23 +48,28 @@ final class TimelineEntry {
       subtitle: json['subtitle'] as String?,
       amountCents: amount is int ? Money.fromCents(amount) : null,
       mileageKm: json['mileage_km'] as int?,
+      care: json['care'] as bool?,
     );
   }
 }
 
 /// The title the row should show: the server's text when it sent one, otherwise
-/// a label from [kind]. Never rebuilds a maintenance title from its items —
-/// if the server changes the wording, the screen follows.
+/// a label from [kind] — or "Cuidado" when [TimelineEntry.care] is true.
+/// Never rebuilds a maintenance title from its items.
 String titleOf(TimelineEntry entry) {
   final title = entry.title?.trim();
   if (title != null && title.isNotEmpty) {
     return title;
+  }
+  if (entry.care == true) {
+    return 'Cuidado';
   }
   return switch (entry.kind) {
     TimelineEntryKind.manutencao => 'Manutenção',
     TimelineEntryKind.odometro => 'Quilometragem registrada',
     TimelineEntryKind.ipva => 'IPVA',
     TimelineEntryKind.licenciamento => 'Licenciamento',
+    TimelineEntryKind.abastecimento => 'Abastecimento',
     TimelineEntryKind.desconhecido => 'Registro',
   };
 }

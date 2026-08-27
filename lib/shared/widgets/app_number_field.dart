@@ -121,6 +121,94 @@ class AppMoneyField extends StatelessWidget {
   }
 }
 
+/// Formats a decimal with a pt-BR comma while it is typed.
+///
+/// A period is rewritten as a comma so a numeric keyboard that emits `.` still
+/// lands as `34,7`. The conversion to millilitres lives in the caller.
+class DecimalCommaInputFormatter extends TextInputFormatter {
+  const DecimalCommaInputFormatter({
+    this.maxWholeDigits = 4,
+    this.maxFracDigits = 3,
+  });
+
+  final int maxWholeDigits;
+  final int maxFracDigits;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final normalized = newValue.text.replaceAll('.', ',');
+    final comma = normalized.indexOf(',');
+    final wholeRaw = comma < 0 ? normalized : normalized.substring(0, comma);
+    final fracRaw = comma < 0 ? '' : normalized.substring(comma + 1);
+    final whole = digitsOnly(wholeRaw);
+    var frac = digitsOnly(fracRaw);
+    if (whole.length > maxWholeDigits) {
+      return oldValue;
+    }
+    if (frac.length > maxFracDigits) {
+      frac = frac.substring(0, maxFracDigits);
+    }
+    final text = comma < 0 ? whole : '$whole,$frac';
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
+
+/// Litres with a comma decimal. Convert to millilitres at the call site.
+class AppLitersField extends StatelessWidget {
+  const AppLitersField({
+    super.key,
+    required this.controller,
+    this.label = 'Litros',
+    this.enabled = true,
+    this.errorText,
+    this.helperText,
+    this.textInputAction = TextInputAction.next,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final bool enabled;
+  final String? errorText;
+  final String? helperText;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      keyboardType: const TextInputType.numberWithOptions(
+        signed: false,
+        decimal: true,
+      ),
+      textInputAction: textInputAction,
+      inputFormatters: const [DecimalCommaInputFormatter()],
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      style: Theme.of(
+        context,
+      ).textTheme.bodyLarge?.copyWith(fontFeatures: AppTypography.tabular),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: 'L',
+        helperText: helperText,
+        errorText: errorText,
+        errorMaxLines: 3,
+      ),
+    );
+  }
+}
+
 /// A mileage field. Reads back with [kmFromField].
 class AppKmField extends StatelessWidget {
   const AppKmField({

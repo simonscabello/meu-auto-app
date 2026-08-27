@@ -66,6 +66,16 @@ void main() {
     expect(item.hasWarranty, isFalse);
   });
 
+  test('a care-only record may arrive without mileage', () {
+    final record = MaintenanceRecord.fromJson(
+      _record()
+        ..['mileage_km'] = null
+        ..['items'] = [_item(name: 'Calibrar os pneus')],
+    );
+
+    expect(record.mileageKm, isNull);
+  });
+
   test('an unknown kind falls back instead of throwing', () {
     final record = MaintenanceRecord.fromJson(_record(kind: 'estimated'));
     expect(record.kind, MaintenanceRecordKind.desconhecido);

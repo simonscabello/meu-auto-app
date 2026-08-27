@@ -37,6 +37,33 @@ String formatCivilDateLong(CivilDate date) {
   return '${date.day} de $month de ${date.year}';
 }
 
+/// Day and month, no year — a recent event on a card that already sits in
+/// "now". `'10 de agosto'`.
+String formatCivilDayMonth(CivilDate date) {
+  return '${date.day} de ${_monthName(date)}';
+}
+
+/// Timeline date header as the briefing writes it: `'12 AGO'`.
+String formatCivilDayMonthShort(CivilDate date) {
+  final day = date.day.toString().padLeft(2, '0');
+  return '$day ${_shortMonths[date.month - 1]}';
+}
+
+const _shortMonths = [
+  'JAN',
+  'FEV',
+  'MAR',
+  'ABR',
+  'MAI',
+  'JUN',
+  'JUL',
+  'AGO',
+  'SET',
+  'OUT',
+  'NOV',
+  'DEZ',
+];
+
 String formatCivilMonthHeader(CivilDate date) {
   final month = _monthName(date);
   final capitalized = '${month[0].toUpperCase()}${month.substring(1)}';

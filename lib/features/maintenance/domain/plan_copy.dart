@@ -1,6 +1,7 @@
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/domain/phrases.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 
@@ -15,7 +16,42 @@ import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 ///  * "Não sei" and "nunca foi feito" both leave the plan without a baseline,
 ///    and they must not read the same. One is a gap in memory; the other is a
 ///    fact about the car.
+const careRecordedTodayPhrase = 'Registrado hoje';
+
+/// A care habit is a reminder, not a deadline. The overdue word would train
+/// people to ignore it on the items where it is true.
+bool showsCareDoneAction(MaintenancePlan plan) {
+  if (plan.itemKind != MaintenanceItemKind.care) return false;
+  return switch (plan.status) {
+    MaintenanceStatus.vencido ||
+    MaintenanceStatus.venceEmBreve ||
+    MaintenanceStatus.semBaseline => true,
+    _ => false,
+  };
+}
+
+/// Remaining days already computed by the server, turned into a sentence.
+String? careNextCheckPhrase(int? remainingDays) {
+  if (remainingDays == null || remainingDays < 1) return null;
+  if (remainingDays == 1) return 'Próxima verificação em 1 dia';
+  return 'Próxima verificação em $remainingDays dias';
+}
+
 String planStatusPhrase(MaintenancePlan plan) {
+  if (plan.itemKind == MaintenanceItemKind.care) {
+    return switch (plan.status) {
+      MaintenanceStatus.vencido ||
+      MaintenanceStatus.venceEmBreve ||
+      MaintenanceStatus.semBaseline => 'Está na hora de verificar.',
+      MaintenanceStatus.emDia => 'Tudo certo',
+      _ => maintenanceStatusPhrase(
+        plan.status.wire,
+        remainingKm: plan.remainingKm,
+        remainingDays: plan.remainingDays,
+      ),
+    };
+  }
+
   if (plan.status == MaintenanceStatus.semBaseline) {
     return switch (plan.historyStatus) {
       MaintenanceHistoryStatus.unknown => 'Você não lembra — tudo bem',

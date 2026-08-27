@@ -46,6 +46,8 @@ void main() {
       expect(vehicle.isFromCatalog, isFalse);
       expect(vehicle.currentMileageKm, 0);
       expect(vehicle.currentMileageAt, isNull);
+      expect(vehicle.refueling.supported, isTrue);
+      expect(vehicle.refueling.fuelTypes, isEmpty);
       expect(
         vehicle.createdAt,
         DateTime.parse('2026-08-26T16:15:00.000Z').toLocal(),
@@ -101,6 +103,24 @@ void main() {
 
       expect(vehicle.vehicleType, VehicleType.desconhecido);
       expect(vehicle.fuelType, FuelType.desconhecido);
+    });
+
+    test('refueling comes from the server, never inferred from fuel_type', () {
+      final electric = Vehicle.fromJson({
+        'id': '44444444-4444-7444-8444-444444444444',
+        'vehicle_type': 'car',
+        'brand': 'BYD',
+        'model': 'Dolphin',
+        'fuel_type': 'eletrico',
+        'current_mileage_km': 1200,
+        'refueling': {'supported': false, 'fuel_types': <String>[]},
+        'created_at': '2026-08-26T16:15:00.000Z',
+        'updated_at': '2026-08-26T16:15:00.000Z',
+      });
+
+      expect(electric.fuelType, FuelType.eletrico);
+      expect(electric.refueling.supported, isFalse);
+      expect(electric.refueling.fuelTypes, isEmpty);
     });
   });
 

@@ -93,7 +93,7 @@ final class MaintenanceRecord {
   final String id;
   final String vehicleId;
   final CivilDate occurredOn;
-  final int mileageKm;
+  final int? mileageKm;
   final MaintenanceRecordKind kind;
   final String? workshopName;
   final Money totalCostCents;
@@ -113,7 +113,7 @@ final class MaintenanceRecord {
       id: json['id'] as String,
       vehicleId: json['vehicle_id'] as String,
       occurredOn: CivilDate.parse(json['occurred_on'] as String),
-      mileageKm: json['mileage_km'] as int,
+      mileageKm: json['mileage_km'] as int?,
       kind: MaintenanceRecordKind.fromWire(json['kind'] as String?),
       workshopName: json['workshop_name'] as String?,
       totalCostCents: Money.fromCents(json['total_cost_cents'] as int),

@@ -17,6 +17,8 @@ void main() {
     const date = CivilDate(2026, 8, 10);
     expect(formatCivilDate(date), '10/08/2026');
     expect(formatCivilDateLong(date), '10 de agosto de 2026');
+    expect(formatCivilDayMonth(date), '10 de agosto');
+    expect(formatCivilDayMonthShort(date), '10 AGO');
     expect(formatCivilMonthHeader(date), 'Agosto de 2026');
   });
 

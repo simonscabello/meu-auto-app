@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/shared/widgets/app_button.dart';
 
 class AppSectionHeader extends StatelessWidget {
   const AppSectionHeader({
@@ -22,7 +23,11 @@ class AppSectionHeader extends StatelessWidget {
         children: [
           Expanded(child: Text(title, style: theme.textTheme.titleMedium)),
           if (actionLabel != null)
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            AppButton(
+              label: actionLabel!,
+              variant: AppButtonVariant.tertiary,
+              onPressed: onAction,
+            ),
         ],
       ),
     );

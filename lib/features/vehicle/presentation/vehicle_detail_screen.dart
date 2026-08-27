@@ -162,12 +162,12 @@ class VehicleDetailContent extends StatelessWidget {
           // and it should not compete with Editar for the same glance.
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton(
+            child: AppButton(
+              label: 'Excluir este veículo',
+              variant: AppButtonVariant.tertiary,
+              foregroundColor: theme.colorScheme.error,
+              loading: deleting,
               onPressed: deleting ? null : onDelete,
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-              ),
-              child: Text(deleting ? 'Excluindo…' : 'Excluir este veículo'),
             ),
           ),
         ],

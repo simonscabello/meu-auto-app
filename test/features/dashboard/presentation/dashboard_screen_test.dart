@@ -194,6 +194,32 @@ void main() {
       routeForAlert(_alert(type: AlertReferenceType.seguro, id: 'sg-1')),
       AppRoutes.seguro('sg-1'),
     );
+    expect(
+      routeForAlert(_alert(type: AlertReferenceType.seguro, id: 'sg-1')),
+      isNot(AppRoutes.care),
+    );
+  });
+
+  test('a plan alert opens the plan, a record alert opens the record', () {
+    expect(
+      routeForAlert(
+        _alert(type: AlertReferenceType.maintenancePlan, id: 'pl-1'),
+      ),
+      AppRoutes.plan('pl-1'),
+    );
+    expect(
+      routeForAlert(
+        _alert(type: AlertReferenceType.maintenanceRecord, id: 'rc-1'),
+      ),
+      AppRoutes.maintenanceRecord('rc-1'),
+    );
+  });
+
+  test('an unknown reference type is the only one that lands on Cuidados', () {
+    expect(
+      routeForAlert(_alert(type: AlertReferenceType.desconhecido, id: 'x')),
+      AppRoutes.care,
+    );
   });
 }
 

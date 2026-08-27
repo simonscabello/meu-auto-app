@@ -197,6 +197,14 @@ void main() {
       expect(item.hasWarranty, isFalse);
     });
 
+    test('a care-only record parses with mileage_km null', () {
+      final record = MaintenanceRecord.fromJson({
+        ...complete,
+        'mileage_km': null,
+      });
+      expect(record.mileageKm, isNull);
+    });
+
     test('unknown kind falls back without throwing', () {
       final record = MaintenanceRecord.fromJson({
         ...complete,

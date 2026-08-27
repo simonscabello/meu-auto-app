@@ -8,6 +8,7 @@ import 'package:meu_auto/features/catalog/application/vehicle_catalog_provider.d
 import 'package:meu_auto/features/catalog/domain/vehicle_catalog.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
 /// The progressive picker: brand, then model, then year.
@@ -134,10 +135,10 @@ class _VehicleCatalogSheetState extends ConsumerState<VehicleCatalogSheet> {
             Row(
               children: [
                 if (_brand != null)
-                  IconButton(
+                  AppIconButton(
+                    label: 'Voltar',
+                    icon: Icons.arrow_back,
                     onPressed: _resolving ? null : _back,
-                    icon: const Icon(Icons.arrow_back),
-                    tooltip: 'Voltar',
                   ),
                 Expanded(
                   child: Column(
@@ -481,13 +482,15 @@ class VehicleCatalogSummary extends StatelessWidget {
             Wrap(
               spacing: AppSpacing.s8,
               children: [
-                TextButton(
+                AppButton(
+                  label: 'Trocar',
+                  variant: AppButtonVariant.tertiary,
                   onPressed: enabled ? onChange : null,
-                  child: const Text('Trocar'),
                 ),
-                TextButton(
+                AppButton(
+                  label: 'Remover',
+                  variant: AppButtonVariant.tertiary,
                   onPressed: enabled ? onClear : null,
-                  child: const Text('Remover'),
                 ),
               ],
             ),

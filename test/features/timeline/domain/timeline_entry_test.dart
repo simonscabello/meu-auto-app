@@ -54,9 +54,32 @@ void main() {
     test('an unknown kind falls back instead of throwing', () {
       final entry = TimelineEntry.fromJson({
         ..._odometro,
-        'kind': 'abastecimento',
+        'kind': 'multa',
       });
       expect(entry.kind, TimelineEntryKind.desconhecido);
+    });
+
+    test('an abastecimento kind is recognised', () {
+      final entry = TimelineEntry.fromJson({
+        ..._odometro,
+        'kind': 'abastecimento',
+        'amount_cents': 23840,
+        'subtitle': 'gasolina',
+      });
+      expect(entry.kind, TimelineEntryKind.abastecimento);
+      expect(titleOf(entry), 'Abastecimento');
+      expect(entry.care, isNull);
+    });
+
+    test('care is a flag on a maintenance kind, not a new kind', () {
+      final entry = TimelineEntry.fromJson({
+        ..._manutencao,
+        'title': null,
+        'care': true,
+      });
+      expect(entry.kind, TimelineEntryKind.manutencao);
+      expect(entry.care, isTrue);
+      expect(titleOf(entry), 'Cuidado');
     });
 
     test('occurred_on is a civil date and does not shift a day', () {
@@ -83,9 +106,17 @@ void main() {
       );
     });
 
-    test('labels IPVA and licenciamento from kind', () {
-      expect(titleOf(TimelineEntry.fromJson(_ipva)), 'IPVA');
-      expect(titleOf(TimelineEntry.fromJson(_licenciamento)), 'Licenciamento');
+    test('labels a care record Cuidado when the server sent no title', () {
+      expect(
+        titleOf(
+          TimelineEntry.fromJson({
+            ..._manutencao,
+            'title': null,
+            'care': true,
+          }),
+        ),
+        'Cuidado',
+      );
     });
   });
 

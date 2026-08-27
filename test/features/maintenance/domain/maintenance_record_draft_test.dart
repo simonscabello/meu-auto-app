@@ -76,6 +76,22 @@ void main() {
       expect(body['items'], hasLength(1));
       expect((body['items'] as List).single, {'maintenance_item_id': _oil.id});
     });
+
+    test('a care tap omits mileage_km rather than sending null', () {
+      final draft = const MaintenanceRecordDraft(
+        id: _recordId,
+        occurredOn: CivilDate(2026, 8, 27),
+        kind: MaintenanceRecordKind.performed,
+        items: [MaintenanceRecordLineDraft(item: _tyre)],
+      );
+      final body = draft.toJson();
+
+      expect(body.containsKey('mileage_km'), isFalse);
+      expect(body['occurred_on'], '2026-08-27');
+      expect(body['items'], [
+        {'maintenance_item_id': _tyre.id},
+      ]);
+    });
   });
 
   group('items', () {
@@ -183,6 +199,17 @@ const _filter = MaintenanceItem(
   vehicleType: 'car',
   isCustom: false,
   defaultStrategy: MaintenanceStrategy.periodic,
+);
+
+const _tyre = MaintenanceItem(
+  id: 'cccccccc-cccc-7ccc-8ccc-cccccccccccc',
+  slug: 'calibrar_pneus',
+  name: 'Calibrar os pneus',
+  kind: MaintenanceItemKind.care,
+  vehicleType: 'car',
+  isCustom: false,
+  defaultStrategy: MaintenanceStrategy.periodic,
+  defaultIntervalDays: 15,
 );
 
 MaintenanceItem _item(String suffix) {

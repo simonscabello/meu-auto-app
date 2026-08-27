@@ -213,10 +213,9 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
             const SizedBox(height: AppSpacing.s12),
             AppMoneyField(
               controller: _amount,
-              label: 'Valor',
+              label: 'Valor (opcional)',
               enabled: !_submitting,
               errorText: _fieldErrors['amount_cents'],
-              helperText: 'Opcional',
             ),
             const SizedBox(height: AppSpacing.s12),
             TextField(
@@ -226,14 +225,16 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
               maxLines: 4,
               textInputAction: TextInputAction.newline,
               decoration: InputDecoration(
-                labelText: 'Observações',
+                labelText: 'Observações (opcional)',
                 errorText: _fieldErrors['notes'],
                 errorMaxLines: 3,
               ),
             ),
             const SizedBox(height: AppSpacing.s16),
             AppButton(
-              label: _offline ? 'Tentar de novo' : 'Salvar',
+              label: _offline
+                  ? 'Tentar de novo'
+                  : (_editing ? 'Salvar $kindLabel' : 'Registrar $kindLabel'),
               loading: _submitting,
               onPressed: _submitting ? null : _submit,
             ),

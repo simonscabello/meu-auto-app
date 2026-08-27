@@ -106,6 +106,16 @@ class _MaintenanceDetailScreenState
   }
 }
 
+String _recordMileageLine(MaintenanceRecord record) {
+  final workshop = record.workshopName?.trim();
+  final km = record.mileageKm;
+  final parts = <String>[
+    if (km != null) formatKm(km),
+    if (workshop != null && workshop.isNotEmpty) workshop,
+  ];
+  return parts.join(' · ');
+}
+
 /// The record as pure presentation.
 ///
 /// Nothing here derives anything: `warranty_until` and `warranty_until_km`
@@ -137,9 +147,7 @@ class MaintenanceDetailContent extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.s4),
         Text(
-          record.workshopName == null || record.workshopName!.trim().isEmpty
-              ? formatKm(record.mileageKm)
-              : '${formatKm(record.mileageKm)} · ${record.workshopName!.trim()}',
+          _recordMileageLine(record),
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),

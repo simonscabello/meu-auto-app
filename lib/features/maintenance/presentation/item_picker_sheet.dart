@@ -120,9 +120,10 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
             const SizedBox(height: AppSpacing.s12),
             Expanded(child: _body(catalogue)),
             const SizedBox(height: AppSpacing.s8),
-            TextButton(
+            AppButton(
+              label: 'Criar item personalizado',
+              variant: AppButtonVariant.tertiary,
               onPressed: _createCustom,
-              child: const Text('Criar item personalizado'),
             ),
             AppButton(
               label: _selected.isEmpty

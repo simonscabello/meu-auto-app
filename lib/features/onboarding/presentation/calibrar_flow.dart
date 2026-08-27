@@ -489,18 +489,20 @@ class CalibrarQuestionContent extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.s32),
         AppButton(
-          label: offline ? 'Tentar de novo' : 'Confirmar',
+          label: offline ? 'Tentar de novo' : 'Registrar',
           loading: submitting,
           onPressed: onConfirm,
         ),
         const SizedBox(height: AppSpacing.s8),
-        TextButton(
+        AppButton(
+          label: 'Não sei',
+          variant: AppButtonVariant.tertiary,
           onPressed: submitting ? null : onDontKnow,
-          child: const Text('Não sei'),
         ),
-        TextButton(
+        AppButton(
+          label: 'Pular tudo',
+          variant: AppButtonVariant.tertiary,
           onPressed: submitting ? null : onSkipAll,
-          child: const Text('Pular tudo'),
         ),
       ],
     );

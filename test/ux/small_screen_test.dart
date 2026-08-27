@@ -7,6 +7,11 @@ import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/session/token_storage.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_detail_screen.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_list_screen.dart';
+import 'package:meu_auto/features/abastecimento/presentation/last_abastecimento_card.dart';
 import 'package:meu_auto/features/auth/presentation/login_screen.dart';
 import 'package:meu_auto/features/auth/presentation/password_reset_confirm_screen.dart';
 import 'package:meu_auto/features/auth/presentation/password_reset_request_screen.dart';
@@ -139,8 +144,8 @@ void main() {
     ),
     'calibrar done': () =>
         const Scaffold(body: CalibrarDoneContent(configured: 3)),
-    'cuidados': () => const CuidadosContent(
-      plans: [
+    'cuidados': () => CuidadosContent(
+      plans: const [
         MaintenancePlan(
           id: 'p1',
           maintenanceItemId: 'i1',
@@ -170,6 +175,7 @@ void main() {
           remainingDays: 8,
         ),
       ],
+      onMarkDone: (_) async {},
     ),
     // The catalogue's two form pieces. The summary is the widest one — a long
     // model name plus a currency value on one card is exactly where 360px and
@@ -400,6 +406,44 @@ void main() {
         updatedAt: _fixedInstant,
       ),
     ),
+    'abastecimento empty': () => const AbastecimentoListContent(
+      state: PagedState(hasMore: false),
+      onRegister: _noop,
+    ),
+    'abastecimento detail': () => Scaffold(
+      body: AbastecimentoDetailContent(
+        fill: _abastecimentoFill(),
+        onEdit: _noop,
+        onDelete: _noop,
+      ),
+    ),
+    'abastecimento form': () => const Scaffold(
+      body: AbastecimentoFormSheet(
+        vehicleId: '11111111-1111-7111-8111-111111111111',
+        currentMileageKm: 96420,
+        fuelTypes: [AbastecimentoFuel.gasolina, AbastecimentoFuel.etanol],
+      ),
+    ),
+    'last abastecimento card': () => const Scaffold(
+      body: LastAbastecimentoCard(
+        supported: true,
+        last: LastAbastecimento(
+          id: 'bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb',
+          occurredOn: CivilDate(2026, 8, 10),
+          totalCostCents: Money.fromCents(23840),
+          volumeMl: 34700,
+          pricePerLiterCents: Money.fromCents(687),
+          fuel: AbastecimentoFuel.gasolina,
+          consumption: Consumption(
+            value: 17.82,
+            unit: 'km_per_liter',
+            status: ConsumptionStatus.ok,
+          ),
+        ),
+        onTap: _noop,
+        onRegister: _noop,
+      ),
+    ),
     'form fields': _FormFieldsHarness.new,
     'error offline': () => AppErrorState.fromError(
       error: const ApiFailure.semConexao(),
@@ -620,3 +664,24 @@ class _DeleteAccountHarnessState extends State<_DeleteAccountHarness> {
 }
 
 void _noop() {}
+
+Abastecimento _abastecimentoFill() {
+  return Abastecimento(
+    id: 'bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb',
+    vehicleId: '11111111-1111-7111-8111-111111111111',
+    occurredOn: const CivilDate(2026, 8, 10),
+    mileageKm: 96420,
+    volumeMl: 34700,
+    totalCostCents: const Money.fromCents(23840),
+    pricePerLiterCents: const Money.fromCents(687),
+    fuel: AbastecimentoFuel.gasolina,
+    fullTank: true,
+    consumption: const Consumption(
+      value: 17.82,
+      unit: 'km_per_liter',
+      status: ConsumptionStatus.ok,
+    ),
+    createdAt: _fixedInstant,
+    updatedAt: _fixedInstant,
+  );
+}

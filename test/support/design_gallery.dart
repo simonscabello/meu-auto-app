@@ -25,7 +25,7 @@ import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 /// It lives under `test/` and not under `lib/` because no route reaches it:
 /// the only thing that builds it is `test/widget_test.dart`, which is what
 /// makes it useful — one pump per theme catches an overflow in any of the
-/// nine base widgets before a screen does.
+/// base widgets before a screen does.
 class DesignGallery extends StatefulWidget {
   const DesignGallery({super.key});
 
@@ -38,11 +38,13 @@ class _DesignGalleryState extends State<DesignGallery> {
   bool _loadingButton = true;
   final _money = TextEditingController(text: 'R\$ 420,00');
   late final TextEditingController _km = kmController(98450);
+  final _liters = TextEditingController(text: '34,7');
 
   @override
   void dispose() {
     _money.dispose();
     _km.dispose();
+    _liters.dispose();
     super.dispose();
   }
 
@@ -134,14 +136,20 @@ class _DesignGalleryState extends State<DesignGallery> {
                   onPressed: _noop,
                 ),
                 AppButton(
+                  label: 'Terciário',
+                  variant: AppButtonVariant.tertiary,
+                  onPressed: () {},
+                ),
+                AppButton(
                   label: 'Salvando',
                   loading: _loadingButton,
                   onPressed: () {},
                 ),
-                TextButton(
+                AppButton(
+                  label: 'Alternar carregamento',
+                  variant: AppButtonVariant.tertiary,
                   onPressed: () =>
                       setState(() => _loadingButton = !_loadingButton),
-                  child: const Text('Alternar carregamento'),
                 ),
               ],
             ),
@@ -190,6 +198,8 @@ class _DesignGalleryState extends State<DesignGallery> {
             AppMoneyField(controller: _money, label: 'Valor total'),
             const SizedBox(height: AppSpacing.s12),
             AppKmField(controller: _km, helperText: 'Atual: 98.450 km'),
+            const SizedBox(height: AppSpacing.s12),
+            AppLitersField(controller: _liters),
             const SizedBox(height: AppSpacing.s12),
             AppDateField(value: CivilDate.todayLocal(), onPick: _noop),
             const SizedBox(height: AppSpacing.s12),

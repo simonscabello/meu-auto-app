@@ -12,6 +12,7 @@ import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_reading.dart';
 import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
@@ -344,7 +345,11 @@ class _Footer extends StatelessWidget {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            TextButton(onPressed: onRetry, child: const Text('Tentar de novo')),
+            AppButton(
+              label: 'Tentar de novo',
+              variant: AppButtonVariant.tertiary,
+              onPressed: onRetry,
+            ),
           ],
         ),
       );

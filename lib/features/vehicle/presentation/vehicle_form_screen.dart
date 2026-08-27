@@ -293,9 +293,10 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       title: title,
       actions: [
         if (onboarding)
-          TextButton(
+          AppButton(
+            label: 'Sair',
+            variant: AppButtonVariant.tertiary,
             onPressed: _loggingOut || _submitting ? null : _logout,
-            child: const Text('Sair'),
           ),
       ],
       body: ListView(

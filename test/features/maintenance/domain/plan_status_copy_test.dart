@@ -119,6 +119,57 @@ void main() {
   });
 
   // A strategy this build has never heard of must not blank the sentence out.
+  group('care items speak as habits, not as deadlines', () {
+    test('an overdue care is time to check, not late', () {
+      expect(
+        planStatusPhrase(
+          _plan(
+            status: MaintenanceStatus.vencido,
+            itemKind: MaintenanceItemKind.care,
+          ),
+        ),
+        'Está na hora de verificar.',
+      );
+    });
+
+    test('a care due soon uses the same invite', () {
+      expect(
+        planStatusPhrase(
+          _plan(
+            status: MaintenanceStatus.venceEmBreve,
+            itemKind: MaintenanceItemKind.care,
+            remainingDays: 3,
+          ),
+        ),
+        'Está na hora de verificar.',
+      );
+    });
+
+    test('a care with no baseline is ready to mark done', () {
+      expect(
+        planStatusPhrase(
+          _plan(
+            status: MaintenanceStatus.semBaseline,
+            itemKind: MaintenanceItemKind.care,
+          ),
+        ),
+        'Está na hora de verificar.',
+      );
+    });
+
+    test('a care on track reads as all good', () {
+      expect(
+        planStatusPhrase(
+          _plan(
+            status: MaintenanceStatus.emDia,
+            itemKind: MaintenanceItemKind.care,
+          ),
+        ),
+        'Tudo certo',
+      );
+    });
+  });
+
   test('an unknown strategy falls back to the plain status phrase', () {
     expect(
       planStatusPhrase(
@@ -136,6 +187,7 @@ MaintenancePlan _plan({
   MaintenanceStatus status = MaintenanceStatus.emDia,
   MaintenanceStrategy strategy = MaintenanceStrategy.periodic,
   MaintenanceHistoryStatus historyStatus = MaintenanceHistoryStatus.notAsked,
+  MaintenanceItemKind itemKind = MaintenanceItemKind.maintenance,
   int? remainingKm,
   int? remainingDays,
 }) {
@@ -144,7 +196,7 @@ MaintenancePlan _plan({
     maintenanceItemId: 'item-1',
     itemSlug: 'pneus',
     itemName: 'Pneus',
-    itemKind: MaintenanceItemKind.maintenance,
+    itemKind: itemKind,
     alertKm: 1000,
     alertDays: 15,
     origin: MaintenancePlanOrigin.suggested,

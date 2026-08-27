@@ -35,6 +35,13 @@ abstract final class AppRoutes {
 
   static String obligation(String id) => '/obrigacoes/$id';
 
+  static const abastecimentos = '/abastecimentos';
+
+  /// Pattern for the GoRoute.
+  static const abastecimentoDetail = '/abastecimentos/:abastecimentoId';
+
+  static String abastecimento(String id) => '/abastecimentos/$id';
+
   static const seguroNew = '/seguros/novo';
 
   /// Pattern for the GoRoute. The literal lives here so `api_paths_test`

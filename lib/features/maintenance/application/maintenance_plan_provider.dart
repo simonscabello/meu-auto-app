@@ -32,8 +32,21 @@ final maintenancePlansWithHiddenProvider =
           .list(vehicleId, includeNotApplicable: true);
     });
 
+/// One plan by id. Tries the member route first; an older server that 404s
+/// still has the row in the vehicle list.
+final maintenancePlanProvider =
+    FutureProvider.family<MaintenancePlan, ({String vehicleId, String planId})>((
+      ref,
+      args,
+    ) {
+      return ref
+          .watch(maintenancePlanRepositoryProvider)
+          .getWithFallback(planId: args.planId, vehicleId: args.vehicleId);
+    });
+
 void invalidateAfterPlanWrite(WidgetRef ref, String vehicleId) {
   ref.invalidate(maintenancePlansProvider(vehicleId));
   ref.invalidate(maintenancePlansWithHiddenProvider(vehicleId));
+  ref.invalidate(maintenancePlanProvider);
   ref.invalidate(dashboardProvider(vehicleId));
 }

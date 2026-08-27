@@ -155,11 +155,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton(
+              child: AppButton(
+                label: 'Esqueci minha senha',
+                variant: AppButtonVariant.tertiary,
                 onPressed: _submitting
                     ? null
                     : () => context.go(AppRoutes.passwordReset),
-                child: const Text('Esqueci minha senha'),
               ),
             ),
             const SizedBox(height: AppSpacing.s8),
@@ -172,11 +173,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.s12),
-            TextButton(
+            AppButton(
+              label: 'Criar conta',
+              variant: AppButtonVariant.tertiary,
               onPressed: _submitting
                   ? null
                   : () => context.go(AppRoutes.register),
-              child: const Text('Criar conta'),
             ),
           ],
         ),

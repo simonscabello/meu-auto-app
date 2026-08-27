@@ -67,10 +67,19 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
   late final TextEditingController _notes;
   CivilDate? _startsOn;
   CivilDate? _endsOn;
+  late bool _showDetails;
   bool _submitting = false;
   bool _offline = false;
   String? _banner;
   Map<String, String> _fieldErrors = {};
+
+  static const _detailFieldKeys = {
+    'emergency_phone',
+    'policy_number',
+    'broker_name',
+    'broker_phone',
+    'notes',
+  };
 
   bool get _editing => widget.existing != null;
 
@@ -87,6 +96,12 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
     _notes = TextEditingController(text: existing?.notes ?? '');
     _startsOn = existing?.startsOn ?? CivilDate.todayLocal();
     _endsOn = existing?.endsOn;
+    _showDetails =
+        _policy.text.trim().isNotEmpty ||
+        _emergency.text.trim().isNotEmpty ||
+        _brokerName.text.trim().isNotEmpty ||
+        _brokerPhone.text.trim().isNotEmpty ||
+        _notes.text.trim().isNotEmpty;
   }
 
   @override
@@ -226,11 +241,15 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
       );
     } on ApiFailure catch (failure) {
       if (!mounted) return;
+      final fields = ApiFormErrors.fieldsOf(failure);
       setState(() {
         _submitting = false;
-        _fieldErrors = ApiFormErrors.fieldsOf(failure);
+        _fieldErrors = fields;
         _banner = ApiFormErrors.bannerOf(failure);
         _offline = ApiFormErrors.isOffline(failure);
+        if (fields.keys.any(_detailFieldKeys.contains)) {
+          _showDetails = true;
+        }
       });
     }
   }
@@ -284,73 +303,86 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
             const SizedBox(height: AppSpacing.s12),
             AppMoneyField(
               controller: _premium,
-              label: 'Prêmio',
+              label: 'Prêmio (opcional)',
               enabled: !_submitting,
               errorText: _fieldErrors['premium_cents'],
-              helperText: 'Opcional',
             ),
             const SizedBox(height: AppSpacing.s12),
-            TextField(
-              controller: _emergency,
-              enabled: !_submitting,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: 'Telefone de emergência',
-                errorText: _fieldErrors['emergency_phone'],
-                errorMaxLines: 3,
+            if (_showDetails) ...[
+              TextField(
+                controller: _emergency,
+                enabled: !_submitting,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'Telefone de emergência (opcional)',
+                  errorText: _fieldErrors['emergency_phone'],
+                  errorMaxLines: 3,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            TextField(
-              controller: _policy,
-              enabled: !_submitting,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: 'Número da apólice',
-                errorText: _fieldErrors['policy_number'],
-                errorMaxLines: 3,
+              const SizedBox(height: AppSpacing.s12),
+              TextField(
+                controller: _policy,
+                enabled: !_submitting,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'Número da apólice (opcional)',
+                  errorText: _fieldErrors['policy_number'],
+                  errorMaxLines: 3,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            TextField(
-              controller: _brokerName,
-              enabled: !_submitting,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: 'Corretor',
-                errorText: _fieldErrors['broker_name'],
-                errorMaxLines: 3,
+              const SizedBox(height: AppSpacing.s12),
+              TextField(
+                controller: _brokerName,
+                enabled: !_submitting,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'Corretor (opcional)',
+                  errorText: _fieldErrors['broker_name'],
+                  errorMaxLines: 3,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            TextField(
-              controller: _brokerPhone,
-              enabled: !_submitting,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: 'Telefone do corretor',
-                errorText: _fieldErrors['broker_phone'],
-                errorMaxLines: 3,
+              const SizedBox(height: AppSpacing.s12),
+              TextField(
+                controller: _brokerPhone,
+                enabled: !_submitting,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  labelText: 'Telefone do corretor (opcional)',
+                  errorText: _fieldErrors['broker_phone'],
+                  errorMaxLines: 3,
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            TextField(
-              controller: _notes,
-              enabled: !_submitting,
-              minLines: 2,
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Observações',
-                errorText: _fieldErrors['notes'],
-                errorMaxLines: 3,
+              const SizedBox(height: AppSpacing.s12),
+              TextField(
+                controller: _notes,
+                enabled: !_submitting,
+                minLines: 2,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Observações (opcional)',
+                  errorText: _fieldErrors['notes'],
+                  errorMaxLines: 3,
+                ),
               ),
-            ),
+            ] else
+              Align(
+                alignment: Alignment.centerLeft,
+                child: AppButton(
+                  label: 'Mais detalhes',
+                  variant: AppButtonVariant.tertiary,
+                  onPressed: _submitting
+                      ? null
+                      : () => setState(() => _showDetails = true),
+                ),
+              ),
             const SizedBox(height: AppSpacing.s24),
             AppButton(
-              label: _offline ? 'Tentar de novo' : 'Salvar',
+              label: _offline
+                  ? 'Tentar de novo'
+                  : (_editing ? 'Salvar seguro' : 'Registrar seguro'),
               loading: _submitting,
               onPressed: _submitting ? null : _submit,
             ),

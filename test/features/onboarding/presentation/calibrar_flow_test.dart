@@ -110,12 +110,12 @@ void main() {
     expect(find.text('início'), findsOneWidget);
   });
 
-  testWidgets('Confirmar without a date does not send a request', (
+  testWidgets('Registrar without a date does not send a request', (
     tester,
   ) async {
     await _startAsking(tester, adapter, skipStore);
 
-    await tester.tap(find.text('Confirmar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
     await tester.pump();
 
     expect(adapter.postedBodies, isEmpty);
@@ -124,12 +124,12 @@ void main() {
   });
 
   testWidgets(
-    'Confirmar posts one declared record with no shop and no amount',
+    'Registrar posts one declared record with no shop and no amount',
     (tester) async {
       await _startAsking(tester, adapter, skipStore);
 
       await _pickDate(tester);
-      await tester.tap(find.text('Confirmar'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
       await tester.pumpAndSettle();
 
       expect(adapter.postedBodies, hasLength(1));
@@ -154,7 +154,7 @@ void main() {
     await _startAsking(tester, adapter, skipStore);
 
     await _pickDate(tester);
-    await tester.tap(find.text('Confirmar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsOneWidget);

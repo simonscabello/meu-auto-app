@@ -131,9 +131,10 @@ class _PasswordResetRequestScreenState
             ),
           ),
           const SizedBox(height: AppSpacing.s12),
-          TextButton(
+          AppButton(
+            label: 'Voltar ao login',
+            variant: AppButtonVariant.tertiary,
             onPressed: _submitting ? null : () => context.go(AppRoutes.login),
-            child: const Text('Voltar ao login'),
           ),
         ],
       ),

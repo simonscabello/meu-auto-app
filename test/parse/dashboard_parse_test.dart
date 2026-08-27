@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/money.dart';
+import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 
 import '../support/fixtures.dart';
@@ -22,6 +23,12 @@ void main() {
       expect(dashboard.alerts.items, hasLength(1));
       expect(dashboard.costs.trackedCents, const Money.fromCents(575000));
       expect(dashboard.costs.since, const CivilDate(2025, 8, 26));
+      expect(dashboard.lastAbastecimento, isNotNull);
+      expect(dashboard.lastAbastecimento!.fuel, AbastecimentoFuel.gasolina);
+      expect(
+        dashboard.lastAbastecimento!.consumption.status,
+        ConsumptionStatus.unavailable,
+      );
     });
 
     test('parses when every optional is null', () {
@@ -32,6 +39,7 @@ void main() {
       expect(dashboard.vehicle.plate, isNull);
       expect(dashboard.vehicle.version, isNull);
       expect(dashboard.odometer.recordedOn, isNull);
+      expect(dashboard.lastAbastecimento, isNull);
       expect(alert.dueAtKm, isNull);
       expect(alert.dueOn, isNull);
       expect(alert.remainingDays, isNull);
@@ -103,6 +111,31 @@ void main() {
         ),
         throwsMissingRequired,
       );
+    });
+
+    test('reads total_cents and categories[] from a current payload', () {
+      final costs = DashboardCosts.fromJson(asMap(complete['costs']));
+
+      expect(costs.totalCents, const Money.fromCents(575000));
+      expect(costs.categories, hasLength(4));
+      expect(costs.categories.last.key, 'abastecimento');
+      expect(costs.categories.last.label, 'Combustível');
+      expect(costs.noteCategoryKeys, contains('abastecimento'));
+    });
+
+    test('falls back to tracked_cents when total_cents is absent', () {
+      final json = withoutKey(asMap(complete['costs']), 'total_cents');
+      final withoutCategories = withoutKey(json, 'categories');
+      final costs = DashboardCosts.fromJson(withoutCategories);
+
+      expect(costs.totalCents, const Money.fromCents(575000));
+      expect(costs.categories, isEmpty);
+      expect(costs.bars, hasLength(3));
+      expect(costs.bars.map((bar) => bar.key), [
+        'manutencao',
+        'obligations',
+        'seguro',
+      ]);
     });
   });
 }

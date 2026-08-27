@@ -9,15 +9,16 @@ String costWindowLabel(int periodMonths) {
   return 'últimos $periodMonths meses';
 }
 
-/// What the tracked total leaves out, inferred from the categories the
-/// server says it counted.
+/// What the tracked total leaves out, inferred from the category keys the
+/// server says it counted — `categories[].key` on a current payload,
+/// `tracked_categories` on an older one.
 ///
-/// Required by the contract: without this, `tracked_cents` reads as the cost
-/// of running the car. Fuel and day-to-day expenses are named only when they
-/// are actually absent from [trackedCategories], so the sentence follows the
+/// Required by the contract: without this, the total reads as the cost of
+/// running the car. Fuel and day-to-day expenses are named only when they
+/// are actually absent from [categoryKeys], so the sentence follows the
 /// payload if a later build starts counting them.
-String? excludedCategoriesNote(List<String> trackedCategories) {
-  final tracked = trackedCategories.toSet();
+String? excludedCategoriesNote(List<String> categoryKeys) {
+  final tracked = categoryKeys.toSet();
   final missing = <String>[
     if (!tracked.contains('abastecimento')) 'Combustível',
     if (!tracked.contains('expenses')) 'despesas do dia a dia',
