@@ -44,4 +44,9 @@ abstract final class AppRoutes {
 
   /// First-use questions: when each main care item last happened.
   static String calibrar(String vehicleId) => '/calibrar/$vehicleId';
+
+  /// What the selected car has, and what we still do not know about it. The one
+  /// screen that lists the items the vehicle does not use — everywhere else they
+  /// are absent, not disabled.
+  static const vehicleProfile = '/perfil-do-carro';
 }

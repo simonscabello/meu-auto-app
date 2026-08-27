@@ -33,6 +33,12 @@ class CuidadosScreen extends ConsumerWidget {
       actions: [
         if (vehicle != null)
           AppIconButton(
+            label: 'Seu carro',
+            icon: Icons.tune,
+            onPressed: () => context.push(AppRoutes.vehicleProfile),
+          ),
+        if (vehicle != null)
+          AppIconButton(
             label: 'Criar plano',
             icon: Icons.add,
             onPressed: () =>
@@ -98,6 +104,7 @@ class CuidadosView extends ConsumerWidget {
           ),
           onNeedsBaselineGroupTap: () =>
               context.push(AppRoutes.calibrar(vehicleId)),
+          onProfileTap: () => context.push(AppRoutes.vehicleProfile),
         );
       },
     );
@@ -112,12 +119,14 @@ class CuidadosContent extends StatelessWidget {
     this.onPlanTap,
     this.onBaselineTap,
     this.onNeedsBaselineGroupTap,
+    this.onProfileTap,
   });
 
   final List<MaintenancePlan> plans;
   final ValueChanged<MaintenancePlan>? onPlanTap;
   final ValueChanged<MaintenancePlan>? onBaselineTap;
   final VoidCallback? onNeedsBaselineGroupTap;
+  final VoidCallback? onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +141,6 @@ class CuidadosContent extends StatelessWidget {
           plans: groups.needAttention,
         ),
         ..._openGroup(context, title: 'Vencem em breve', plans: groups.dueSoon),
-        const _DocumentosNotBuilt(),
         ..._openGroup(
           context,
           title: 'Cuidados do dia a dia',
@@ -151,6 +159,15 @@ class CuidadosContent extends StatelessWidget {
           actionLabel: onNeedsBaselineGroupTap == null ? null : 'Informar',
           onAction: onNeedsBaselineGroupTap,
         ),
+        if (groups.historySettled.isNotEmpty)
+          _CollapsedGroup(
+            title: 'Ainda sem registro',
+            explanation:
+                'Você já disse que não lembra ou que nunca foi feito. '
+                'Quando fizer, registre aqui e a contagem começa.',
+            plans: groups.historySettled,
+            onTap: _tapOf,
+          ),
         if (groups.historyOnly.isNotEmpty)
           _CollapsedGroup(
             title: 'Só histórico',
@@ -159,6 +176,11 @@ class CuidadosContent extends StatelessWidget {
             plans: groups.historyOnly,
             onTap: _tapOf,
           ),
+        if (onProfileTap != null) ...[
+          const SizedBox(height: AppSpacing.s16),
+          _ProfileLink(onTap: onProfileTap!),
+        ],
+        const _DocumentosNotBuilt(),
       ],
     );
   }
@@ -291,6 +313,44 @@ class _CollapsedGroup extends StatelessWidget {
   }
 }
 
+/// The way back to what this car has and does not have.
+///
+/// Quiet, and at the bottom. The list above is already personalised; this is for
+/// the person who wants to know why something is missing, or to tell us we got
+/// it wrong.
+class _ProfileLink extends StatelessWidget {
+  const _ProfileLink({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(Icons.tune, size: 20, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(
+            child: Text(
+              'O que o seu carro tem',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Says out loud that ipva, licenciamento and seguro have no screens yet.
 ///
 /// The server has the routes; this app does not consume them. Saying so beats
@@ -303,16 +363,23 @@ class _DocumentosNotBuilt extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.only(
+        top: AppSpacing.s24,
+        bottom: AppSpacing.s16,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AppSectionHeader(title: 'Documentos e prazos'),
-          const SizedBox(height: AppSpacing.s8),
-          AppCard(
+          Icon(
+            Icons.info_outline,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.s8),
+          Expanded(
             child: Text(
               'IPVA, licenciamento e seguro entram em breve.',
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
+import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/catalog/application/vehicle_catalog_provider.dart';
 import 'package:meu_auto/features/catalog/domain/vehicle_catalog.dart';
@@ -239,7 +240,7 @@ class _InlineError extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.s12),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(AppSpacing.s8),
+        borderRadius: AppRadius.borderS,
       ),
       child: Text(
         message,

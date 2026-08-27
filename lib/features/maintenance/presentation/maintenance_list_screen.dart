@@ -6,6 +6,7 @@ import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
+import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
@@ -288,7 +289,7 @@ class _DeclaredChip extends StatelessWidget {
         vertical: 2,
       ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.borderS,
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
       child: Text(

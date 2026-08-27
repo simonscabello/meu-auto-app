@@ -7,6 +7,11 @@ import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 /// or due soon stays in those groups so the urgent reading is one list; the
 /// remaining care items get their own section rather than mixing with
 /// maintenance that is on track or still missing a baseline.
+///
+/// Items the vehicle does not have never arrive here at all — the list this is
+/// built from excludes them at the server. There is no group for them and there
+/// must not be one: a hidden or disabled card is still a card about a component
+/// the car does not have.
 final class CuidadosGroups {
   const CuidadosGroups({
     required this.needAttention,
@@ -14,6 +19,7 @@ final class CuidadosGroups {
     required this.everydayCare,
     required this.onTrack,
     required this.needsBaseline,
+    required this.historySettled,
     required this.historyOnly,
   });
 
@@ -21,7 +27,16 @@ final class CuidadosGroups {
   final List<MaintenancePlan> dueSoon;
   final List<MaintenancePlan> everydayCare;
   final List<MaintenancePlan> onTrack;
+
+  /// Nobody has been asked about these yet. This is the only group that carries
+  /// a prompt.
   final List<MaintenancePlan> needsBaseline;
+
+  /// Asked and answered — "não sei" or "nunca foi feito". Still no baseline, so
+  /// still nothing to count from, but the question has been dealt with and must
+  /// stop being asked. Collapsed, and never a prompt.
+  final List<MaintenancePlan> historySettled;
+
   final List<MaintenancePlan> historyOnly;
 
   bool get isEmpty =>
@@ -30,6 +45,7 @@ final class CuidadosGroups {
       everydayCare.isEmpty &&
       onTrack.isEmpty &&
       needsBaseline.isEmpty &&
+      historySettled.isEmpty &&
       historyOnly.isEmpty;
 }
 
@@ -39,9 +55,16 @@ CuidadosGroups groupCuidadosPlans(List<MaintenancePlan> plans) {
   final everydayCare = <MaintenancePlan>[];
   final onTrack = <MaintenancePlan>[];
   final needsBaseline = <MaintenancePlan>[];
+  final historySettled = <MaintenancePlan>[];
   final historyOnly = <MaintenancePlan>[];
 
   for (final plan in plans) {
+    // Defensive: the server already leaves these out of this list. If one ever
+    // arrives — an older build talking to a newer server, a caller that passed
+    // the wrong list — it must not become a card.
+    if (plan.status == MaintenanceStatus.naoSeAplica) {
+      continue;
+    }
     if (plan.status == MaintenanceStatus.vencido) {
       needAttention.add(plan);
       continue;
@@ -55,7 +78,11 @@ CuidadosGroups groupCuidadosPlans(List<MaintenancePlan> plans) {
       continue;
     }
     if (plan.status == MaintenanceStatus.semBaseline) {
-      needsBaseline.add(plan);
+      if (plan.historyStatus == MaintenanceHistoryStatus.notAsked) {
+        needsBaseline.add(plan);
+      } else {
+        historySettled.add(plan);
+      }
       continue;
     }
     if (plan.status == MaintenanceStatus.semPeriodicidade) {
@@ -71,6 +98,7 @@ CuidadosGroups groupCuidadosPlans(List<MaintenancePlan> plans) {
     everydayCare: everydayCare,
     onTrack: onTrack,
     needsBaseline: needsBaseline,
+    historySettled: historySettled,
     historyOnly: historyOnly,
   );
 }

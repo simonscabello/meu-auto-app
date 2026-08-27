@@ -63,6 +63,10 @@ String maintenanceStatusPhrase(
       return 'Informe a última vez para começarmos a contar';
     case 'sem_periodicidade':
       return 'Só histórico, não vence';
+    case 'nao_se_aplica':
+      // Plain, and about the car rather than about the model. Nobody needs to
+      // hear the word "aplicabilidade" to understand this.
+      return 'Seu carro não usa';
     default:
       return '';
   }

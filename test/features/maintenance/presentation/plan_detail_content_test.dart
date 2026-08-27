@@ -78,6 +78,88 @@ void main() {
       });
     }
   });
+
+  // The two answers about the past are offered only while there is nothing to
+  // measure from. Once a service is recorded, the record IS the answer, and
+  // asking again would invite contradicting it.
+  testWidgets('the history answers appear only when there is no baseline', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _plan(status: MaintenanceStatus.semBaseline),
+      onHistoryUnknown: (_) {},
+    );
+    expect(find.text('Não sei quando foi'), findsOneWidget);
+    expect(find.text('Nunca foi feito'), findsOneWidget);
+
+    await _pump(
+      tester,
+      _plan(status: MaintenanceStatus.emDia),
+      onHistoryUnknown: (_) {},
+    );
+    expect(find.text('Não sei quando foi'), findsNothing);
+    expect(find.text('Nunca foi feito'), findsNothing);
+  });
+
+  testWidgets('an answer already given is not asked again', (tester) async {
+    await _pump(
+      tester,
+      _plan(
+        status: MaintenanceStatus.semBaseline,
+        historyStatus: MaintenanceHistoryStatus.unknown,
+      ),
+      onHistoryUnknown: (_) {},
+    );
+
+    expect(find.text('Não sei quando foi'), findsNothing);
+    expect(find.text('Você não lembra — tudo bem'), findsOneWidget);
+  });
+
+  testWidgets('each history answer reports itself, and writes no record', (
+    tester,
+  ) async {
+    final answered = <MaintenanceHistoryStatus>[];
+    await _pump(
+      tester,
+      _plan(status: MaintenanceStatus.semBaseline),
+      onHistoryUnknown: answered.add,
+    );
+
+    await tester.tap(find.text('Não sei quando foi'));
+    await tester.tap(find.text('Nunca foi feito'));
+    await tester.pump();
+
+    expect(answered, [
+      MaintenanceHistoryStatus.unknown,
+      MaintenanceHistoryStatus.never,
+    ]);
+  });
+
+  testWidgets('"meu carro não usa isso" is offered as a correction', (
+    tester,
+  ) async {
+    var tapped = false;
+    await _pump(tester, _plan(), onNotApplicable: () => tapped = true);
+
+    await tester.tap(find.text('Meu carro não usa isso'));
+    await tester.pump();
+
+    expect(tapped, isTrue);
+  });
+
+  // A condition-based item explains itself, because "a cada 50.000 km" on a
+  // tyre reads as a deadline and is not one.
+  testWidgets('a condition-based item says the interval is only a reminder', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _plan(strategy: MaintenanceStrategy.conditionBased, intervalKm: 50000),
+    );
+
+    expect(find.textContaining('depende do desgaste'), findsOneWidget);
+  });
 }
 
 Future<void> _pump(
@@ -86,6 +168,8 @@ Future<void> _pump(
   List<MaintenanceRecord> history = const [],
   ThemeData? theme,
   double scale = 1.0,
+  ValueChanged<MaintenanceHistoryStatus>? onHistoryUnknown,
+  VoidCallback? onNotApplicable,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -93,7 +177,12 @@ Future<void> _pump(
       home: MediaQuery(
         data: MediaQueryData(textScaler: TextScaler.linear(scale)),
         child: Scaffold(
-          body: PlanDetailContent(plan: plan, history: history),
+          body: PlanDetailContent(
+            plan: plan,
+            history: history,
+            onHistoryUnknown: onHistoryUnknown,
+            onNotApplicable: onNotApplicable,
+          ),
         ),
       ),
     ),
@@ -102,6 +191,9 @@ Future<void> _pump(
 
 MaintenancePlan _plan({
   MaintenancePlanOrigin origin = MaintenancePlanOrigin.user,
+  MaintenanceStrategy strategy = MaintenanceStrategy.periodic,
+  MaintenanceHistoryStatus historyStatus = MaintenanceHistoryStatus.notAsked,
+  MaintenanceStatus status = MaintenanceStatus.emDia,
   int? intervalKm,
   int? intervalMonths,
   int? intervalDays,
@@ -124,7 +216,9 @@ MaintenancePlan _plan({
     alertKm: 1000,
     alertDays: 15,
     origin: origin,
-    status: MaintenanceStatus.emDia,
+    strategy: strategy,
+    historyStatus: historyStatus,
+    status: status,
     dueAtKm: dueAtKm,
     dueOn: dueOn,
     remainingKm: remainingKm,

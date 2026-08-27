@@ -193,6 +193,70 @@ void main() {
       });
     }
   });
+
+  // The two "no baseline" states are not the same thing on screen. One still
+  // asks; the other has already been answered and is put away.
+  testWidgets('an answered item moves out of the group that still asks', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _plan(
+        name: 'Fluido de freio',
+        slug: 'fluido_freio',
+        status: MaintenanceStatus.semBaseline,
+      ),
+      _plan(
+        name: 'Velas de ignição',
+        slug: 'velas',
+        status: MaintenanceStatus.semBaseline,
+        historyStatus: MaintenanceHistoryStatus.unknown,
+      ),
+    ]);
+
+    expect(find.text('Falta informar'), findsOneWidget);
+    expect(find.text('Ainda sem registro'), findsOneWidget);
+    expect(find.text('Fluido de freio'), findsOneWidget);
+    // Collapsed, so the answered one is out of the way rather than gone.
+    expect(find.text('Velas de ignição'), findsNothing);
+  });
+
+  testWidgets('an item the vehicle does not have is not rendered at all', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _plan(
+        name: 'Correia dentada',
+        slug: 'correia_dentada',
+        status: MaintenanceStatus.naoSeAplica,
+        strategy: MaintenanceStrategy.notApplicable,
+      ),
+      _plan(
+        name: 'Pneus',
+        slug: 'pneus',
+        status: MaintenanceStatus.emDia,
+        strategy: MaintenanceStrategy.conditionBased,
+      ),
+    ]);
+
+    expect(find.text('Correia dentada'), findsNothing);
+    expect(find.text('Não usa'), findsNothing);
+    expect(find.text('Em dia'), findsOneWidget);
+  });
+
+  testWidgets('a condition-based item is not called overdue', (tester) async {
+    await _pump(tester, [
+      _plan(
+        name: 'Pneus',
+        slug: 'pneus',
+        status: MaintenanceStatus.vencido,
+        strategy: MaintenanceStrategy.conditionBased,
+        remainingKm: -3000,
+      ),
+    ]);
+
+    expect(find.text('Já rodou bastante — vale checar'), findsOneWidget);
+    expect(find.text('Está vencida'), findsNothing);
+  });
 }
 
 Future<void> _pump(WidgetTester tester, List<MaintenancePlan> plans) async {
@@ -209,6 +273,8 @@ MaintenancePlan _plan({
   required String slug,
   required MaintenanceStatus status,
   MaintenanceItemKind kind = MaintenanceItemKind.maintenance,
+  MaintenanceStrategy strategy = MaintenanceStrategy.periodic,
+  MaintenanceHistoryStatus historyStatus = MaintenanceHistoryStatus.notAsked,
   int? remainingKm,
   int? remainingDays,
 }) {
@@ -221,6 +287,8 @@ MaintenancePlan _plan({
     alertKm: 500,
     alertDays: 15,
     origin: MaintenancePlanOrigin.suggested,
+    strategy: strategy,
+    historyStatus: historyStatus,
     status: status,
     remainingKm: remainingKm,
     remainingDays: remainingDays,

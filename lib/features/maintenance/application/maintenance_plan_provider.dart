@@ -11,12 +11,29 @@ final maintenancePlanRepositoryProvider = Provider<MaintenancePlanRepository>((
 });
 
 /// Plans of one vehicle, already ordered by urgency and with due computed.
+///
+/// Items the vehicle does not have are not in here, and that is the whole point:
+/// no screen built on this provider can accidentally show a timing belt to a car
+/// that uses a chain.
 final maintenancePlansProvider =
     FutureProvider.family<List<MaintenancePlan>, String>((ref, vehicleId) {
       return ref.watch(maintenancePlanRepositoryProvider).list(vehicleId);
     });
 
+/// The same list plus the items marked as not applicable.
+///
+/// Two screens need it and no others: the configuration surface, which offers to
+/// undo one, and the "new plan" sheet, which must not offer an item the vehicle
+/// has already been told it does not have.
+final maintenancePlansWithHiddenProvider =
+    FutureProvider.family<List<MaintenancePlan>, String>((ref, vehicleId) {
+      return ref
+          .watch(maintenancePlanRepositoryProvider)
+          .list(vehicleId, includeNotApplicable: true);
+    });
+
 void invalidateAfterPlanWrite(WidgetRef ref, String vehicleId) {
   ref.invalidate(maintenancePlansProvider(vehicleId));
+  ref.invalidate(maintenancePlansWithHiddenProvider(vehicleId));
   ref.invalidate(dashboardProvider(vehicleId));
 }

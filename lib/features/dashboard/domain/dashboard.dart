@@ -1,6 +1,7 @@
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/enum_parse.dart';
 import 'package:meu_auto/core/domain/money.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 
 enum AlertKind {
   manutencao,
@@ -157,6 +158,39 @@ final class DashboardAlerts {
   }
 }
 
+/// Just enough for the main screen to decide whether to show one discreet card.
+///
+/// Counts, not content: the questions themselves live on the profile endpoint. A
+/// dashboard that carried them would grow every time a question is added, and
+/// the card only ever needs to know there is one.
+final class DashboardProfile {
+  const DashboardProfile({
+    required this.status,
+    required this.powertrainKnown,
+    required this.openQuestions,
+  });
+
+  final MaintenanceProfileStatus status;
+  final bool powertrainKnown;
+  final int openQuestions;
+
+  factory DashboardProfile.fromJson(Map<String, dynamic> json) {
+    return DashboardProfile(
+      status: MaintenanceProfileStatus.fromWire(json['status'] as String?),
+      powertrainKnown: json['powertrain_known'] as bool? ?? false,
+      openQuestions: json['open_questions'] as int? ?? 0,
+    );
+  }
+
+  /// What an older server, or one that could not answer, looks like: nothing to
+  /// say, so the card does not appear.
+  static const empty = DashboardProfile(
+    status: MaintenanceProfileStatus.ready,
+    powertrainKnown: true,
+    openQuestions: 0,
+  );
+}
+
 final class DashboardCosts {
   const DashboardCosts({
     required this.periodMonths,
@@ -199,19 +233,27 @@ final class Dashboard {
     required this.vehicle,
     required this.odometer,
     required this.alerts,
+    required this.profile,
     required this.costs,
   });
 
   final DashboardVehicle vehicle;
   final DashboardOdometer odometer;
   final DashboardAlerts alerts;
+  final DashboardProfile profile;
   final DashboardCosts costs;
 
   factory Dashboard.fromJson(Map<String, dynamic> json) {
+    final rawProfile = json['profile'];
     return Dashboard(
       vehicle: DashboardVehicle.fromJson(_asMap(json['vehicle'])),
       odometer: DashboardOdometer.fromJson(_asMap(json['odometer'])),
       alerts: DashboardAlerts.fromJson(_asMap(json['alerts'])),
+      // A server that predates the profile block still serves this screen. The
+      // fallback says "nothing to ask", so the card simply does not appear.
+      profile: rawProfile is Map
+          ? DashboardProfile.fromJson(Map<String, dynamic>.from(rawProfile))
+          : DashboardProfile.empty,
       costs: DashboardCosts.fromJson(_asMap(json['costs'])),
     );
   }

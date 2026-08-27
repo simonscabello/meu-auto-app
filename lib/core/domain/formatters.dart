@@ -55,3 +55,31 @@ String _monthName(CivilDate date) {
   final anchor = DateTime(date.year, date.month, date.day);
   return DateFormat('MMMM', 'pt_BR').format(anchor);
 }
+
+/// Every digit in [raw], in order. The bridge between a masked field and the
+/// integer behind it: `'R$ 4.200,00'` is `'420000'`, `'98.450'` is `'98450'`.
+String digitsOnly(String raw) {
+  final buffer = StringBuffer();
+  for (final unit in raw.codeUnits) {
+    if (unit >= 0x30 && unit <= 0x39) buffer.writeCharCode(unit);
+  }
+  return buffer.toString();
+}
+
+/// Cents behind a money field, masked or not.
+///
+/// The field shows `R$ 420,00`; the wire takes `42000`. Reading the digits
+/// back means the mask can change without the write changing with it, and an
+/// unmasked value typed by a test still parses.
+int? centsFromMoneyField(String raw) {
+  final digits = digitsOnly(raw);
+  if (digits.isEmpty) return null;
+  return int.tryParse(digits);
+}
+
+/// Kilometres behind a mileage field, masked or not: `'98.450'` is `98450`.
+int? kmFromField(String raw) {
+  final digits = digitsOnly(raw);
+  if (digits.isEmpty) return null;
+  return int.tryParse(digits);
+}

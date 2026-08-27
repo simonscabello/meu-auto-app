@@ -44,6 +44,8 @@ void main() {
         'onError/error': (scheme.onError, scheme.error),
         'onPrimary/primary': (scheme.onPrimary, scheme.primary),
         'snackbar': (scheme.onInverseSurface, scheme.inverseSurface),
+        'errorSnackbar': (scheme.onErrorContainer, scheme.errorContainer),
+        'wordmark/surface': (scheme.primary, scheme.surface),
         'onPrimaryContainer/primaryContainer': (
           scheme.onPrimaryContainer,
           scheme.primaryContainer,

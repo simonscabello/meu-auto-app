@@ -16,5 +16,10 @@
   "origin": "user",
   "remaining_days": null,
   "remaining_km": null,
-  "status": "sem_periodicidade"
+  "status": "sem_periodicidade",
+  "strategy": "no_schedule",
+  "history_status": "not_asked",
+  "notes": null,
+  "history_question": null,
+  "history_priority": 0
 }

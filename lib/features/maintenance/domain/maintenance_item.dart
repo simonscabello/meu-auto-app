@@ -1,4 +1,5 @@
 import 'package:meu_auto/core/domain/enum_parse.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 
 /// What kind of catalogue entry this is.
 ///
@@ -38,6 +39,7 @@ final class MaintenanceItem {
     required this.kind,
     required this.vehicleType,
     required this.isCustom,
+    required this.defaultStrategy,
     this.defaultIntervalKm,
     this.defaultIntervalMonths,
     this.defaultIntervalDays,
@@ -49,6 +51,11 @@ final class MaintenanceItem {
   final MaintenanceItemKind kind;
   final String vehicleType;
   final bool isCustom;
+
+  /// How this item is maintained as a concept. The plan for a given vehicle may
+  /// say something else — including that the vehicle does not have it.
+  final MaintenanceStrategy defaultStrategy;
+
   final int? defaultIntervalKm;
   final int? defaultIntervalMonths;
   final int? defaultIntervalDays;
@@ -61,6 +68,9 @@ final class MaintenanceItem {
       kind: MaintenanceItemKind.fromWire(json['kind'] as String?),
       vehicleType: json['vehicle_type'] as String? ?? 'car',
       isCustom: json['is_custom'] as bool? ?? false,
+      defaultStrategy: MaintenanceStrategy.fromWire(
+        json['default_strategy'] as String?,
+      ),
       defaultIntervalKm: json['default_interval_km'] as int?,
       defaultIntervalMonths: json['default_interval_months'] as int?,
       defaultIntervalDays: json['default_interval_days'] as int?,

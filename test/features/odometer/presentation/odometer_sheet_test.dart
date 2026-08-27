@@ -94,9 +94,11 @@ void main() {
     await _open(tester, adapter);
 
     final field = tester.widget<TextField>(find.byType(TextField).first);
-    expect(field.controller!.text, '48320');
+    // Masked the way the reading is read: the separator is part of the field,
+    // not only of the helper line under it.
+    expect(field.controller!.text, '48.320');
     expect(field.controller!.selection.baseOffset, 0);
-    expect(field.controller!.selection.extentOffset, 5);
+    expect(field.controller!.selection.extentOffset, '48.320'.length);
     expect(find.text('Atual: 48.320 km'), findsOneWidget);
   });
 

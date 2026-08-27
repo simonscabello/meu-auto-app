@@ -24,7 +24,12 @@
     "period_months": 12,
     "seguro_cents": 240000,
     "since": "2025-08-26",
-    "tracked_categories": ["manutencao", "ipva", "licenciamento", "seguro"],
+    "tracked_categories": [
+      "manutencao",
+      "ipva",
+      "licenciamento",
+      "seguro"
+    ],
     "tracked_cents": 575000
   },
   "odometer": {
@@ -38,5 +43,10 @@
     "nickname": "Argolino",
     "plate": "ABC1D23",
     "version": "1.0 Drive"
+  },
+  "profile": {
+    "open_questions": 1,
+    "powertrain_known": true,
+    "status": "incomplete"
   }
 }

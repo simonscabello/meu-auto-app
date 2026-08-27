@@ -4,6 +4,7 @@ import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
 
 /// Complements the status-phrase and cost-label spec next door: the singular
@@ -169,6 +170,82 @@ void main() {
       });
     }
   });
+
+  // The discreet prompt about what we still do not know. It appears when there
+  // is something real to ask and disappears the moment it is answered — a
+  // prompt that never ends is noise.
+  group('profilePromptOf', () {
+    test('says nothing when nothing is open', () {
+      expect(profilePromptOf(DashboardProfile.empty), isNull);
+    });
+
+    test('counts what is open, in the plural when it should', () {
+      expect(
+        profilePromptOf(
+          const DashboardProfile(
+            status: MaintenanceProfileStatus.incomplete,
+            powertrainKnown: true,
+            openQuestions: 1,
+          ),
+        ),
+        'Falta 1 informação sobre o seu carro.',
+      );
+      expect(
+        profilePromptOf(
+          const DashboardProfile(
+            status: MaintenanceProfileStatus.incomplete,
+            powertrainKnown: true,
+            openQuestions: 3,
+          ),
+        ),
+        'Faltam 3 informações sobre o seu carro.',
+      );
+    });
+
+    test('asks for the fuel first, because it blocks everything else', () {
+      final prompt = profilePromptOf(
+        const DashboardProfile(
+          status: MaintenanceProfileStatus.incomplete,
+          powertrainKnown: false,
+          openQuestions: 0,
+        ),
+      );
+      expect(prompt, contains('combustível'));
+    });
+
+    test('a car with no plan is told so, not left silent', () {
+      expect(
+        profilePromptOf(
+          const DashboardProfile(
+            status: MaintenanceProfileStatus.unknown,
+            powertrainKnown: true,
+            openQuestions: 0,
+          ),
+        ),
+        contains('Ainda não temos um plano'),
+      );
+    });
+
+    test('never uses the words the schema uses', () {
+      for (final profile in [
+        const DashboardProfile(
+          status: MaintenanceProfileStatus.incomplete,
+          powertrainKnown: false,
+          openQuestions: 0,
+        ),
+        const DashboardProfile(
+          status: MaintenanceProfileStatus.incomplete,
+          powertrainKnown: true,
+          openQuestions: 2,
+        ),
+      ]) {
+        final prompt = profilePromptOf(profile) ?? '';
+        expect(prompt, isNot(contains('aplicab')));
+        expect(prompt, isNot(contains('estratégia')));
+        expect(prompt, isNot(contains('powertrain')));
+      }
+    });
+  });
 }
 
 Future<void> _pump(WidgetTester tester, Dashboard dashboard) async {
@@ -210,6 +287,7 @@ Dashboard _dashboard({
     'licenciamento',
     'seguro',
   ],
+  DashboardProfile profile = DashboardProfile.empty,
 }) {
   return Dashboard(
     vehicle: const DashboardVehicle(
@@ -229,6 +307,7 @@ Dashboard _dashboard({
       needsBaseline: needsBaseline,
       items: items,
     ),
+    profile: profile,
     costs: DashboardCosts(
       periodMonths: periodMonths,
       since: const CivilDate(2025, 8, 26),

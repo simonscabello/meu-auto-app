@@ -6,15 +6,19 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_metric.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_status_chip.dart';
+import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
 /// Catalogue of every design token and base widget, rendered on one page.
 ///
@@ -32,6 +36,15 @@ class DesignGallery extends StatefulWidget {
 class _DesignGalleryState extends State<DesignGallery> {
   bool _dark = false;
   bool _loadingButton = true;
+  final _money = TextEditingController(text: 'R\$ 420,00');
+  late final TextEditingController _km = kmController(98450);
+
+  @override
+  void dispose() {
+    _money.dispose();
+    _km.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,13 +172,28 @@ class _DesignGalleryState extends State<DesignGallery> {
               actionLabel: 'Ver tudo',
               onAction: () {},
             ),
-            const _SectionTitle('Campo'),
+            const _SectionTitle('Marca'),
+            const Align(alignment: Alignment.centerLeft, child: AppWordmark()),
+            const SizedBox(height: AppSpacing.s12),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: AppWordmark(size: AppWordmarkSize.large),
+            ),
+            const _SectionTitle('Campos'),
             const TextField(
               decoration: InputDecoration(
                 labelText: 'Placa',
                 hintText: 'ABC1D23',
               ),
             ),
+            const SizedBox(height: AppSpacing.s12),
+            AppMoneyField(controller: _money, label: 'Valor total'),
+            const SizedBox(height: AppSpacing.s12),
+            AppKmField(controller: _km, helperText: 'Atual: 98.450 km'),
+            const SizedBox(height: AppSpacing.s12),
+            AppDateField(value: CivilDate.todayLocal(), onPick: _noop),
+            const SizedBox(height: AppSpacing.s12),
+            const AppDateField(value: null, onPick: _noop),
             const SizedBox(height: AppSpacing.s12),
             Wrap(
               spacing: AppSpacing.s8,

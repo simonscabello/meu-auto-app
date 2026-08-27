@@ -12,8 +12,22 @@ final class MaintenancePlanRepository {
   final ApiClient api;
   final String Function() _newId;
 
-  Future<List<MaintenancePlan>> list(String vehicleId) async {
-    final body = await api.get(ApiPaths.vehicleMaintenancePlans(vehicleId));
+  /// The plans of one vehicle.
+  ///
+  /// [includeNotApplicable] is false for every screen that answers "what does my
+  /// car need": an item the vehicle does not have is absent, not a disabled
+  /// card. Only the configuration surface asks for them, because undoing has to
+  /// be possible.
+  Future<List<MaintenancePlan>> list(
+    String vehicleId, {
+    bool includeNotApplicable = false,
+  }) async {
+    final body = await api.get(
+      ApiPaths.vehicleMaintenancePlans(vehicleId),
+      query: includeNotApplicable
+          ? const {'include_not_applicable': true}
+          : null,
+    );
     return listOf(body, MaintenancePlan.fromJson);
   }
 

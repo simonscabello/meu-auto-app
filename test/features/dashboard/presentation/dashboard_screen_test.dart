@@ -21,8 +21,8 @@ void main() {
 
     expect(find.text('2 itens precisam de atenção'), findsOneWidget);
     expect(find.text('1 item vence em breve'), findsNothing);
-    expect(find.text('Vamos deixar seu carro em dia'), findsNothing);
-    expect(find.text('Seu carro está em dia'), findsNothing);
+    expect(find.text('Falta informar o histórico'), findsNothing);
+    expect(find.text('Tudo em dia'), findsNothing);
   });
 
   testWidgets(
@@ -31,8 +31,8 @@ void main() {
       await _pump(tester, _dashboard(overdue: 0, dueSoon: 3, needsBaseline: 4));
 
       expect(find.text('3 itens vencem em breve'), findsOneWidget);
-      expect(find.text('Vamos deixar seu carro em dia'), findsNothing);
-      expect(find.text('Seu carro está em dia'), findsNothing);
+      expect(find.text('Falta informar o histórico'), findsNothing);
+      expect(find.text('Tudo em dia'), findsNothing);
     },
   );
 
@@ -41,15 +41,15 @@ void main() {
   ) async {
     await _pump(tester, _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 18));
 
-    expect(find.text('Vamos deixar seu carro em dia'), findsOneWidget);
-    expect(find.text('Seu carro está em dia'), findsNothing);
+    expect(find.text('Falta informar o histórico'), findsOneWidget);
+    expect(find.text('Tudo em dia'), findsNothing);
   });
 
   testWidgets('all-zero counts produce the on-track phrase', (tester) async {
     await _pump(tester, _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 0));
 
-    expect(find.text('Seu carro está em dia'), findsOneWidget);
-    expect(find.text('Vamos deixar seu carro em dia'), findsNothing);
+    expect(find.text('Tudo em dia'), findsOneWidget);
+    expect(find.text('Falta informar o histórico'), findsNothing);
   });
 
   testWidgets('setup card appears only when needs_baseline is above zero', (
@@ -173,7 +173,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Seu carro está em dia'), findsOneWidget);
+    expect(find.text('Tudo em dia'), findsOneWidget);
     expect(find.byType(AppErrorState), findsNothing);
   });
 }
@@ -194,6 +194,7 @@ Dashboard _dashboard({
   int dueSoon = 0,
   int needsBaseline = 0,
   int periodMonths = 12,
+  DashboardProfile profile = DashboardProfile.empty,
 }) {
   return Dashboard(
     vehicle: const DashboardVehicle(
@@ -213,6 +214,7 @@ Dashboard _dashboard({
       needsBaseline: needsBaseline,
       items: const [],
     ),
+    profile: profile,
     costs: DashboardCosts(
       periodMonths: periodMonths,
       since: const CivilDate(2025, 8, 26),

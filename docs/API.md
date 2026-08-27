@@ -234,10 +234,12 @@ No `POST`/`PATCH` de veículo o app envia **só** `catalog_model_year_id`. A mar
 | --- | --- | --- | --- | --- | --- | --- |
 | GET | `/v1/maintenance-items` | Bearer | nenhum (`vehicle_type`, `kind`) | `MaintenanceItemList` | `unauthorized`, `validation_failed` | não |
 | POST | `/v1/maintenance-items` | Bearer | `CreateMaintenanceItemRequest` | `MaintenanceItem` (201) | `unauthorized`, `conflict`, `validation_failed` | não |
-| GET | `/v1/vehicles/{vehicleId}/maintenance-plans` | Bearer | nenhum | `MaintenancePlanList` | `unauthorized`, `not_found` | não |
+| GET | `/v1/vehicles/{vehicleId}/maintenance-plans` | Bearer | nenhum (`include_not_applicable`) | `MaintenancePlanList` | `unauthorized`, `not_found` | não |
 | POST | `/v1/vehicles/{vehicleId}/maintenance-plans` | Bearer | `CreateMaintenancePlanRequest` | `MaintenancePlanSummary` (201) | `unauthorized`, `not_found`, `conflict`, `validation_failed` | não |
 | PATCH | `/v1/maintenance-plans/{planId}` | Bearer | `UpdateMaintenancePlanRequest` | `MaintenancePlanSummary` | `unauthorized`, `not_found`, `validation_failed` | não |
 | DELETE | `/v1/maintenance-plans/{planId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
+| GET | `/v1/vehicles/{vehicleId}/maintenance-profile` | Bearer | nenhum | `MaintenanceProfile` | `unauthorized`, `not_found` | não |
+| POST | `/v1/vehicles/{vehicleId}/maintenance-profile/answers` | Bearer | `AnswerMaintenanceProfileRequest` | `MaintenanceProfile` (200) | `unauthorized`, `not_found`, `validation_failed` | não |
 | GET | `/v1/vehicles/{vehicleId}/maintenance-records` | Bearer | nenhum (`limit`, `cursor`) | `MaintenanceRecordPage` | `unauthorized`, `not_found`, `validation_failed` | **sim** |
 | POST | `/v1/vehicles/{vehicleId}/maintenance-records` | Bearer | `CreateMaintenanceRecordRequest` | `MaintenanceRecord` (200 retry / 201) | `unauthorized`, `not_found`, `conflict`, `validation_failed`, `odometer_rollback` | não |
 | GET | `/v1/maintenance-records/{recordId}` | Bearer | nenhum | `MaintenanceRecord` | `unauthorized`, `not_found` | não |

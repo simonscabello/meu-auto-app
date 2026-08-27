@@ -15,7 +15,9 @@ IconData maintenanceIconFor(String slug) {
     'verificar_oleo' => Icons.oil_barrel,
     'filtro_ar' || 'filtro_cabine' || 'filtro_combustivel' => Icons.air,
     'velas' => Icons.bolt,
+    'correia_dentada' || 'corrente_comando' => Icons.settings,
     'bateria' => Icons.battery_full,
+    'bateria_tracao' => Icons.electric_car,
     'pneus' ||
     'rodizio_pneus' ||
     'alinhamento' ||

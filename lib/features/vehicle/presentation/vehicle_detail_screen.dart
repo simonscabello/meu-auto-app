@@ -4,11 +4,15 @@ import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
+import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_metric.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -28,31 +32,16 @@ class _VehicleDetailScreenState extends ConsumerState<VehicleDetailScreen> {
   bool _deleting = false;
 
   Future<void> _delete(Vehicle vehicle) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Excluir veículo?'),
-          content: const Text(
-            'O veículo some das suas listas, mas o histórico de serviços é preservado.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: const Text('Excluir'),
-            ),
-          ],
-        );
-      },
+    final confirmed = await confirmAction(
+      context,
+      title: 'Excluir veículo?',
+      message:
+          'O veículo some das suas listas, mas o histórico de serviços é '
+          'preservado.',
+      confirmLabel: 'Excluir',
+      destructive: true,
     );
-    if (confirmed != true || !mounted) {
+    if (!confirmed || !mounted) {
       return;
     }
     setState(() => _deleting = true);
@@ -69,16 +58,18 @@ class _VehicleDetailScreenState extends ConsumerState<VehicleDetailScreen> {
         return;
       }
       setState(() => _deleting = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(failure.message)));
+      showAppErrorSnackBar(
+        ScaffoldMessenger.of(context),
+        message: failure.message,
+      );
     } catch (_) {
       if (!mounted) {
         return;
       }
       setState(() => _deleting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Algo deu errado. Tente novamente.')),
+      showAppErrorSnackBar(
+        ScaffoldMessenger.of(context),
+        message: 'Algo deu errado. Tente novamente.',
       );
     }
   }
@@ -112,7 +103,7 @@ class _VehicleDetailScreenState extends ConsumerState<VehicleDetailScreen> {
             ),
           );
         }
-        return _VehicleBody(
+        return VehicleDetailContent(
           vehicle: vehicle,
           deleting: _deleting,
           onEdit: () => context.push(AppRoutes.vehicleEdit(vehicle.id)),
@@ -123,76 +114,155 @@ class _VehicleDetailScreenState extends ConsumerState<VehicleDetailScreen> {
   }
 }
 
-class _VehicleBody extends StatelessWidget {
-  const _VehicleBody({
+/// The vehicle sheet as pure presentation.
+///
+/// Public and provider-free for the same reason [DashboardContent] is: it is
+/// what the layout tests pump, and a widget that needs a `ProviderScope` to
+/// render cannot be checked at 360x640 with the text scaled up.
+class VehicleDetailContent extends StatelessWidget {
+  const VehicleDetailContent({
+    super.key,
     required this.vehicle,
-    required this.deleting,
-    required this.onEdit,
-    required this.onDelete,
+    this.deleting = false,
+    this.onEdit,
+    this.onDelete,
   });
 
   final Vehicle vehicle;
   final bool deleting;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final fuel = vehicle.fuelType;
-    final showFuel = fuel != null && fuel != FuelType.desconhecido;
-    final hasDocument = vehicle.renavam != null || vehicle.chassis != null;
+    final theme = Theme.of(context);
     return AppScaffold(
       title: vehicle.displayName,
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.s24),
         children: [
-          _Row(label: 'Marca', value: vehicle.brand),
-          _Row(label: 'Modelo', value: vehicle.model),
-          if (vehicle.version != null)
-            _Row(label: 'Versão', value: vehicle.version!),
-          if (vehicle.manufactureYear != null)
-            _Row(
-              label: 'Ano de fabricação',
-              value: '${vehicle.manufactureYear}',
-            ),
-          if (vehicle.modelYear != null)
-            _Row(label: 'Ano do modelo', value: '${vehicle.modelYear}'),
-          if (vehicle.plate != null)
-            _Row(label: 'Placa', value: vehicle.plate!),
-          if (vehicle.color != null) _Row(label: 'Cor', value: vehicle.color!),
-          if (showFuel) _Row(label: 'Combustível', value: fuel.label),
-          _Row(
-            label: 'Quilometragem atual',
-            value: formatKm(vehicle.currentMileageKm),
-          ),
-          if (vehicle.currentMileageAt != null)
-            _Row(
-              label: 'Quilometragem em',
-              value: formatCivilDate(vehicle.currentMileageAt!),
-            ),
-          if (hasDocument) ...[
-            const SizedBox(height: AppSpacing.s8),
-            const AppSectionHeader(title: 'Dados do documento'),
-            if (vehicle.renavam != null)
-              _Row(label: 'Renavam', value: vehicle.renavam!),
-            if (vehicle.chassis != null)
-              _Row(label: 'Chassi', value: vehicle.chassis!),
-          ],
+          _MileageHeader(vehicle: vehicle),
           const SizedBox(height: AppSpacing.s24),
+          const AppSectionHeader(title: 'Ficha do carro'),
+          const SizedBox(height: AppSpacing.s8),
+          ..._sheetRows(),
+          if (_documentRows().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.s24),
+            const AppSectionHeader(title: 'Documento'),
+            const SizedBox(height: AppSpacing.s8),
+            ..._documentRows(),
+          ],
+          const SizedBox(height: AppSpacing.s32),
           AppButton(label: 'Editar', onPressed: deleting ? null : onEdit),
-          const SizedBox(height: AppSpacing.s12),
-          AppButton(
-            label: 'Excluir',
-            variant: AppButtonVariant.destructive,
-            loading: deleting,
-            onPressed: onDelete,
+          const SizedBox(height: AppSpacing.s40),
+          Divider(color: theme.colorScheme.outlineVariant),
+          const SizedBox(height: AppSpacing.s8),
+          // Quiet, and below a rule, the way the account deletion sits in the
+          // profile. A destructive action does not have to shout to be found,
+          // and it should not compete with Editar for the same glance.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: deleting ? null : onDelete,
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              child: Text(deleting ? 'Excluindo…' : 'Excluir este veículo'),
+            ),
           ),
         ],
       ),
     );
   }
+
+  List<Widget> _sheetRows() {
+    final fuel = vehicle.fuelType;
+    final showFuel = fuel != null && fuel != FuelType.desconhecido;
+    return [
+      _Row(label: 'Marca e modelo', value: '${vehicle.brand} ${vehicle.model}'),
+      if (vehicle.version != null)
+        _Row(label: 'Versão', value: vehicle.version!),
+      if (_yearLabel() != null) _Row(label: 'Ano', value: _yearLabel()!),
+      if (showFuel) _Row(label: 'Combustível', value: fuel.label),
+      if (vehicle.color != null) _Row(label: 'Cor', value: vehicle.color!),
+      if (vehicle.plate != null) _Row(label: 'Placa', value: vehicle.plate!),
+    ];
+  }
+
+  List<Widget> _documentRows() {
+    return [
+      if (vehicle.renavam != null)
+        _Row(label: 'Renavam', value: vehicle.renavam!),
+      if (vehicle.chassis != null)
+        _Row(label: 'Chassi', value: vehicle.chassis!),
+    ];
+  }
+
+  /// `2017/2018` when the two differ, one figure when they agree or only one
+  /// is known. Two rows for two numbers nobody reads separately is padding.
+  String? _yearLabel() {
+    final made = vehicle.manufactureYear;
+    final model = vehicle.modelYear;
+    if (made == null && model == null) return null;
+    if (made == null) return '$model';
+    if (model == null) return '$made';
+    if (made == model) return '$made';
+    return '$made/$model';
+  }
 }
 
+/// The number the owner actually came to check, at the size they read it.
+class _MileageHeader extends StatelessWidget {
+  const _MileageHeader({required this.vehicle});
+
+  final Vehicle vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final recordedOn = vehicle.currentMileageAt;
+    final plate = vehicle.plate?.trim();
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: AppMetric(
+            value: formatKmNumber(vehicle.currentMileageKm),
+            unit: 'km',
+            label: recordedOn == null
+                ? 'Quilometragem atual'
+                : 'Quilometragem em ${formatCivilDate(recordedOn)}',
+          ),
+        ),
+        if (plate != null && plate.isNotEmpty) ...[
+          const SizedBox(width: AppSpacing.s8),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s8,
+              vertical: AppSpacing.s4,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.borderM,
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Text(
+              plate,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontFeatures: AppTypography.tabular,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Label left, value right. Stacking the two turns a six-line sheet into a
+/// screen and a half of scrolling for no gain in legibility.
 class _Row extends StatelessWidget {
   const _Row({required this.label, required this.value});
 
@@ -203,18 +273,26 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s16),
-      child: Column(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-          const SizedBox(height: AppSpacing.s4),
-          Text(value, style: theme.textTheme.bodyLarge),
+          const SizedBox(width: AppSpacing.s16),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyLarge,
+              textAlign: TextAlign.end,
+            ),
+          ),
         ],
       ),
     );

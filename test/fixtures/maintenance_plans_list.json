@@ -18,7 +18,12 @@
       "origin": "suggested",
       "remaining_days": 15,
       "remaining_km": 1550,
-      "status": "em_dia"
+      "status": "em_dia",
+      "strategy": "periodic",
+      "history_status": "not_asked",
+      "notes": null,
+      "history_question": "Quando foi a última troca de óleo?",
+      "history_priority": 100
     }
   ]
 }

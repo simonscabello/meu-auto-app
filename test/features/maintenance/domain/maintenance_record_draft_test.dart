@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record_draft.dart';
 
@@ -74,13 +75,6 @@ void main() {
       expect(body.containsKey('notes'), isFalse);
       expect(body['items'], hasLength(1));
       expect((body['items'] as List).single, {'maintenance_item_id': _oil.id});
-    });
-
-    test('digit fields are already cents, never a decimal', () {
-      expect(centsFromDigitField('42000'), 42000);
-      expect(centsFromDigitField(''), isNull);
-      expect(centsFromDigitField('  '), isNull);
-      expect(centsFromDigitField('0'), 0);
     });
   });
 
@@ -178,6 +172,7 @@ const _oil = MaintenanceItem(
   kind: MaintenanceItemKind.maintenance,
   vehicleType: 'car',
   isCustom: false,
+  defaultStrategy: MaintenanceStrategy.periodic,
 );
 
 const _filter = MaintenanceItem(
@@ -187,6 +182,7 @@ const _filter = MaintenanceItem(
   kind: MaintenanceItemKind.maintenance,
   vehicleType: 'car',
   isCustom: false,
+  defaultStrategy: MaintenanceStrategy.periodic,
 );
 
 MaintenanceItem _item(String suffix) {
@@ -197,5 +193,6 @@ MaintenanceItem _item(String suffix) {
     kind: MaintenanceItemKind.maintenance,
     vehicleType: 'car',
     isCustom: false,
+    defaultStrategy: MaintenanceStrategy.periodic,
   );
 }

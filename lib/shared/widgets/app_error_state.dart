@@ -3,6 +3,7 @@ import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_centered_scroll.dart';
 
 class AppErrorState extends StatelessWidget {
   const AppErrorState({
@@ -45,49 +46,46 @@ class AppErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final reference = requestId?.trim();
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.s24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                offline ? Icons.wifi_off : Icons.error_outline,
-                size: 32,
-                color: offline
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.error,
-              ),
-              if (offline) ...[
-                const SizedBox(height: AppSpacing.s12),
-                Text(
-                  offlineTitle,
-                  style: theme.textTheme.titleLarge,
-                  textAlign: TextAlign.center,
-                ),
-              ],
+    return AppCenteredScroll(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              offline ? Icons.wifi_off : Icons.error_outline,
+              size: 32,
+              color: offline
+                  ? theme.colorScheme.onSurfaceVariant
+                  : theme.colorScheme.error,
+            ),
+            if (offline) ...[
               const SizedBox(height: AppSpacing.s12),
               Text(
-                message,
-                style: theme.textTheme.bodyLarge,
+                offlineTitle,
+                style: theme.textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
-              if (reference != null && reference.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.s8),
-                Text(
-                  'Referência: $reference',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              const SizedBox(height: AppSpacing.s24),
-              AppButton(label: 'Tentar de novo', onPressed: onRetry),
             ],
-          ),
+            const SizedBox(height: AppSpacing.s12),
+            Text(
+              message,
+              style: theme.textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+            if (reference != null && reference.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.s8),
+              Text(
+                'Referência: $reference',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const SizedBox(height: AppSpacing.s24),
+            AppButton(label: 'Tentar de novo', onPressed: onRetry),
+          ],
         ),
       ),
     );

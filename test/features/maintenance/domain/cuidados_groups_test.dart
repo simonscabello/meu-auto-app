@@ -104,6 +104,49 @@ void main() {
   test('an empty list yields empty groups', () {
     expect(groupCuidadosPlans(const []).isEmpty, isTrue);
   });
+
+  // "Não sei" and "nunca foi feito" are answers. They leave the item without a
+  // baseline, but the question has been dealt with — so it moves out of the
+  // group that carries the prompt.
+  test('an answered item leaves the group that still asks', () {
+    final groups = groupCuidadosPlans([
+      _plan(
+        id: 'asked',
+        name: 'Fluido de freio',
+        status: MaintenanceStatus.semBaseline,
+      ),
+      _plan(
+        id: 'unknown',
+        name: 'Velas',
+        status: MaintenanceStatus.semBaseline,
+        historyStatus: MaintenanceHistoryStatus.unknown,
+      ),
+      _plan(
+        id: 'never',
+        name: 'Correia',
+        status: MaintenanceStatus.semBaseline,
+        historyStatus: MaintenanceHistoryStatus.never,
+      ),
+    ]);
+
+    expect(groups.needsBaseline.map((plan) => plan.id), ['asked']);
+    expect(groups.historySettled.map((plan) => plan.id), ['unknown', 'never']);
+  });
+
+  // The server already leaves these out. If one ever arrives, it must not
+  // become a card — hidden or otherwise.
+  test('an item the vehicle does not have never becomes a card', () {
+    final groups = groupCuidadosPlans([
+      _plan(
+        id: 'belt',
+        name: 'Correia dentada',
+        status: MaintenanceStatus.naoSeAplica,
+        strategy: MaintenanceStrategy.notApplicable,
+      ),
+    ]);
+
+    expect(groups.isEmpty, isTrue);
+  });
 }
 
 MaintenancePlan _plan({
@@ -111,6 +154,8 @@ MaintenancePlan _plan({
   required String name,
   required MaintenanceStatus status,
   MaintenanceItemKind kind = MaintenanceItemKind.maintenance,
+  MaintenanceStrategy strategy = MaintenanceStrategy.periodic,
+  MaintenanceHistoryStatus historyStatus = MaintenanceHistoryStatus.notAsked,
 }) {
   return MaintenancePlan(
     id: id,
@@ -121,6 +166,8 @@ MaintenancePlan _plan({
     alertKm: 500,
     alertDays: 15,
     origin: MaintenancePlanOrigin.suggested,
+    strategy: strategy,
+    historyStatus: historyStatus,
     status: status,
   );
 }

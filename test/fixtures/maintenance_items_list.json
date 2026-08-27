@@ -9,7 +9,8 @@
       "kind": "maintenance",
       "name": "Troca de óleo do motor",
       "slug": "troca_oleo",
-      "vehicle_type": "car"
+      "vehicle_type": "car",
+      "default_strategy": "periodic"
     }
   ]
 }

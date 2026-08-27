@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/client_id.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
@@ -16,7 +17,9 @@ import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -191,7 +194,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
           nickname: _nickname.text,
           catalogModelYearId: _catalog?.modelYearId,
           fipeCode: _fipeCode,
-          currentMileageKm: _intOf(_mileage),
+          currentMileageKm: kmFromField(_mileage.text),
         );
       }
       if (!mounted) {
@@ -280,6 +283,12 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
 
   Widget _form({required bool onboarding}) {
     final title = widget.isEditing ? 'Editar veículo' : 'Novo veículo';
+    // The picker fills brand, model, year and fuel. Once it has, those four
+    // fold away behind one row rather than staying open as work still to do.
+    // They remain editable, one tap in, because the snapshot is the owner's
+    // to correct and always was.
+    final identified = _catalog != null && !_carFieldsHaveError;
+
     return AppScaffold(
       title: title,
       actions: [
@@ -295,13 +304,15 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
         children: [
           if (onboarding) ...[
             Text(
-              'Bem-vindo ao Meu Auto',
+              'Seu primeiro carro',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: AppSpacing.s8),
             Text(
-              'Cadastre o carro que você quer acompanhar.',
-              style: Theme.of(context).textTheme.bodyLarge,
+              'Marca e modelo bastam para começar. O resto pode vir depois.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: AppSpacing.s24),
           ],
@@ -321,112 +332,66 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
               alreadyLinked: _existingCatalogId != null,
               onPressed: _pickFromCatalog,
             ),
+          if (identified)
+            VehicleFoldedSection(
+              title: 'Marca, modelo, ano e combustível',
+              subtitle: 'Preenchidos pela tabela FIPE. Dá para corrigir.',
+              children: _carFields(),
+            )
+          else ...[
+            const AppSectionHeader(title: 'O carro'),
+            const SizedBox(height: AppSpacing.s8),
+            ..._carFields(),
+          ],
+          if (!widget.isEditing) ...[
+            const SizedBox(height: AppSpacing.s8),
+            const AppSectionHeader(title: 'Quilometragem'),
+            const SizedBox(height: AppSpacing.s8),
+            AppKmField(
+              controller: _mileage,
+              label: 'Quilometragem atual',
+              enabled: !_submitting,
+              helperText: 'É daqui que o Meu Auto conta os próximos cuidados.',
+              errorText: _fieldErrors['current_mileage_km'],
+              onChanged: (_) => _clearError('current_mileage_km'),
+            ),
+            const SizedBox(height: AppSpacing.s24),
+          ],
+          const AppSectionHeader(title: 'Como você reconhece'),
+          const SizedBox(height: AppSpacing.s8),
           _textField(
             controller: _nickname,
             label: 'Apelido',
             hint: 'como você chama o carro',
             fieldKey: 'nickname',
+            optional: true,
             textCapitalization: TextCapitalization.sentences,
-          ),
-          _textField(
-            controller: _brand,
-            label: 'Marca',
-            fieldKey: 'brand',
-            textCapitalization: TextCapitalization.words,
-          ),
-          _textField(
-            controller: _model,
-            label: 'Modelo',
-            fieldKey: 'model',
-            textCapitalization: TextCapitalization.words,
-          ),
-          _textField(
-            controller: _version,
-            label: 'Versão',
-            fieldKey: 'version',
-            textCapitalization: TextCapitalization.sentences,
-          ),
-          _textField(
-            controller: _manufactureYear,
-            label: 'Ano de fabricação',
-            fieldKey: 'manufacture_year',
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(4),
-            ],
-          ),
-          _textField(
-            controller: _modelYear,
-            label: 'Ano do modelo',
-            fieldKey: 'model_year',
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(4),
-            ],
           ),
           _textField(
             controller: _plate,
             label: 'Placa',
+            hint: 'ABC1D23',
             fieldKey: 'plate',
-            textCapitalization: TextCapitalization.characters,
-            inputFormatters: [LengthLimitingTextInputFormatter(10)],
+            optional: true,
+            inputFormatters: const [PlateInputFormatter()],
           ),
           _textField(
             controller: _color,
             label: 'Cor',
             fieldKey: 'color',
+            optional: true,
             textCapitalization: TextCapitalization.sentences,
+            textInputAction: TextInputAction.done,
           ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.s16),
-            child: DropdownButtonFormField<FuelType?>(
-              initialValue: _fuelInitial,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Combustível',
-                errorText: _fieldErrors['fuel_type'],
-                errorMaxLines: 3,
-              ),
-              items: [
-                const DropdownMenuItem(
-                  value: null,
-                  child: Text('Não informado'),
-                ),
-                for (final fuel in FuelType.values)
-                  if (fuel != FuelType.desconhecido)
-                    DropdownMenuItem(value: fuel, child: Text(fuel.label)),
-              ],
-              onChanged: _submitting
-                  ? null
-                  : (value) {
-                      setState(() {
-                        _fuel = value;
-                        _fieldErrors.remove('fuel_type');
-                      });
-                    },
-            ),
-          ),
-          if (!widget.isEditing)
-            _textField(
-              controller: _mileage,
-              label: 'Quilometragem atual',
-              fieldKey: 'current_mileage_km',
-              keyboardType: TextInputType.number,
-              suffixText: 'km',
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              textInputAction: TextInputAction.done,
-            ),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: const Text('Dados do documento'),
+          VehicleFoldedSection(
+            title: 'Dados do documento',
+            subtitle: 'Renavam e chassi, se você tiver o CRLV à mão.',
             children: [
               _textField(
                 controller: _renavam,
                 label: 'Renavam',
                 fieldKey: 'renavam',
+                optional: true,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
@@ -437,6 +402,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
                 controller: _chassis,
                 label: 'Chassi',
                 fieldKey: 'chassis',
+                optional: true,
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [LengthLimitingTextInputFormatter(17)],
                 textInputAction: TextInputAction.done,
@@ -451,7 +417,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
                   ? 'Tentar de novo'
                   : widget.isEditing
                   ? 'Salvar'
-                  : 'Cadastrar',
+                  : 'Cadastrar veículo',
               loading: _submitting,
               onPressed: _submit,
             ),
@@ -461,12 +427,104 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
     );
   }
 
+  /// True while the server is complaining about one of the four the catalogue
+  /// owns — the fold has to open so the message is not hidden behind a tap.
+  bool get _carFieldsHaveError {
+    for (final key in const ['brand', 'model', 'model_year', 'fuel_type']) {
+      if (_fieldErrors.containsKey(key)) return true;
+    }
+    return false;
+  }
+
+  void _clearError(String fieldKey) {
+    if (!_fieldErrors.containsKey(fieldKey)) return;
+    setState(() => _fieldErrors.remove(fieldKey));
+  }
+
+  List<Widget> _carFields() {
+    return [
+      _textField(
+        controller: _brand,
+        label: 'Marca',
+        fieldKey: 'brand',
+        textCapitalization: TextCapitalization.words,
+      ),
+      _textField(
+        controller: _model,
+        label: 'Modelo',
+        fieldKey: 'model',
+        textCapitalization: TextCapitalization.words,
+      ),
+      _textField(
+        controller: _version,
+        label: 'Versão',
+        fieldKey: 'version',
+        optional: true,
+        textCapitalization: TextCapitalization.sentences,
+      ),
+      _textField(
+        controller: _manufactureYear,
+        label: 'Ano de fabricação',
+        fieldKey: 'manufacture_year',
+        optional: true,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ],
+      ),
+      _textField(
+        controller: _modelYear,
+        label: 'Ano do modelo',
+        fieldKey: 'model_year',
+        optional: true,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ],
+      ),
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.s16),
+        child: DropdownButtonFormField<FuelType?>(
+          initialValue: _fuelInitial,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: 'Combustível (opcional)',
+            errorText: _fieldErrors['fuel_type'],
+            errorMaxLines: 3,
+          ),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('Não informado')),
+            for (final fuel in FuelType.values)
+              if (fuel != FuelType.desconhecido)
+                DropdownMenuItem(value: fuel, child: Text(fuel.label)),
+          ],
+          onChanged: _submitting
+              ? null
+              : (value) {
+                  setState(() {
+                    _fuel = value;
+                    _fieldErrors.remove('fuel_type');
+                  });
+                },
+        ),
+      ),
+    ];
+  }
+
+  /// One field of the form.
+  ///
+  /// [optional] appends the word rather than marking the two required ones
+  /// with an asterisk: brand and model are the only things the server insists
+  /// on, so labelling nine fields as optional is shorter and kinder than
+  /// implying the other nine are homework.
   Widget _textField({
     required TextEditingController controller,
     required String label,
     required String fieldKey,
     String? hint,
-    String? suffixText,
+    bool optional = false,
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     TextCapitalization textCapitalization = TextCapitalization.none,
@@ -484,19 +542,84 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
           LengthLimitingTextInputFormatter(120),
           ...?inputFormatters,
         ],
-        onChanged: (_) {
-          if (_fieldErrors.containsKey(fieldKey)) {
-            setState(() => _fieldErrors.remove(fieldKey));
-          }
-        },
+        onChanged: (_) => _clearError(fieldKey),
         decoration: InputDecoration(
-          labelText: label,
+          labelText: optional ? '$label (opcional)' : label,
           hintText: hint,
-          suffixText: suffixText,
           errorText: _fieldErrors[fieldKey],
           errorMaxLines: 3,
         ),
       ),
+    );
+  }
+}
+
+/// A group of fields that starts closed.
+///
+/// Used where the fields inside are real but rarely the reason someone opened
+/// the screen — the document numbers, and the four the catalogue already
+/// filled. Closed is not hidden: the row says what is inside.
+class VehicleFoldedSection extends StatelessWidget {
+  const VehicleFoldedSection({
+    super.key,
+    required this.title,
+    required this.children,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: Text(title, style: theme.textTheme.titleMedium),
+        subtitle: subtitle == null
+            ? null
+            : Text(
+                subtitle!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+        children: children,
+      ),
+    );
+  }
+}
+
+/// Uppercases and keeps only the seven characters a Brazilian plate has.
+///
+/// Both formats are seven: `ABC1234` and the Mercosul `ABC1D23`. The server
+/// strips punctuation and uppercases before it validates, so this is the same
+/// rule applied where the person can still see it happen — a hyphen typed out
+/// of habit disappears instead of surviving to a 422.
+class PlateInputFormatter extends TextInputFormatter {
+  const PlateInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final buffer = StringBuffer();
+    for (final char in newValue.text.toUpperCase().split('')) {
+      if (buffer.length == 7) break;
+      final unit = char.codeUnitAt(0);
+      final isLetter = unit >= 0x41 && unit <= 0x5A;
+      final isDigit = unit >= 0x30 && unit <= 0x39;
+      if (isLetter || isDigit) buffer.write(char);
+    }
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
@@ -17,6 +16,7 @@ import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 /// Updating the mileage is the most frequent write in the app, and it happens
@@ -69,9 +69,7 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
     super.initState();
     // Prefilled and fully selected: the current reading is the useful starting
     // point, and typing should replace it rather than append to it.
-    final text = widget.currentMileageKm.toString();
-    _mileage = TextEditingController(text: text)
-      ..selection = TextSelection(baseOffset: 0, extentOffset: text.length);
+    _mileage = kmController(widget.currentMileageKm);
   }
 
   @override
@@ -82,7 +80,7 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
   }
 
   Future<void> _submit({bool force = false}) async {
-    final parsed = int.tryParse(_mileage.text.trim());
+    final parsed = kmFromField(_mileage.text);
     if (parsed == null) {
       setState(() => _fieldError = 'Informe a quilometragem.');
       return;
@@ -165,7 +163,6 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isToday = _occurredOn == CivilDate.todayLocal();
 
     return Padding(
       padding: EdgeInsets.only(
@@ -180,44 +177,23 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
           children: [
             Text('Atualizar quilometragem', style: theme.textTheme.titleLarge),
             const SizedBox(height: AppSpacing.s16),
-            TextField(
+            AppKmField(
               controller: _mileage,
               autofocus: true,
               enabled: !_submitting,
-              keyboardType: TextInputType.number,
+              textStyle: theme.textTheme.headlineMedium,
               textInputAction: _showNotes
                   ? TextInputAction.next
                   : TextInputAction.done,
               onSubmitted: (_) => _submitting || _showNotes ? null : _submit(),
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(7),
-              ],
-              style: theme.textTheme.headlineMedium,
-              decoration: InputDecoration(
-                labelText: 'Quilometragem',
-                suffixText: 'km',
-                errorText: _fieldError,
-                errorMaxLines: 3,
-                helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
-              ),
+              errorText: _fieldError,
+              helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
             ),
             const SizedBox(height: AppSpacing.s12),
-            Row(
-              children: [
-                const Icon(Icons.event_outlined, size: 20),
-                const SizedBox(width: AppSpacing.s8),
-                Expanded(
-                  child: Text(
-                    isToday ? 'Hoje' : formatCivilDateLong(_occurredOn),
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                TextButton(
-                  onPressed: _submitting ? null : _pickDate,
-                  child: const Text('Mudar data'),
-                ),
-              ],
+            AppDateField(
+              value: _occurredOn,
+              onPick: _pickDate,
+              enabled: !_submitting,
             ),
             if (_showNotes) ...[
               const SizedBox(height: AppSpacing.s8),

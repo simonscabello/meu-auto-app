@@ -10,6 +10,7 @@ import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
@@ -43,6 +44,7 @@ class DashboardView extends ConsumerWidget {
           currentMileageKm: data.odometer.currentKm,
         ),
         onConfigureTap: () => context.push(AppRoutes.calibrar(vehicleId)),
+        onProfileTap: () => context.push(AppRoutes.vehicleProfile),
         onSeeAllAlerts: () => context.go(AppRoutes.care),
         onAlertTap: (alert) => _openAlert(context, alert),
         onCostsTap: () => context.push(AppRoutes.costs),
@@ -77,6 +79,7 @@ class DashboardContent extends StatelessWidget {
     required this.dashboard,
     this.onOdometerTap,
     this.onConfigureTap,
+    this.onProfileTap,
     this.onSeeAllAlerts,
     this.onAlertTap,
     this.onCostsTap,
@@ -85,6 +88,7 @@ class DashboardContent extends StatelessWidget {
   final Dashboard dashboard;
   final VoidCallback? onOdometerTap;
   final VoidCallback? onConfigureTap;
+  final VoidCallback? onProfileTap;
   final VoidCallback? onSeeAllAlerts;
   final ValueChanged<Alert>? onAlertTap;
   final VoidCallback? onCostsTap;
@@ -96,13 +100,16 @@ class DashboardContent extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.s16),
       children: [
+        // The question this screen exists to answer goes first. The odometer
+        // is the supporting fact, not the headline: someone opening the app
+        // wants to know whether the car is fine before they read a number.
+        _StatusBanner(status: statusOf(alerts), phrase: statusPhraseOf(alerts)),
+        const SizedBox(height: AppSpacing.s12),
         _OdometerCard(
           odometer: dashboard.odometer,
           plate: dashboard.vehicle.plate,
           onTap: onOdometerTap,
         ),
-        const SizedBox(height: AppSpacing.s16),
-        _StatusBanner(status: statusOf(alerts), phrase: statusPhraseOf(alerts)),
         if (alerts.items.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.s24),
           AppSectionHeader(
@@ -122,6 +129,13 @@ class DashboardContent extends StatelessWidget {
         if (alerts.needsBaseline > 0) ...[
           const SizedBox(height: AppSpacing.s16),
           _SetupCard(count: alerts.needsBaseline, onTap: onConfigureTap),
+        ],
+        if (profilePromptOf(dashboard.profile) != null) ...[
+          const SizedBox(height: AppSpacing.s16),
+          _ProfileCard(
+            message: profilePromptOf(dashboard.profile)!,
+            onTap: onProfileTap,
+          ),
         ],
         const SizedBox(height: AppSpacing.s24),
         _CostsCard(costs: dashboard.costs, onTap: onCostsTap),
@@ -149,9 +163,9 @@ String statusPhraseOf(DashboardAlerts alerts) {
         : '${alerts.dueSoon} itens vencem em breve';
   }
   if (alerts.needsBaseline > 0) {
-    return 'Vamos deixar seu carro em dia';
+    return 'Falta informar o histórico';
   }
-  return 'Seu carro está em dia';
+  return 'Tudo em dia';
 }
 
 /// `sem_baseline` is deliberately not an alert colour: a brand new vehicle has
@@ -162,6 +176,35 @@ AppStatus statusOf(DashboardAlerts alerts) {
   if (alerts.dueSoon > 0) return AppStatus.venceEmBreve;
   if (alerts.needsBaseline > 0) return AppStatus.semBaseline;
   return AppStatus.emDia;
+}
+
+/// The discreet line about what we still do not know about the car.
+///
+/// Null most of the time, and that is the design: it appears when there is
+/// genuinely something to ask, and disappears the moment it is answered —
+/// including when the answer is "não sei". A prompt that never goes away is
+/// noise, and this one has a real ending.
+///
+/// It never explains the model. "Aplicabilidade", "estratégia" and
+/// "não se aplica" are words for the schema, not for the person holding the
+/// phone.
+@visibleForTesting
+String? profilePromptOf(DashboardProfile profile) {
+  if (!profile.powertrainKnown) {
+    return 'Falta dizer qual o combustível do seu carro. '
+        'Com isso a gente sabe o que ele precisa — e o que não precisa.';
+  }
+  if (profile.openQuestions == 1) {
+    return 'Falta 1 informação sobre o seu carro.';
+  }
+  if (profile.openQuestions > 1) {
+    return 'Faltam ${profile.openQuestions} informações sobre o seu carro.';
+  }
+  if (profile.status == MaintenanceProfileStatus.unknown) {
+    return 'Ainda não temos um plano para este carro. '
+        'Você escolhe o que quer acompanhar.';
+  }
+  return null;
 }
 
 /// `cost_months` is a rolling window measured back from `since`, not a calendar
@@ -250,6 +293,13 @@ class _OdometerCard extends StatelessWidget {
             const SizedBox(width: AppSpacing.s8),
             _PlateChip(plate: plate!.trim()),
           ],
+          if (onTap != null) ...[
+            const SizedBox(width: AppSpacing.s8),
+            Icon(
+              Icons.chevron_right,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
         ],
       ),
     );
@@ -305,12 +355,14 @@ class _StatusBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(visual.icon, color: visual.foreground),
+          // Sized against the line it sits beside, so the pair still reads as
+          // one sentence at a 1.3 text scale.
+          Icon(visual.icon, color: visual.foreground, size: 28),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
             child: Text(
               phrase,
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: theme.textTheme.headlineSmall?.copyWith(
                 color: visual.foreground,
               ),
             ),
@@ -406,9 +458,9 @@ class _SetupCard extends StatelessWidget {
     final visual = statusColors(AppStatus.semBaseline, theme.brightness);
     final message = count == 1
         ? '1 item ainda não tem histórico. Informe a última vez que foi feito '
-              'para o Meu Auto começar a avisar você.'
+              'e o Meu Auto passa a avisar.'
         : '$count itens ainda não têm histórico. Informe a última vez que '
-              'foram feitos para o Meu Auto começar a avisar você.';
+              'foram feitos e o Meu Auto passa a avisar.';
 
     return Container(
       width: double.infinity,
@@ -433,6 +485,37 @@ class _SetupCard extends StatelessWidget {
               onPressed: onTap,
               style: TextButton.styleFrom(foregroundColor: visual.foreground),
               child: const Text('Configurar'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Deliberately quieter than the setup card: this is a nudge, not a deadline.
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({required this.message, this.onTap});
+
+  final String message;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.tune, size: 20, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(
+            child: Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],

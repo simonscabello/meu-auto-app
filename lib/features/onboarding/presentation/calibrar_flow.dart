@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
@@ -16,6 +15,7 @@ import 'package:meu_auto/features/maintenance/application/maintenance_item_provi
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog.dart';
 import 'package:meu_auto/features/onboarding/application/calibrar_provider.dart';
@@ -24,10 +24,20 @@ import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
+/// The history questions, asked once after a vehicle is registered — and only
+/// with permission.
+///
+/// The first screen is a single yes/no. Somebody who taps "Depois" is on the
+/// dashboard in one tap, which is the point: the old flow put five date-and-
+/// mileage forms between registering a car and seeing it.
+///
+/// Which questions get asked, and how they are worded, comes from the server.
+/// Nothing here knows what a timing belt is.
 class CalibrarFlow extends ConsumerStatefulWidget {
   const CalibrarFlow({
     super.key,
@@ -44,12 +54,14 @@ class CalibrarFlow extends ConsumerStatefulWidget {
   ConsumerState<CalibrarFlow> createState() => _CalibrarFlowState();
 }
 
+enum _Step { intro, asking, done }
+
 class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   late final TextEditingController _mileage;
   List<MaintenancePlan>? _questions;
+  _Step _step = _Step.intro;
   int _index = 0;
   int _configured = 0;
-  bool _done = false;
   bool _submitting = false;
   bool _offline = false;
   CivilDate? _occurredOn;
@@ -60,9 +72,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   @override
   void initState() {
     super.initState();
-    final text = widget.currentMileageKm.toString();
-    _mileage = TextEditingController(text: text)
-      ..selection = TextSelection(baseOffset: 0, extentOffset: text.length);
+    _mileage = kmController(widget.currentMileageKm);
   }
 
   @override
@@ -82,12 +92,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     _fieldErrors = {};
     _inFlightId = null;
     _submitting = false;
-    final text = widget.currentMileageKm.toString();
-    _mileage.text = text;
-    _mileage.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: text.length,
-    );
+    setKmText(_mileage, widget.currentMileageKm);
   }
 
   void _advance() {
@@ -95,12 +100,25 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     if (_index + 1 >= questions.length) {
       setState(() {
         _submitting = false;
-        _done = true;
+        _step = _Step.done;
       });
       return;
     }
     setState(() {
       _index++;
+      _resetAnswer();
+    });
+  }
+
+  Future<void> _startAsking() async {
+    final questions = _questions;
+    if (questions == null || questions.isEmpty) {
+      await _seeCar();
+      return;
+    }
+    setState(() {
+      _step = _Step.asking;
+      _index = 0;
       _resetAnswer();
     });
   }
@@ -111,7 +129,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     if (_configured > 0) {
       _invalidate();
       if (!mounted) return;
-      setState(() => _done = true);
+      setState(() => _step = _Step.done);
       return;
     }
     if (!mounted) return;
@@ -130,9 +148,36 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     unawaited(ref.read(vehiclesProvider.notifier).reload());
   }
 
+  /// "Não sei" is an answer, and it is written down.
+  ///
+  /// It records that the owner was asked and does not remember — which is what
+  /// stops the question coming back. It deliberately does NOT create a service
+  /// record: a record asserts a date and a mileage, and somebody who does not
+  /// remember has neither.
+  Future<void> _dontKnow() async {
+    final questions = _questions;
+    if (questions == null || _index >= questions.length) return;
+    final plan = questions[_index];
+
+    setState(() => _submitting = true);
+    try {
+      await ref
+          .read(maintenancePlanRepositoryProvider)
+          .update(
+            plan.id,
+            const PlanUpdate.history(MaintenanceHistoryStatus.unknown),
+          );
+    } on ApiFailure {
+      // Not worth stopping the flow over. The question simply comes back next
+      // time, which is the old behaviour and is not harmful.
+    }
+    if (!mounted) return;
+    _advance();
+  }
+
   Future<void> _confirm() async {
     final occurredOn = _occurredOn;
-    final mileage = int.tryParse(_mileage.text.trim());
+    final mileage = kmFromField(_mileage.text);
     if (occurredOn == null) {
       setState(() {
         _fieldErrors = {'occurred_on': 'Informe a data.'};
@@ -225,7 +270,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop || _submitting) return;
-        if (_done) {
+        if (_step == _Step.done) {
           await _seeCar();
           return;
         }
@@ -236,13 +281,13 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   }
 
   Widget _body(AsyncValue<List<MaintenancePlan>> plans) {
-    if (_done) {
+    if (_step == _Step.done) {
       return _doneContent();
     }
 
     final cached = _questions;
     if (cached != null) {
-      return _questionsBody(cached);
+      return _stepBody(cached);
     }
 
     return plans.when(
@@ -254,15 +299,23 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
       ),
       data: (list) {
         _capture(list);
-        return _questionsBody(_questions ?? const <MaintenancePlan>[]);
+        return _stepBody(_questions ?? const <MaintenancePlan>[]);
       },
     );
   }
 
-  Widget _questionsBody(List<MaintenancePlan> questions) {
+  Widget _stepBody(List<MaintenancePlan> questions) {
     if (questions.isEmpty) {
       return _doneContent();
     }
+    if (_step == _Step.intro) {
+      return CalibrarIntroContent(
+        questionCount: questions.length,
+        onStart: () => unawaited(_startAsking()),
+        onLater: () => unawaited(_seeCar()),
+      );
+    }
+
     final plan = questions[_index];
     return CalibrarQuestionContent(
       progressLabel: '${_index + 1} de ${questions.length}',
@@ -277,7 +330,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
       currentMileageKm: widget.currentMileageKm,
       onPickDate: _pickDate,
       onConfirm: () => unawaited(_confirm()),
-      onDontKnow: _advance,
+      onDontKnow: () => unawaited(_dontKnow()),
       onSkipAll: () => unawaited(_skipAll()),
     );
   }
@@ -299,7 +352,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
           onPressed: _submitting
               ? null
               : () {
-                  if (_done) {
+                  if (_step == _Step.done) {
                     unawaited(_seeCar());
                     return;
                   }
@@ -308,6 +361,52 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
         ),
       ],
       body: body,
+    );
+  }
+}
+
+/// One question, before any question: is this worth doing now at all?
+///
+/// It exists so the answer "não agora" costs a single tap. Nothing is lost by
+/// saying no — the same questions are waiting on the dashboard afterwards.
+class CalibrarIntroContent extends StatelessWidget {
+  const CalibrarIntroContent({
+    super.key,
+    required this.questionCount,
+    required this.onStart,
+    required this.onLater,
+  });
+
+  final int questionCount;
+  final VoidCallback onStart;
+  final VoidCallback onLater;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.s24),
+      children: [
+        const SizedBox(height: AppSpacing.s24),
+        Text('Carro cadastrado', style: theme.textTheme.headlineSmall),
+        const SizedBox(height: AppSpacing.s12),
+        Text(
+          'Se você souber quando algumas coisas foram feitas, o Meu Auto já '
+          'consegue avisar na hora certa. São $questionCount perguntas rápidas, '
+          'e dá para responder depois.',
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s32),
+        AppButton(label: 'Contar agora', onPressed: onStart),
+        const SizedBox(height: AppSpacing.s8),
+        AppButton(
+          label: 'Depois',
+          variant: AppButtonVariant.secondary,
+          onPressed: onLater,
+        ),
+      ],
     );
   }
 }
@@ -349,10 +448,6 @@ class CalibrarQuestionContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateLabel = occurredOn == null
-        ? 'Escolher data'
-        : formatCivilDateLong(occurredOn!);
-
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.s24),
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -377,42 +472,20 @@ class CalibrarQuestionContent extends StatelessWidget {
           AuthFormBanner(message: banner!),
         ],
         const SizedBox(height: AppSpacing.s24),
-        InkWell(
-          onTap: submitting ? null : onPickDate,
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: 'Data',
-              errorText: dateError,
-              errorMaxLines: 3,
-            ),
-            child: Text(
-              dateLabel,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: occurredOn == null
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.onSurface,
-              ),
-            ),
-          ),
+        AppDateField(
+          value: occurredOn,
+          onPick: onPickDate,
+          enabled: !submitting,
+          errorText: dateError,
         ),
         const SizedBox(height: AppSpacing.s16),
-        TextField(
+        AppKmField(
           controller: mileage,
           enabled: !submitting,
-          keyboardType: TextInputType.number,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submitting ? null : onConfirm(),
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(7),
-          ],
-          decoration: InputDecoration(
-            labelText: 'Quilometragem',
-            suffixText: 'km',
-            helperText: 'Atual: ${formatKm(currentMileageKm)}',
-            errorText: mileageError,
-            errorMaxLines: 3,
-          ),
+          helperText: 'Atual: ${formatKm(currentMileageKm)}',
+          errorText: mileageError,
         ),
         const SizedBox(height: AppSpacing.s32),
         AppButton(

@@ -14,6 +14,7 @@ import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
+import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -102,32 +103,18 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
   }
 
   Future<void> _confirmDelete(OdometerReading reading) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Apagar esta leitura?'),
-        content: Text(
+    final confirmed = await confirmAction(
+      context,
+      title: 'Apagar esta leitura?',
+      message:
           '${formatKm(reading.mileageKm)} em '
           '${formatCivilDate(reading.occurredOn)}.\n\n'
           'A leitura some para sempre, e a quilometragem atual do veículo '
           'pode mudar.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            child: const Text('Apagar'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Apagar',
+      destructive: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() => _deletingId = reading.id);
     try {
@@ -149,7 +136,10 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
     } on ApiFailure catch (failure) {
       if (!mounted) return;
       setState(() => _deletingId = null);
-      showAppSnackBar(ScaffoldMessenger.of(context), message: failure.message);
+      showAppErrorSnackBar(
+        ScaffoldMessenger.of(context),
+        message: failure.message,
+      );
     }
   }
 }

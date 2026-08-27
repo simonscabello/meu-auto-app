@@ -3,14 +3,6 @@ import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 
-/// Digits typed in a money field are already cents — the same convention
-/// the edit sheet uses, so a card-machine amount is never a double.
-int? centsFromDigitField(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return null;
-  return int.tryParse(trimmed);
-}
-
 /// Field-level errors for a line of the record.
 ///
 /// The contract keys errors as they were sent. An item error *should* arrive

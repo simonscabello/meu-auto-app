@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
@@ -17,6 +16,7 @@ import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog
 import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -50,9 +50,9 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
   late final TextEditingController _workshop;
   late final TextEditingController _notes;
 
-  /// Money is typed in centavos, the way a card machine takes it: digits only,
-  /// and the helper line shows what they add up to. No decimal separator to
-  /// get wrong, and no double anywhere near the value.
+  /// Money fills from the cents up, the way a card machine takes it, and the
+  /// field wears `R$ 420,00` as it is typed. No decimal separator to get
+  /// wrong, and no double anywhere near the value.
   late final TextEditingController _cost;
 
   late CivilDate _occurredOn;
@@ -66,13 +66,13 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
     super.initState();
     final record = widget.record;
     _occurredOn = record.occurredOn;
-    _mileage = TextEditingController(text: record.mileageKm.toString());
+    _mileage = kmController(record.mileageKm);
     _workshop = TextEditingController(text: record.workshopName ?? '');
     _notes = TextEditingController(text: record.notes ?? '');
     _cost = TextEditingController(
       text: record.totalCostCents.cents == 0
           ? ''
-          : record.totalCostCents.cents.toString(),
+          : record.totalCostCents.format(),
     );
   }
 
@@ -85,10 +85,10 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
     super.dispose();
   }
 
-  Money get _typedCost => Money.fromCents(int.tryParse(_cost.text.trim()) ?? 0);
+  Money get _typedCost => Money.fromCents(centsFromMoneyField(_cost.text) ?? 0);
 
   Future<void> _submit() async {
-    final mileage = int.tryParse(_mileage.text.trim());
+    final mileage = kmFromField(_mileage.text);
     if (mileage == null) {
       setState(() => _mileageError = 'Informe a quilometragem.');
       return;
@@ -191,38 +191,16 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.s16),
-            Row(
-              children: [
-                const Icon(Icons.event_outlined, size: 20),
-                const SizedBox(width: AppSpacing.s8),
-                Expanded(
-                  child: Text(
-                    formatCivilDateLong(_occurredOn),
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                TextButton(
-                  onPressed: _submitting ? null : _pickDate,
-                  child: const Text('Mudar data'),
-                ),
-              ],
+            AppDateField(
+              value: _occurredOn,
+              onPick: _pickDate,
+              enabled: !_submitting,
             ),
-            const SizedBox(height: AppSpacing.s8),
-            TextField(
+            const SizedBox(height: AppSpacing.s12),
+            AppKmField(
               controller: _mileage,
               enabled: !_submitting,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.next,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(7),
-              ],
-              decoration: InputDecoration(
-                labelText: 'Quilometragem',
-                suffixText: 'km',
-                errorText: _mileageError,
-                errorMaxLines: 3,
-              ),
+              errorText: _mileageError,
             ),
             const SizedBox(height: AppSpacing.s12),
             TextField(
@@ -236,22 +214,10 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.s12),
-            TextField(
+            AppMoneyField(
               controller: _cost,
+              label: 'Valor total',
               enabled: !_submitting,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.next,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(9),
-              ],
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                labelText: 'Valor total',
-                helperText: _typedCost.cents == 0
-                    ? 'Digite em centavos: 42000 vira R\$ 420,00'
-                    : _typedCost.format(),
-              ),
             ),
             const SizedBox(height: AppSpacing.s12),
             TextField(

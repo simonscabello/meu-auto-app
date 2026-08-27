@@ -10,6 +10,7 @@ enum AppStatus {
   emDia,
   semBaseline,
   semPeriodicidade,
+  naoSeAplica,
   pago,
   pendente,
   futuro,
@@ -24,6 +25,7 @@ enum AppStatus {
       'em_dia' => AppStatus.emDia,
       'sem_baseline' => AppStatus.semBaseline,
       'sem_periodicidade' => AppStatus.semPeriodicidade,
+      'nao_se_aplica' => AppStatus.naoSeAplica,
       'pago' => AppStatus.pago,
       'pendente' => AppStatus.pendente,
       'futuro' => AppStatus.futuro,
@@ -85,6 +87,15 @@ StatusVisual statusColors(AppStatus status, Brightness brightness) {
       background: dark ? const Color(0xFF252A2A) : const Color(0xFFEEF0F1),
       icon: Icons.history,
       label: 'Só histórico',
+    ),
+    // Only ever seen on the configuration screen: everywhere else an item the
+    // vehicle does not have is absent, not greyed out. Muted, and not an alarm
+    // colour — nothing is wrong.
+    AppStatus.naoSeAplica => StatusVisual(
+      foreground: dark ? const Color(0xFFC5D0D0) : const Color(0xFF3F4C4E),
+      background: dark ? const Color(0xFF252A2A) : const Color(0xFFEEF0F1),
+      icon: Icons.remove_circle_outline,
+      label: 'Não usa',
     ),
     AppStatus.pago => StatusVisual(
       foreground: dark ? const Color(0xFF99F6E4) : const Color(0xFF115E59),

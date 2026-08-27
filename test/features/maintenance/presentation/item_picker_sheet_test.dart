@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/presentation/item_picker_sheet.dart';
 
 void main() {
@@ -115,6 +116,7 @@ const _oil = MaintenanceItem(
   kind: MaintenanceItemKind.maintenance,
   vehicleType: 'car',
   isCustom: false,
+  defaultStrategy: MaintenanceStrategy.periodic,
 );
 
 const _filter = MaintenanceItem(
@@ -124,4 +126,5 @@ const _filter = MaintenanceItem(
   kind: MaintenanceItemKind.maintenance,
   vehicleType: 'car',
   isCustom: false,
+  defaultStrategy: MaintenanceStrategy.periodic,
 );

@@ -6,5 +6,8 @@
   "interval_days": null,
   "alert_km": 800,
   "alert_days": 15,
-  "origin": "user"
+  "origin": "user",
+  "strategy": "periodic",
+  "history_status": "unknown",
+  "notes": null
 }

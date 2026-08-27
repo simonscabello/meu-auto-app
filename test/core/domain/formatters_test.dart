@@ -28,4 +28,27 @@ void main() {
     final month = local.month.toString().padLeft(2, '0');
     expect(formatted, contains('$day/$month/${local.year}'));
   });
+
+  group('masked fields read back as integers', () {
+    test('money reads the digits, masked or not', () {
+      expect(centsFromMoneyField('R\$ 420,00'), 42000);
+      expect(centsFromMoneyField('R\$ 4.200,00'), 420000);
+      expect(centsFromMoneyField('42000'), 42000);
+      expect(centsFromMoneyField('R\$ 0,00'), 0);
+      expect(centsFromMoneyField(''), isNull);
+      expect(centsFromMoneyField('   '), isNull);
+    });
+
+    test('mileage reads the digits, masked or not', () {
+      expect(kmFromField('98.450'), 98450);
+      expect(kmFromField('98450'), 98450);
+      expect(kmFromField('0'), 0);
+      expect(kmFromField(''), isNull);
+    });
+
+    test('digitsOnly keeps order and drops everything else', () {
+      expect(digitsOnly('R\$ 1.234,56'), '123456');
+      expect(digitsOnly('abc'), '');
+    });
+  });
 }

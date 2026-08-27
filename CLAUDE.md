@@ -51,7 +51,7 @@ These are conventions, not laws from the user — say so if you want to change o
 
 ## State of the repo
 
-**The MVP is feature-complete and audited three times.** Against the local API the app signs in and registers, manages vehicles and switches between them, shows the dashboard and its alerts, records and corrects mileage, keeps maintenance plans and service records, shows a unified timeline and a costs view, runs the `calibrar` onboarding, and lets someone edit their profile or delete the account. Vehicle registration picks brand, model and year from the FIPE catalogue instead of asking for four free-text fields. 457 tests, `flutter analyze` clean, `dart format` clean.
+**The MVP is feature-complete and audited four times.** Against the local API the app signs in and registers, manages vehicles and switches between them, shows the dashboard and its alerts, records and corrects mileage, keeps maintenance plans and service records, shows a unified timeline and a costs view, runs the `calibrar` onboarding, and lets someone edit their profile or delete the account. Vehicle registration picks brand, model and year from the FIPE catalogue instead of asking for four free-text fields. 604 tests, `flutter analyze` clean, `dart format` clean.
 
 **What is not done, and why:** there is no app icon and no custom splash, because there is no artwork and none will be invented — see `docs/DECISOES-EM-ABERTO.md`. IPVA, licenciamento and seguro have server routes but no screens; the Cuidados tab says so rather than faking them.
 
@@ -80,6 +80,14 @@ What exists, and is the pattern to follow rather than re-invent:
 - Refresh is **single-flight** — `test/core/session/session_refresh_test.dart` fails if five simultaneous 401s produce more than one `/auth/refresh`.
 - A refresh that **never reached the server** (dropped signal, timeout, 5xx) must **keep** the stored token, because it was never spent. Only an answer from the server — a 4xx, or a 2xx we could not read — ends the session. See `test/core/session/session_offline_refresh_test.dart`.
 
+**Not every car has every part, and the app never decides which.** An electric vehicle gets no oil-change plan, a chain-driven car gets no timing belt, and neither is a card that is hidden or greyed out — `GET /maintenance-plans` simply does not return them. Five consequences, and each one is deliberate:
+
+- **`maintenancePlansProvider` is the personalised list.** No screen built on it can show an item the vehicle does not have. `maintenancePlansWithHiddenProvider` is the opt-in, and exactly two places use it: the profile screen, which offers to undo one, and `PlanCreateSheet`, which must not re-offer an item already ruled out.
+- **`strategy` chooses words, never state.** A tyre that has run its suggested distance is `vencido` on the wire and reads as "vale checar" on screen, because `condition_based` is not a deadline. `plan_copy.dart` is the one place that translation lives.
+- **"Não sei" is a write, not a skip.** `PlanUpdate.history` records it so the question stops coming back, and it deliberately creates no `maintenance_record` — a record asserts a date and a mileage that the person does not have. "Não sei" and "nunca foi feito" are different answers and must never read the same.
+- **The onboarding asks nothing the server did not write.** `calibrar_questions.dart` used to hold a list of technical slugs and a `switch` writing a pt-BR question for each — which is precisely how every car, including the ones with no engine, ended up being asked about its timing belt. Both the wording and the ranking now arrive on the plan (`history_question`, `history_priority`). **Do not put a slug back in that file.**
+- **The profile is server-owned.** `lib/features/maintenance/domain/maintenance_profile.dart` renders questions the server wrote and posts back a value it offered. Which catalogue items an answer turns on and off is never expressed here.
+
 **The rule that shapes every screen:** the app does not compute domain state. `status`, `due_on`, `due_at_km`, `remaining_days`, `remaining_km`, `warranty_until` all arrive computed by the server. The only logic here is presentation. Every `DateTime.now()` left in `lib/features` is a date-picker bound, never a comparison that decides a status — keep it that way. `.cursor/rules/meu-auto.mdc` carries the full list; `docs/API.md` is the contract map.
 
 **Secrets and logging.** `LoggingInterceptor` is added to Dio **only under `kDebugMode`**, and even then it redacts the `Authorization` header and any `password`, `access_token`, `refresh_token` or `token` key, at any depth. `SessionTokens.toString` does not print the tokens. Tests assert all of this — do not "improve" the logger by printing the raw body.
@@ -103,11 +111,17 @@ What exists, and is the pattern to follow rather than re-invent:
 
 **Paginated lists extend `PagedFamilyController`** (`lib/core/application`). A subclass writes `fetchPage` and nothing else; the cursor is private and never leaves it, because the contract says the cursor is opaque. Failing to load page four must never wipe pages one to three — that behaviour is covered by tests and is the reason the class exists. The scroll listener that triggers the next page is `shouldLoadMore`, one function with one threshold — three screens each had their own copy of it.
 
+**Money and mileage are typed through a mask, never as raw integers.** `AppMoneyField` and `AppKmField` (`lib/shared/widgets/app_number_field.dart`) write `R$ 420,00` and `98.450` into the field as the digits arrive; `centsFromMoneyField` and `kmFromField` read the integer back out. The field used to say "digite em centavos" and take `42000` — someone typing `420` recorded R$ 4,20 and never found out. Do not add a numeric field for money or distance that skips them, and do not parse one with a bare `int.tryParse`: the text has separators in it now.
+
 **Three things exist once because they existed three or four times first.** Reach for them instead of writing a fourth copy:
 
 - `newClientId()` (`lib/core/domain/client_id.dart`) — the UUIDv7 a POST sends so a retry is not a second row. Repositories still take an injectable `newId` and default to this.
 - `pickPastDate()` (`lib/shared/widgets/app_date_picker.dart`) — every "when did this happen" field. **The future is not selectable**, because the server rejects it and offering a day that comes back as a 422 is worse than not offering it.
 - `shouldLoadMore()` (`lib/core/application/load_more_scroll.dart`) — the prefetch threshold for paginated lists.
+- `confirmAction()` (`lib/shared/widgets/app_confirm.dart`) — the confirmation dialog, which seven screens had each written out. The confirm button says the verb, never "Confirmar", and `destructive: true` is the only thing that paints it red. The odometer rollback dialog stays separate: it renders server-supplied detail and has its own rules.
+- `AppDateField` (`lib/shared/widgets/app_date_picker.dart`) — the "when did this happen" field. It is a form field, not a text row with a button beside it.
+
+**`AppEmptyState` and `AppErrorState` scroll, and that is load-bearing.** They wrap `AppCenteredScroll`, which uses `AlwaysScrollableScrollPhysics` even when the content fits, because `RefreshIndicator` needs a scrollable child — without it, pull-to-refresh silently did nothing on the empty and error screens. `AppCenteredScroll` skips its own scroll view when it is handed an unbounded height, since that means an ancestor already scrolls.
 
 **`ApiPaths` is the app's declared API surface, not a copy of the contract.** A route the app does not call does not get a builder there — `test/contract/openapi_paths_test.dart` reads that file and checks every path against the backend's `openapi.yaml`, so a builder nobody calls widens what is being asserted for nothing. Obligations and seguros are the current example: real routes on the server, deliberately absent here.
 

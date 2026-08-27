@@ -6,6 +6,7 @@ import 'package:meu_auto/features/auth/domain/auth_status.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
 class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
@@ -13,7 +14,6 @@ class SplashScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    final theme = Theme.of(context);
 
     if (auth.hasError) {
       return AppScaffold(
@@ -23,7 +23,7 @@ class SplashScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Meu Auto', style: theme.textTheme.headlineMedium),
+                const AppWordmark(),
                 const SizedBox(height: AppSpacing.s24),
                 AppErrorState.fromError(
                   error: auth.error!,
@@ -47,7 +47,7 @@ class SplashScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Meu Auto', style: theme.textTheme.headlineMedium),
+                  const AppWordmark(),
                   const SizedBox(height: AppSpacing.s24),
                   AppErrorState.fromError(
                     error: vehicles.error!,
@@ -79,11 +79,10 @@ class _AppName extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Meu Auto', style: theme.textTheme.headlineMedium),
+        const AppWordmark(size: AppWordmarkSize.large),
         if (showSpinner) ...[
           const SizedBox(height: AppSpacing.s24),
           const CircularProgressIndicator(),

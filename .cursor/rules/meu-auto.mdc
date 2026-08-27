@@ -19,7 +19,11 @@ alwaysApply: true
 ## A regra que mais importa
 O APP NÃO CALCULA ESTADO DE DOMÍNIO.
 O backend já devolve pronto: `status`, `due_on`, `due_at_km`, `remaining_days`, `remaining_km`,
-`warranty_until`, `warranty_until_km`, `severity`.
+`warranty_until`, `warranty_until_km`, `severity`, `strategy`, `history_status`.
+
+**Aplicabilidade também é do servidor.** Se um item se aplica ao veículo, quais perguntas
+ainda faltam e o que cada resposta decide: nada disso é expresso no app. Um item que o carro
+não tem simplesmente não vem na lista de planos — não é card escondido nem desabilitado.
 Não reimplemente aritmética de data, de intervalo, de vencimento ou de garantia em Dart.
 Se uma tela precisa de um número que a API não devolve, o certo é anotar em
 `docs/DECISOES-EM-ABERTO.md` — não calcular localmente.

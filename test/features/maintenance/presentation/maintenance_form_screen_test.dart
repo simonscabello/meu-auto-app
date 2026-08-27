@@ -11,8 +11,10 @@ import 'package:meu_auto/core/session/token_storage.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record_draft.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_form_screen.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 
 void main() {
   late _Adapter adapter;
@@ -58,6 +60,56 @@ void main() {
     expect(adapter.postedBodies.last['mileage_km'], 48320);
     expect(adapter.postedBodies.last['items'], hasLength(1));
     expect(find.text('detalhe:$_fixedId'), findsOneWidget);
+  });
+
+  testWidgets('the amount the field shows is the amount that is sent', (
+    tester,
+  ) async {
+    await _open(tester, adapter, preselected: _oil);
+
+    // Typed the way a card machine takes it: digits fill from the cents up.
+    // What matters is that the person is never asked to think in cents — the
+    // field spells the amount out while they type, and the write agrees.
+    await tester.dragUntilVisible(
+      find.byType(AppMoneyField),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AppMoneyField),
+        matching: find.byType(TextField),
+      ),
+      '42000',
+    );
+    await tester.pump();
+    expect(find.text('R\$ 420,00'), findsOneWidget);
+
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.postedBodies, hasLength(1));
+    expect(adapter.postedBodies.single['total_cost_cents'], 42000);
+  });
+
+  testWidgets('the mileage is grouped as it is typed and sent as an int', (
+    tester,
+  ) async {
+    await _open(tester, adapter, preselected: _oil);
+
+    expect(find.text('48.320'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Quilometragem'),
+      '104500',
+    );
+    await tester.pump();
+    expect(find.text('104.500'), findsOneWidget);
+
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.postedBodies.single['mileage_km'], 104500);
   });
 }
 
@@ -112,6 +164,7 @@ const _oil = MaintenanceItem(
   kind: MaintenanceItemKind.maintenance,
   vehicleType: 'car',
   isCustom: false,
+  defaultStrategy: MaintenanceStrategy.periodic,
 );
 
 final class _Adapter implements HttpClientAdapter {

@@ -79,7 +79,12 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
   @override
   Widget build(BuildContext context) {
     final catalogue = ref.watch(maintenanceItemsProvider);
-    final plans = ref.watch(maintenancePlansProvider(widget.vehicleId));
+    // The list INCLUDING what the vehicle does not have. An item already ruled
+    // out must not reappear here as an ordinary choice — the place to bring one
+    // back is the profile screen, where the reason is visible.
+    final plans = ref.watch(
+      maintenancePlansWithHiddenProvider(widget.vehicleId),
+    );
     final height = MediaQuery.sizeOf(context).height * 0.85;
     final listed = plans.value;
     final taken = <String>{

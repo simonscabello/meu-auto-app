@@ -14,6 +14,7 @@ import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/auth/presentation/auth_password_field.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -93,13 +94,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // No app bar. This is the front door, and an app bar reading "Entrar"
+    // above a button reading "Entrar" is chrome saying the same word twice.
+    // Every screen reachable from here carries its own way back.
     return AppScaffold(
-      title: 'Entrar',
       body: AutofillGroup(
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.s24),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
+            const SizedBox(height: AppSpacing.s40),
+            const AppWordmark(size: AppWordmarkSize.large),
+            const SizedBox(height: AppSpacing.s8),
+            Text(
+              'Manutenção, quilometragem e prazos do seu carro.',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s40),
             if (_banner != null) AuthFormBanner(message: _banner!),
             TextField(
               controller: _emailController,

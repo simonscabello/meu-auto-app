@@ -25,8 +25,10 @@ import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
@@ -77,12 +79,8 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
     _createId = widget.newId?.call() ?? newClientId();
     _occurredOn = CivilDate.todayLocal();
     _initialOccurredOn = _occurredOn;
-    _initialMileage = widget.currentMileageKm.toString();
-    _mileage = TextEditingController(text: _initialMileage)
-      ..selection = TextSelection(
-        baseOffset: 0,
-        extentOffset: _initialMileage.length,
-      );
+    _mileage = kmController(widget.currentMileageKm);
+    _initialMileage = _mileage.text;
     final preselected = widget.preselectedItem;
     if (preselected != null) {
       _items = [preselected];
@@ -160,7 +158,7 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
   }
 
   Future<void> _submit() async {
-    final mileage = int.tryParse(_mileage.text.trim());
+    final mileage = kmFromField(_mileage.text);
     if (mileage == null) {
       setState(() {
         _fieldErrors = {'mileage_km': 'Informe a quilometragem.'};
@@ -243,13 +241,15 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
   }
 
   Money? _moneyOf(TextEditingController controller) {
-    final cents = centsFromDigitField(controller.text);
+    final cents = centsFromMoneyField(controller.text);
     if (cents == null) return null;
     return Money.fromCents(cents);
   }
 
+  /// Reads the digits, so the masked kilometre field and the plain month
+  /// field are both understood by the same helper.
   int? _positiveInt(String raw) {
-    final value = int.tryParse(raw.trim());
+    final value = kmFromField(raw);
     if (value == null || value <= 0) return null;
     return value;
   }
@@ -260,25 +260,15 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
     setState(() => _occurredOn = picked);
   }
 
-  Future<bool> _confirmDiscard() async {
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Descartar este registro?'),
-        content: const Text('O que você preencheu será perdido.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Continuar editando'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Descartar'),
-          ),
-        ],
-      ),
+  Future<bool> _confirmDiscard() {
+    return confirmAction(
+      context,
+      title: 'Descartar este registro?',
+      message: 'O que você preencheu será perdido.',
+      cancelLabel: 'Continuar editando',
+      confirmLabel: 'Descartar',
+      destructive: true,
     );
-    return discard ?? false;
   }
 
   @override
@@ -289,8 +279,6 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
     });
 
     final canSave = _items.isNotEmpty;
-    final isToday = _occurredOn == CivilDate.todayLocal();
-    final totalHint = _moneyOf(_cost);
 
     return PopScope(
       canPop: !_submitting && !_isDirty,
@@ -339,39 +327,18 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                   const SizedBox(height: AppSpacing.s24),
                   const AppSectionHeader(title: 'Quando'),
                   const SizedBox(height: AppSpacing.s8),
-                  Row(
-                    children: [
-                      const Icon(Icons.event_outlined, size: 20),
-                      const SizedBox(width: AppSpacing.s8),
-                      Expanded(
-                        child: Text(
-                          isToday ? 'Hoje' : formatCivilDateLong(_occurredOn),
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _submitting ? null : _pickDate,
-                        child: const Text('Mudar data'),
-                      ),
-                    ],
+                  AppDateField(
+                    value: _occurredOn,
+                    onPick: _pickDate,
+                    enabled: !_submitting,
+                    errorText: _fieldErrors['occurred_on'],
                   ),
-                  const SizedBox(height: AppSpacing.s8),
-                  TextField(
+                  const SizedBox(height: AppSpacing.s12),
+                  AppKmField(
                     controller: _mileage,
                     enabled: !_submitting,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.next,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(7),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: 'Quilometragem',
-                      suffixText: 'km',
-                      helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
-                      errorText: _fieldErrors['mileage_km'],
-                      errorMaxLines: 3,
-                    ),
+                    helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
+                    errorText: _fieldErrors['mileage_km'],
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -402,24 +369,11 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.s12),
-                  TextField(
+                  AppMoneyField(
                     controller: _cost,
+                    label: 'Valor total',
                     enabled: !_submitting,
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.next,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(9),
-                    ],
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'Valor total',
-                      helperText: totalHint == null
-                          ? 'Digite em centavos: 42000 vira R\$ 420,00'
-                          : totalHint.format(),
-                      errorText: _fieldErrors['total_cost_cents'],
-                      errorMaxLines: 3,
-                    ),
+                    errorText: _fieldErrors['total_cost_cents'],
                   ),
                   const SizedBox(height: AppSpacing.s12),
                   TextField(
@@ -635,20 +589,11 @@ class _ItemDetails extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s8),
-          TextField(
+          AppMoneyField(
             controller: controllers.cost,
+            label: 'Valor deste item',
             enabled: enabled,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.next,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(9),
-            ],
-            decoration: InputDecoration(
-              labelText: 'Valor da linha',
-              helperText: 'Em centavos',
-              errorText: itemFieldError(fieldErrors, index, 'cost_cents'),
-            ),
+            errorText: itemFieldError(fieldErrors, index, 'cost_cents'),
           ),
           const SizedBox(height: AppSpacing.s8),
           TextField(
@@ -666,19 +611,12 @@ class _ItemDetails extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s8),
-          TextField(
+          AppKmField(
             controller: controllers.warrantyKm,
+            label: 'Garantia em km',
             enabled: enabled,
-            keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(7),
-            ],
-            decoration: InputDecoration(
-              labelText: 'Garantia em km',
-              errorText: itemFieldError(fieldErrors, index, 'warranty_km'),
-            ),
+            errorText: itemFieldError(fieldErrors, index, 'warranty_km'),
           ),
         ],
       ),

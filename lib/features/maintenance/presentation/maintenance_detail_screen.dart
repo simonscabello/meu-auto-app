@@ -17,6 +17,7 @@ import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
@@ -66,33 +67,19 @@ class _MaintenanceDetailScreenState
   }
 
   Future<void> _confirmRetraction(MaintenanceRecord record) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Retratar esta manutenção?'),
-        content: const Text(
+    final confirmed = await confirmAction(
+      context,
+      title: 'Retratar esta manutenção?',
+      message:
           'Ela sai do histórico do carro.\n\n'
           'A quilometragem que você registrou junto com ela também é removida, '
           'e os itens envolvidos voltam a contar a partir do registro anterior '
           '— o que pode mudar quando eles vencem.\n\n'
           'Não dá para desfazer.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            child: const Text('Retratar'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Retratar',
+      destructive: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() => _retracting = true);
     final messenger = ScaffoldMessenger.of(context);
@@ -114,7 +101,7 @@ class _MaintenanceDetailScreenState
     } on ApiFailure catch (failure) {
       if (!mounted) return;
       setState(() => _retracting = false);
-      showAppSnackBar(messenger, message: failure.message);
+      showAppErrorSnackBar(messenger, message: failure.message);
     }
   }
 }

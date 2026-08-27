@@ -23,6 +23,7 @@ void main() {
       expect(item.defaultIntervalMonths, 12);
       expect(item.defaultIntervalDays, isNull);
       expect(item.isCustom, isFalse);
+      expect(item.defaultStrategy, MaintenanceStrategy.periodic);
     });
 
     test('parses when every optional interval is null', () {
@@ -68,6 +69,10 @@ void main() {
       expect(plan.dueAtKm, 108200);
       expect(plan.dueOn, const CivilDate(2026, 9, 10));
       expect(plan.lastOccurredOn, const CivilDate(2025, 8, 10));
+      expect(plan.strategy, MaintenanceStrategy.periodic);
+      expect(plan.historyStatus, MaintenanceHistoryStatus.notAsked);
+      expect(plan.historyQuestion, 'Quando foi a última troca de óleo?');
+      expect(plan.historyPriority, 100);
     });
 
     test('parses when every optional is null', () {
@@ -83,6 +88,35 @@ void main() {
       expect(plan.lastOccurredOn, isNull);
       expect(plan.lastMileageKm, isNull);
       expect(plan.status, MaintenanceStatus.semPeriodicidade);
+      expect(plan.strategy, MaintenanceStrategy.noSchedule);
+      expect(plan.notes, isNull);
+      expect(plan.historyQuestion, isNull);
+      expect(plan.historyPriority, 0);
+    });
+
+    // A shipped app must survive a server that starts sending a strategy or a
+    // history state it has never heard of. Falling back is the easy path here
+    // and throwing is impossible, on purpose.
+    test('unknown strategy and history status fall back without throwing', () {
+      final plan = MaintenancePlan.fromJson({
+        ...complete,
+        'strategy': 'seasonal',
+        'history_status': 'partially_known',
+      });
+
+      expect(plan.strategy, MaintenanceStrategy.desconhecido);
+      expect(plan.historyStatus, MaintenanceHistoryStatus.desconhecido);
+    });
+
+    test('an item the vehicle does not have parses as such', () {
+      final plan = MaintenancePlan.fromJson({
+        ...complete,
+        'status': 'nao_se_aplica',
+        'strategy': 'not_applicable',
+      });
+
+      expect(plan.status, MaintenanceStatus.naoSeAplica);
+      expect(plan.strategy, MaintenanceStrategy.notApplicable);
     });
 
     test('unknown status, origin and kind fall back without throwing', () {

@@ -3,12 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 class PlanIntervalSheet extends ConsumerStatefulWidget {
@@ -56,10 +58,10 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
   void initState() {
     super.initState();
     final plan = widget.plan;
-    _km = TextEditingController(text: _digits(plan.intervalKm));
+    _km = TextEditingController(text: _kmDigits(plan.intervalKm));
     _months = TextEditingController(text: _digits(plan.intervalMonths));
     _days = TextEditingController(text: _digits(plan.intervalDays));
-    _alertKm = TextEditingController(text: plan.alertKm.toString());
+    _alertKm = TextEditingController(text: formatKmNumber(plan.alertKm));
     _alertDays = TextEditingController(text: plan.alertDays.toString());
   }
 
@@ -147,7 +149,7 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
             ),
             const SizedBox(height: AppSpacing.s16),
             if (_banner != null) AuthFormBanner(message: _banner!),
-            _numberField(
+            _kmField(
               controller: _km,
               label: 'A cada quantos km',
               fieldKey: 'interval_km',
@@ -168,7 +170,7 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
               style: theme.textTheme.titleSmall,
             ),
             const SizedBox(height: AppSpacing.s8),
-            _numberField(
+            _kmField(
               controller: _alertKm,
               label: 'Quilômetros',
               fieldKey: 'alert_km',
@@ -187,6 +189,24 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Kilometres, masked like every other kilometre the app shows. Months and
+  /// days stay plain: a two-digit number has no thousands to group.
+  Widget _kmField({
+    required TextEditingController controller,
+    required String label,
+    required String fieldKey,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s12),
+      child: AppKmField(
+        controller: controller,
+        label: label,
+        enabled: !_submitting,
+        errorText: _fieldErrors[fieldKey],
       ),
     );
   }
@@ -222,18 +242,17 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
 
 String _digits(int? value) => value == null ? '' : value.toString();
 
+String _kmDigits(int? value) => value == null ? '' : formatKmNumber(value);
+
+/// Reads the digits, so a masked `10.000` and a plain `10000` both parse.
 int? _parsePositive(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return null;
-  final parsed = int.tryParse(trimmed);
+  final parsed = kmFromField(raw);
   if (parsed == null || parsed < 1) return null;
   return parsed;
 }
 
 int? _parseNonNegative(String raw) {
-  final trimmed = raw.trim();
-  if (trimmed.isEmpty) return null;
-  final parsed = int.tryParse(trimmed);
+  final parsed = kmFromField(raw);
   if (parsed == null || parsed < 0) return null;
   return parsed;
 }

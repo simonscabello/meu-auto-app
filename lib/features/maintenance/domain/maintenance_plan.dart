@@ -17,6 +17,13 @@ enum MaintenanceStatus {
   emDia,
   semBaseline,
   semPeriodicidade,
+
+  /// The vehicle does not have this component.
+  ///
+  /// It arrives only when a request asks for it — the plan list a screen reads
+  /// leaves these out entirely. That is the point: a car that does not use a
+  /// timing belt shows no timing belt card, disabled or otherwise.
+  naoSeAplica,
   desconhecido;
 
   static MaintenanceStatus fromWire(String? raw) =>
@@ -29,7 +36,66 @@ enum MaintenanceStatus {
     MaintenanceStatus.emDia => 'em_dia',
     MaintenanceStatus.semBaseline => 'sem_baseline',
     MaintenanceStatus.semPeriodicidade => 'sem_periodicidade',
+    MaintenanceStatus.naoSeAplica => 'nao_se_aplica',
     MaintenanceStatus.desconhecido => '',
+  };
+}
+
+/// How an item is maintained on this vehicle.
+///
+/// The server decides this, always. The app reads it to choose words — a tyre
+/// that has run 50.000 km is worth checking, not "vencido" — and never to
+/// decide whether something applies.
+enum MaintenanceStrategy {
+  /// Replace every X km or Y months.
+  periodic,
+
+  /// Look at it during a service. There may be no replacement at all.
+  inspection,
+
+  /// Replace when worn. An interval here is a horizon, not a deadline.
+  conditionBased,
+
+  /// The component exists and has no periodic rule.
+  noSchedule,
+
+  /// The vehicle does not have the component.
+  notApplicable,
+
+  desconhecido;
+
+  static MaintenanceStrategy fromWire(String? raw) =>
+      parseEnum(raw, MaintenanceStrategy.values, fallback: desconhecido);
+
+  String get wire => switch (this) {
+    MaintenanceStrategy.periodic => 'periodic',
+    MaintenanceStrategy.inspection => 'inspection',
+    MaintenanceStrategy.conditionBased => 'condition_based',
+    MaintenanceStrategy.noSchedule => 'no_schedule',
+    MaintenanceStrategy.notApplicable => 'not_applicable',
+    MaintenanceStrategy.desconhecido => '',
+  };
+}
+
+/// What the owner said about the past, when there is no record.
+///
+/// `unknown` and `never` are different answers and the interface must keep them
+/// apart: "não lembro" is a gap in memory, "nunca foi feito" is a fact about
+/// the car. Neither creates a service record.
+enum MaintenanceHistoryStatus {
+  notAsked,
+  unknown,
+  never,
+  desconhecido;
+
+  static MaintenanceHistoryStatus fromWire(String? raw) =>
+      parseEnum(raw, MaintenanceHistoryStatus.values, fallback: desconhecido);
+
+  String get wire => switch (this) {
+    MaintenanceHistoryStatus.notAsked => 'not_asked',
+    MaintenanceHistoryStatus.unknown => 'unknown',
+    MaintenanceHistoryStatus.never => 'never',
+    MaintenanceHistoryStatus.desconhecido => '',
   };
 }
 
@@ -44,6 +110,9 @@ final class MaintenancePlanSummary {
     required this.alertKm,
     required this.alertDays,
     required this.origin,
+    required this.strategy,
+    required this.historyStatus,
+    this.notes,
   });
 
   final String id;
@@ -54,6 +123,9 @@ final class MaintenancePlanSummary {
   final int alertKm;
   final int alertDays;
   final MaintenancePlanOrigin origin;
+  final MaintenanceStrategy strategy;
+  final MaintenanceHistoryStatus historyStatus;
+  final String? notes;
 
   factory MaintenancePlanSummary.fromJson(Map<String, dynamic> json) {
     return MaintenancePlanSummary(
@@ -65,6 +137,11 @@ final class MaintenancePlanSummary {
       alertKm: json['alert_km'] as int,
       alertDays: json['alert_days'] as int,
       origin: MaintenancePlanOrigin.fromWire(json['origin'] as String?),
+      strategy: MaintenanceStrategy.fromWire(json['strategy'] as String?),
+      historyStatus: MaintenanceHistoryStatus.fromWire(
+        json['history_status'] as String?,
+      ),
+      notes: json['notes'] as String?,
     );
   }
 }
@@ -84,6 +161,11 @@ final class MaintenancePlan {
     required this.alertKm,
     required this.alertDays,
     required this.origin,
+    required this.strategy,
+    required this.historyStatus,
+    this.notes,
+    this.historyQuestion,
+    this.historyPriority = 0,
     required this.status,
     this.dueAtKm,
     this.dueOn,
@@ -104,6 +186,20 @@ final class MaintenancePlan {
   final int alertKm;
   final int alertDays;
   final MaintenancePlanOrigin origin;
+  final MaintenanceStrategy strategy;
+  final MaintenanceHistoryStatus historyStatus;
+  final String? notes;
+
+  /// The pt-BR question to ask when this item has no baseline, written by the
+  /// server. It is on the wire so the app does not carry a map from technical
+  /// slug to question — which is how every car ended up being asked about a
+  /// timing belt.
+  final String? historyQuestion;
+
+  /// How much the question matters, highest first. Presentation ordering that
+  /// belongs to the catalogue rather than to a list of slugs inside the app.
+  final int historyPriority;
+
   final MaintenanceStatus status;
   final int? dueAtKm;
   final CivilDate? dueOn;
@@ -121,6 +217,7 @@ final class MaintenancePlan {
       kind: itemKind,
       vehicleType: 'car',
       isCustom: false,
+      defaultStrategy: strategy,
     );
   }
 
@@ -137,6 +234,13 @@ final class MaintenancePlan {
       alertKm: json['alert_km'] as int,
       alertDays: json['alert_days'] as int,
       origin: MaintenancePlanOrigin.fromWire(json['origin'] as String?),
+      strategy: MaintenanceStrategy.fromWire(json['strategy'] as String?),
+      historyStatus: MaintenanceHistoryStatus.fromWire(
+        json['history_status'] as String?,
+      ),
+      notes: json['notes'] as String?,
+      historyQuestion: json['history_question'] as String?,
+      historyPriority: json['history_priority'] as int? ?? 0,
       status: MaintenanceStatus.fromWire(json['status'] as String?),
       dueAtKm: json['due_at_km'] as int?,
       dueOn: CivilDate.tryParse(json['due_on'] as String?),

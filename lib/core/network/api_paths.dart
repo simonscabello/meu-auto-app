@@ -52,6 +52,14 @@ abstract final class ApiPaths {
 
   static String maintenancePlan(String id) => '/maintenance-plans/$id';
 
+  /// What the vehicle needs and what is still unknown about it. The app reads
+  /// it and posts answers back; it never decides applicability itself.
+  static String vehicleMaintenanceProfile(String id) =>
+      '/vehicles/$id/maintenance-profile';
+
+  static String vehicleMaintenanceProfileAnswers(String id) =>
+      '/vehicles/$id/maintenance-profile/answers';
+
   static String vehicleMaintenanceRecords(String id) =>
       '/vehicles/$id/maintenance-records';
 

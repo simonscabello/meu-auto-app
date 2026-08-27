@@ -16,6 +16,7 @@ import 'package:meu_auto/features/costs/presentation/costs_screen.dart';
 import 'package:meu_auto/features/home/presentation/home_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/cuidados_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/plan_detail_screen.dart';
+import 'package:meu_auto/features/maintenance/presentation/vehicle_profile_screen.dart';
 import 'package:meu_auto/features/profile/presentation/delete_account_screen.dart';
 import 'package:meu_auto/features/profile/presentation/profile_screen.dart';
 import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
@@ -116,6 +117,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         // screen exists, the Cuidados tab is the only place prazos appear.
         redirect: (context, state) => AppRoutes.care,
         builder: (context, state) => const SizedBox.shrink(),
+      ),
+      GoRoute(
+        path: AppRoutes.vehicleProfile,
+        builder: (context, state) => const VehicleProfileScreen(),
       ),
       GoRoute(
         path: '/planos/:planId',
