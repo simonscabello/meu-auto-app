@@ -53,7 +53,7 @@ These are conventions, not laws from the user — say so if you want to change o
 
 **The MVP is feature-complete and audited four times.** Against the local API the app signs in and registers, manages vehicles and switches between them, shows the dashboard and its alerts, records and corrects mileage, keeps maintenance plans and service records, tracks IPVA, licenciamento and seguro, shows a unified timeline and a costs view, runs the `calibrar` onboarding, and lets someone edit their profile or delete the account. Vehicle registration picks brand, model and year from the FIPE catalogue instead of asking for four free-text fields.
 
-**What is not done, and why:** there is no app icon and no custom splash, because there is no artwork and none will be invented — see `docs/DECISOES-EM-ABERTO.md`.
+**Visual identity** lives in [`docs/IDENTIDADE-VISUAL.md`](./docs/IDENTIDADE-VISUAL.md). The four PNGs in `assets/icon/` are processed art, not sketches: do not resize, recolour, or “optimize” the alpha. Regenerating native resources is two commands, recorded there.
 
 What exists, and is the pattern to follow rather than re-invent:
 

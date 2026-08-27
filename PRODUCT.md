@@ -87,11 +87,11 @@ Explicitly undecided — record, do not invent:
 
 ## Brand Commitments
 
-The name **Meu Auto** is the only established brand fact. There is no logo, wordmark, palette, typeface, tone-of-voice document or existing visual identity — nothing has been designed or built yet. Future work is free to establish these, and must not treat any of them as pre-existing.
+The name **Meu Auto** and the instrument-dial mark (night cluster, pointer resolving into a check) are the established brand facts. Palette, assets and the measures that must not change are in `docs/IDENTIDADE-VISUAL.md`. There is no separate typeface or tone-of-voice document. Do not invent a second mark.
 
 ## Evidence on Hand
 
-**None.** Both repositories are empty. There are no customers, testimonials, case studies, benchmarks, screenshots, press mentions, pricing, real user data or brand assets. Nothing about traction, user counts, partnerships, or third-party data sources has been established.
+**None of the commercial kind.** There are no customers, testimonials, case studies, benchmarks, screenshots, press mentions, pricing or real user data. Nothing about traction, user counts, partnerships, or third-party data sources has been established. The visual identity (icon, splash, palette) is in `docs/IDENTIDADE-VISUAL.md` and must not be reinvented.
 
 Future work must not fabricate any of these. Where a surface needs proof or content, it must be requested from the user or clearly marked as placeholder.
 

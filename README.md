@@ -69,12 +69,6 @@ de assinatura está em [`docs/RODANDO.md`](./docs/RODANDO.md), assim como o
 | [`docs/PADROES.md`](./docs/PADROES.md) | A forma de uma feature — as quatro camadas, `fromWire`, `ApiFormErrors`, o que invalidar depois de escrever. Leia antes de acrescentar tela. |
 | [`docs/RODANDO.md`](./docs/RODANDO.md) | Como rodar, como buildar, como assinar, o que depende de Mac. |
 | [`docs/DECISOES-EM-ABERTO.md`](./docs/DECISOES-EM-ABERTO.md) | O que ficou pendente, o que decidir e quem decide — incluindo o que precisa ir para o repositório do backend. |
+| [`docs/IDENTIDADE-VISUAL.md`](./docs/IDENTIDADE-VISUAL.md) | Símbolo, paleta e os quatro assets de ícone e splash. Não reinventar. |
 | [`CLAUDE.md`](./CLAUDE.md) | Arquitetura estabelecida e as armadilhas que já morderam. |
 | [`PRODUCT.md`](./PRODUCT.md) | Produto. Não re-derive isso do código. |
-
-## O que ainda não existe
-
-Ícone e splash próprios: **não há arte**. O app usa o ícone padrão do Flutter até
-que exista um logo — inventar um é explicitamente proibido
-(`CLAUDE.md`, "Things not to invent"). IPVA, licenciamento e seguro têm rotas no
-servidor mas ainda não têm tela; a aba Cuidados diz isso em vez de fingir.

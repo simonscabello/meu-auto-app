@@ -59,28 +59,11 @@ O que fica registrado da decisão, porque volta a ser pergunta se alguém mexer:
 
 ## Bloqueando o app
 
-### Ícone e splash — falta arte, e nada será inventado
+### ~~Ícone e splash — falta arte~~ — RESOLVIDO
 
-**Este é o único item que impede o app de ir para a loja.**
+A arte chegou em 27/08/2026. Os quatro PNGs estão em `assets/icon/`, os geradores no `pubspec.yaml`, os recursos nativos commitados. O registro — conceito, paleta, medidas travadas, como regenerar — é `docs/IDENTIDADE-VISUAL.md`.
 
-O `flutter_launcher_icons` e o `flutter_native_splash` não foram adicionados, e é de propósito: sem uma imagem de origem eles não têm o que gerar. O app usa hoje o ícone padrão do Flutter e a splash padrão.
-
-Inventar um logo é explicitamente proibido — `CLAUDE.md`, "Things not to invent", e `PRODUCT.md` registra que não existem ativos de marca. Gerar um "provisório" seria pior do que não ter: vira o ícone que ninguém troca.
-
-**O que decidir, e quem:** o dono do produto precisa fornecer **um PNG quadrado de 1024×1024, sem transparência nas bordas, com margem de segurança para o recorte circular do Android**. Com esse arquivo em `assets/`, o resto é mecânico:
-
-```yaml
-dev_dependencies:
-  flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.6
-```
-
-```bash
-dart run flutter_launcher_icons
-dart run flutter_native_splash:create
-```
-
-A cor da splash sai do tema (`AppColors`), não é escolha nova. **Sem a arte, nada disso deve ser rodado.**
+Não inventar variação. Se um PNG parecer errado, parar e relatar; não reprocessar.
 
 ### ~~IPVA, licenciamento e seguro não têm tela~~ — RESOLVIDO
 
