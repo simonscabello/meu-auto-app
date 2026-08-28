@@ -7,19 +7,22 @@ import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
+import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento_copy.dart';
-import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
+import 'package:meu_auto/features/timeline/presentation/add_record_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
+import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
 
 /// Histórico tab: the unified timeline of the selected vehicle.
 class TimelineScreen extends ConsumerWidget {
@@ -32,12 +35,17 @@ class TimelineScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Histórico',
+      actions: [
+        if (vehicle != null)
+          AppIconButton(
+            label: 'Adicionar registro',
+            icon: Icons.add,
+            onPressed: () => AddRecordSheet.show(context),
+          ),
+      ],
       onRefresh: vehicle == null ? null : () => _refresh(ref, vehicle.id),
       body: selected.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 5, itemHeight: 88),
-        ),
+        loading: () => const _TimelineSkeleton(),
         error: (error, _) => AppErrorState.fromError(
           error: error,
           onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
@@ -94,13 +102,9 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(timelineProvider(widget.vehicleId));
-    final vehicle = ref.watch(selectedVehicleProvider).value;
 
     return history.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.all(AppSpacing.s16),
-        child: AppSkeletonList(count: 5, itemHeight: 88),
-      ),
+      loading: () => const _TimelineSkeleton(),
       error: (error, _) => AppErrorState.fromError(
         error: error,
         onRetry: () => ref.invalidate(timelineProvider(widget.vehicleId)),
@@ -109,14 +113,7 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
         state: state,
         scroll: _scroll,
         onOpen: (entry) => _open(entry),
-        onRegisterMaintenance: () => context.push(AppRoutes.maintenanceNew),
-        onRegisterOdometer: vehicle == null
-            ? null
-            : () => OdometerSheet.show(
-                context,
-                vehicleId: vehicle.id,
-                currentMileageKm: vehicle.currentMileageKm,
-              ),
+        onAddRecord: () => AddRecordSheet.show(context),
         onRetryPage: () =>
             ref.read(timelineProvider(widget.vehicleId).notifier).loadMore(),
       ),
@@ -130,37 +127,46 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   }
 }
 
-/// The timeline as pure presentation. Receives the loaded page and never
-/// touches a provider — grouping, fallback titles and which route to open
-/// are decisions this widget (and [routeForTimelineEntry]) own.
+/// The timeline as pure presentation.
+///
+/// History is a sequence, so it is drawn as one: a rail down the left with a
+/// node per event, grouped under the day it happened. It used to be a stack
+/// of bordered cards, which said nothing about order and made twenty entries
+/// look like twenty unrelated objects.
+///
+/// Three things the shape has to deliver, and each is a layout decision:
+///
+///  * **Dates found at a glance** — the day header pins to the top while its
+///    events scroll under it, so the reader always knows which day they are
+///    looking at.
+///  * **Mileage and money legible as a column** — both are set in tabular
+///    figures, right-aligned, so the numbers line up down the page.
+///  * **Kinds told apart** — a small icon per event, and the type as the
+///    subtitle when the server did not send one.
 class TimelineContent extends StatelessWidget {
   const TimelineContent({
     super.key,
     required this.state,
     this.scroll,
     this.onOpen,
-    this.onRegisterMaintenance,
-    this.onRegisterOdometer,
+    this.onAddRecord,
     this.onRetryPage,
   });
 
   final PagedState<TimelineEntry> state;
   final ScrollController? scroll;
   final ValueChanged<TimelineEntry>? onOpen;
-  final VoidCallback? onRegisterMaintenance;
-  final VoidCallback? onRegisterOdometer;
+  final VoidCallback? onAddRecord;
   final VoidCallback? onRetryPage;
 
   @override
   Widget build(BuildContext context) {
     if (state.items.isEmpty) {
-      return _EmptyHistory(
-        onRegisterMaintenance: onRegisterMaintenance,
-        onRegisterOdometer: onRegisterOdometer,
-      );
+      return _EmptyHistory(onAddRecord: onAddRecord);
     }
 
     final days = groupTimelineByDate(state.items);
+    final scheme = Theme.of(context).colorScheme;
 
     return CustomScrollView(
       controller: scroll,
@@ -168,27 +174,57 @@ class TimelineContent extends StatelessWidget {
         for (final day in days) ...[
           SliverPersistentHeader(
             pinned: true,
-            delegate: _MonthHeaderDelegate(label: day.label),
+            delegate: _DayHeaderDelegate(
+              label: day.label,
+              year: day.year,
+              weekday: day.weekday,
+            ),
           ),
-          SliverList.builder(
-            itemCount: day.entries.length,
-            itemBuilder: (context, index) {
-              final entry = day.entries[index];
-              final canOpen =
-                  onOpen != null && routeForTimelineEntry(entry) != null;
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.s16,
-                  0,
-                  AppSpacing.s16,
-                  AppSpacing.s8,
+          // One surface per day rather than tiles straight on the page. The
+          // rail still carries the order inside the day; the surface is what
+          // says where the day ends — and it is the same bounded group every
+          // other list in the app now sits in.
+          //
+          // A box adapter, not a SliverList: a day holds a handful of events,
+          // and the laziness that a sliver list would keep is not worth a
+          // decoration that cannot wrap one.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.s16,
+                0,
+                AppSpacing.s16,
+                AppSpacing.s24,
+              ),
+              child: Container(
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: groupSurfaceColor(scheme),
+                  borderRadius: AppRadius.borderM,
                 ),
-                child: _EntryTile(
-                  entry: entry,
-                  onTap: canOpen ? () => onOpen!(entry) : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s8,
+                    vertical: AppSpacing.s4,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < day.entries.length; i++)
+                        _EntryTile(
+                          entry: day.entries[i],
+                          isLast: i == day.entries.length - 1,
+                          onTap:
+                              onOpen != null &&
+                                  routeForTimelineEntry(day.entries[i]) != null
+                              ? () => onOpen!(day.entries[i])
+                              : null,
+                        ),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ],
         SliverToBoxAdapter(
@@ -200,9 +236,24 @@ class TimelineContent extends StatelessWidget {
 }
 
 final class TimelineDateGroup {
-  const TimelineDateGroup({required this.label, required this.entries});
+  const TimelineDateGroup({
+    required this.label,
+    required this.year,
+    required this.weekday,
+    required this.entries,
+  });
 
   final String label;
+
+  /// Short and lower case. A day of the month is a lookup; a weekday is a
+  /// memory.
+  final String weekday;
+
+  /// Shown beside the day, quietly. A history that goes back three years is
+  /// unreadable without it, and it is the wrong thing to make anyone scroll
+  /// to work out.
+  final int year;
+
   final List<TimelineEntry> entries;
 }
 
@@ -218,6 +269,8 @@ List<TimelineDateGroup> groupTimelineByDate(List<TimelineEntry> entries) {
       groups.add(
         TimelineDateGroup(
           label: formatCivilDayMonthShort(entry.occurredOn),
+          year: entry.occurredOn.year,
+          weekday: formatCivilWeekdayShort(entry.occurredOn),
           entries: <TimelineEntry>[],
         ),
       );
@@ -242,10 +295,9 @@ String? routeForTimelineEntry(TimelineEntry entry) {
 }
 
 class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory({this.onRegisterMaintenance, this.onRegisterOdometer});
+  const _EmptyHistory({this.onAddRecord});
 
-  final VoidCallback? onRegisterMaintenance;
-  final VoidCallback? onRegisterOdometer;
+  final VoidCallback? onAddRecord;
 
   @override
   Widget build(BuildContext context) {
@@ -270,31 +322,33 @@ class _EmptyHistory extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.s24),
-        AppButton(
-          label: 'Registrar manutenção',
-          onPressed: onRegisterMaintenance,
-        ),
-        const SizedBox(height: AppSpacing.s8),
-        AppButton(
-          label: 'Registrar quilometragem',
-          variant: AppButtonVariant.secondary,
-          onPressed: onRegisterOdometer,
-        ),
+        AppButton(label: 'Adicionar registro', onPressed: onAddRecord),
       ],
     );
   }
 }
 
-class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _MonthHeaderDelegate({required this.label});
+/// The pinned day header.
+///
+/// It carries the page background so the rows scrolling beneath it are hidden
+/// rather than showing through, and the rail is redrawn inside it so the line
+/// appears continuous across the join.
+class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _DayHeaderDelegate({
+    required this.label,
+    required this.year,
+    required this.weekday,
+  });
 
   final String label;
+  final int year;
+  final String weekday;
 
   @override
-  double get minExtent => 44;
+  double get minExtent => 46;
 
   @override
-  double get maxExtent => 44;
+  double get maxExtent => 46;
 
   @override
   Widget build(
@@ -305,79 +359,75 @@ class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
     final theme = Theme.of(context);
     return Container(
       color: theme.scaffoldBackgroundColor,
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-      child: Text(
-        label,
-        style: theme.textTheme.titleSmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
+      alignment: Alignment.bottomLeft,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s4,
+      ),
+      child: Text.rich(
+        TextSpan(
+          text: label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurface,
+            letterSpacing: 0.6,
+            fontFeatures: AppTypography.tabular,
+          ),
+          children: [
+            TextSpan(
+              text: ' $year · $weekday',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   @override
-  bool shouldRebuild(_MonthHeaderDelegate oldDelegate) =>
-      oldDelegate.label != label;
+  bool shouldRebuild(_DayHeaderDelegate oldDelegate) =>
+      oldDelegate.label != label ||
+      oldDelegate.year != year ||
+      oldDelegate.weekday != weekday;
 }
 
 class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry, this.onTap});
+  const _EntryTile({required this.entry, required this.isLast, this.onTap});
 
   final TimelineEntry entry;
+  final bool isLast;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final subtitle = _subtitleOf(entry);
     final amount = entry.amountCents;
     final showAmount = amount != null && amount.cents > 0;
     final mileage = entry.mileageKm;
 
-    return AppCard(
+    return AppTimelineTile(
+      title: titleOf(entry),
+      subtitle: _subtitleOf(entry),
+      icon: _iconFor(entry),
+      isLast: isLast,
       onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(_iconFor(entry), color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  titleOf(entry),
-                  style: theme.textTheme.titleSmall,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (subtitle != null && subtitle.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.s4),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (showAmount || mileage != null) ...[
-            const SizedBox(width: AppSpacing.s8),
-            Column(
+      trailing: (showAmount || mileage != null)
+          ? Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (showAmount)
                   Text(
                     amount.format(),
-                    style: theme.textTheme.titleSmall?.copyWith(
+                    style: theme.textTheme.bodyLarge?.copyWith(
                       fontFeatures: AppTypography.tabular,
                     ),
                   ),
-                if (mileage != null) ...[
-                  if (showAmount) const SizedBox(height: AppSpacing.s4),
+                if (mileage != null)
                   Text(
                     formatKm(mileage),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -385,24 +435,21 @@ class _EntryTile extends StatelessWidget {
                       fontFeatures: AppTypography.tabular,
                     ),
                   ),
-                ],
               ],
-            ),
-          ],
-        ],
-      ),
+            )
+          : null,
     );
   }
 }
 
 IconData _iconFor(TimelineEntry entry) {
-  if (entry.care == true) return Icons.checklist;
+  if (entry.care == true) return Icons.checklist_rtl;
   return switch (entry.kind) {
-    TimelineEntryKind.manutencao => Icons.build,
-    TimelineEntryKind.odometro => Icons.speed,
-    TimelineEntryKind.ipva => Icons.receipt_long,
-    TimelineEntryKind.licenciamento => Icons.description,
-    TimelineEntryKind.abastecimento => Icons.local_gas_station,
+    TimelineEntryKind.manutencao => Icons.build_outlined,
+    TimelineEntryKind.odometro => Icons.speed_outlined,
+    TimelineEntryKind.ipva => Icons.receipt_long_outlined,
+    TimelineEntryKind.licenciamento => Icons.description_outlined,
+    TimelineEntryKind.abastecimento => Icons.local_gas_station_outlined,
     TimelineEntryKind.desconhecido => Icons.history,
   };
 }
@@ -452,6 +499,32 @@ class _Footer extends StatelessWidget {
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    return const SizedBox(height: AppSpacing.s24);
+    return const SizedBox(height: AppSpacing.s32);
+  }
+}
+
+/// Mirrors the timeline: a day header, then a few nodes under it.
+class _TimelineSkeleton extends StatelessWidget {
+  const _TimelineSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
+      children: const [
+        AppSkeleton(width: 96, height: 14),
+        SizedBox(height: AppSpacing.s16),
+        AppSkeletonList(count: 3, itemHeight: 40),
+        SizedBox(height: AppSpacing.s32),
+        AppSkeleton(width: 96, height: 14),
+        SizedBox(height: AppSpacing.s16),
+        AppSkeletonList(count: 2, itemHeight: 40),
+      ],
+    );
   }
 }

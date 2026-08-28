@@ -83,6 +83,26 @@ String planStatusPhrase(MaintenancePlan plan) {
   );
 }
 
+/// The single line under a plan's name in the Cuidados list.
+///
+/// The list used to print six lines per item — status, "Tudo certo", "Última
+/// verificação", a long date, "Próxima", another long date — which made a
+/// screen of eighteen plans impossible to scan and buried the two that were
+/// actually late. The last-done date and the full next-due now live on the
+/// plan detail, one tap away, where there is room to read them.
+///
+/// The next check is appended only when the item is on track and has a date:
+/// on anything that needs attention, [planStatusPhrase] already says the
+/// urgent thing and a second clause competes with it.
+String planListSubtitle(MaintenancePlan plan) {
+  final phrase = planStatusPhrase(plan);
+  if (plan.status != MaintenanceStatus.emDia) return phrase;
+  final dueOn = plan.dueOn;
+  if (dueOn == null) return phrase;
+  final next = 'próxima em ${formatCivilDayMonthAbbrev(dueOn)}';
+  return phrase.isEmpty ? next : '$phrase · $next';
+}
+
 /// One line explaining how the item is looked after, for the plan detail.
 ///
 /// Returns null when the interval already says it — repeating "a cada 10.000 km"

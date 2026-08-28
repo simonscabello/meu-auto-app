@@ -13,7 +13,8 @@ import 'package:meu_auto/features/maintenance/application/maintenance_record_pro
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -60,11 +61,13 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen> {
 
     return AppScaffold(
       title: 'Manutenções',
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Registrar manutenção',
-        onPressed: () => context.push(AppRoutes.maintenanceNew),
-        child: const Icon(Icons.add),
-      ),
+      actions: [
+        AppIconButton(
+          label: 'Registrar manutenção',
+          icon: Icons.add,
+          onPressed: () => context.push(AppRoutes.maintenanceNew),
+        ),
+      ],
       body: records.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(AppSpacing.s16),
@@ -132,13 +135,19 @@ class _RecordList extends StatelessWidget {
             itemBuilder: (context, index) {
               final record = month.records[index];
               return Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.s16,
-                  0,
-                  AppSpacing.s16,
-                  AppSpacing.s8,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.s16,
                 ),
-                child: _RecordTile(record: record, onTap: () => onOpen(record)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (index > 0) const AppRowDivider(),
+                    _RecordTile(
+                      record: record,
+                      onTap: () => onOpen(record),
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -181,10 +190,10 @@ class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String label;
 
   @override
-  double get minExtent => 44;
+  double get minExtent => 46;
 
   @override
-  double get maxExtent => 44;
+  double get maxExtent => 46;
 
   @override
   Widget build(
@@ -195,12 +204,18 @@ class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
     final theme = Theme.of(context);
     return Container(
       color: theme.scaffoldBackgroundColor,
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+      alignment: Alignment.bottomLeft,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s4,
+      ),
       child: Text(
         label,
-        style: theme.textTheme.titleSmall?.copyWith(
+        style: theme.textTheme.labelLarge?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
+          letterSpacing: 0.4,
         ),
       ),
     );
@@ -222,8 +237,9 @@ class _RecordTile extends StatelessWidget {
     final theme = Theme.of(context);
     final showCost = record.totalCostCents.cents > 0;
 
-    return AppCard(
+    return AppListRowShell(
       onTap: onTap,
+      semanticLabel: '${record.itemsSummary}. ${_recordWhen(record)}',
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -231,6 +247,7 @@ class _RecordTile extends StatelessWidget {
             maintenanceIconFor(
               record.items.isEmpty ? '' : record.items.first.itemSlug,
             ),
+            size: 22,
             color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: AppSpacing.s12),
@@ -240,11 +257,11 @@ class _RecordTile extends StatelessWidget {
               children: [
                 Text(
                   record.itemsSummary,
-                  style: theme.textTheme.titleSmall,
+                  style: theme.textTheme.bodyLarge,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: AppSpacing.s4),
+                const SizedBox(height: 2),
                 Text(
                   _recordWhen(record),
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -262,7 +279,7 @@ class _RecordTile extends StatelessWidget {
             const SizedBox(width: AppSpacing.s8),
             Text(
               record.totalCostCents.format(),
-              style: theme.textTheme.titleSmall?.copyWith(
+              style: theme.textTheme.bodyLarge?.copyWith(
                 fontFeatures: AppTypography.tabular,
               ),
             ),

@@ -12,13 +12,15 @@ import 'package:meu_auto/features/maintenance/application/maintenance_profile_pr
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
+import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
+import 'package:meu_auto/features/maintenance/presentation/plan_create_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -53,7 +55,9 @@ class VehicleProfileView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(maintenanceProfileProvider(vehicleId));
-    final hidden = ref.watch(maintenancePlansWithHiddenProvider(vehicleId));
+    final plans = _splitPlans(
+      ref.watch(maintenancePlansWithHiddenProvider(vehicleId)),
+    );
 
     return profile.when(
       loading: () => const Padding(
@@ -66,27 +70,42 @@ class VehicleProfileView extends ConsumerWidget {
       ),
       data: (data) => VehicleProfileContent(
         profile: data,
-        notApplicable: _notApplicableOf(hidden),
+        inUse: plans.inUse,
+        notApplicable: plans.notApplicable,
         onAnswer: (question, answer) =>
             unawaited(_answer(context, ref, vehicleId, question, answer)),
         onRestore: (plan) => unawaited(_restore(context, ref, vehicleId, plan)),
         onFixFuel: () => context.push(AppRoutes.vehicleEdit(vehicleId)),
+        onPlanTap: (plan) => context.push(AppRoutes.plan(plan.id)),
+        onAddPlan: () => PlanCreateSheet.show(context, vehicleId: vehicleId),
       ),
     );
   }
 
-  List<MaintenancePlan> _notApplicableOf(
-    AsyncValue<List<MaintenancePlan>> plans,
-  ) {
-    // valueOrNull, not value: an AsyncError rethrows from `value`, and this
-    // list is the secondary half of the screen. Losing it must not take the
-    // questions — the actionable half — down with it.
+  /// Splits the one list that carries both halves of this screen.
+  ///
+  /// `maintenancePlansWithHiddenProvider` is the only provider that returns
+  /// the items the vehicle does not use, so it already contains the items it
+  /// does. Watching the personalised list as well would be a second request
+  /// for a subset of what is already on the screen.
+  ///
+  /// valueOrNull, not value: an AsyncError rethrows from `value`, and these
+  /// lists are the descriptive half of the screen. Losing them must not take
+  /// the questions — the actionable half — down too.
+  ({List<MaintenancePlan> inUse, List<MaintenancePlan> notApplicable})
+  _splitPlans(AsyncValue<List<MaintenancePlan>> plans) {
     final list = plans.valueOrNull;
-    if (list == null) return const [];
-    return [
-      for (final plan in list)
-        if (plan.status == MaintenanceStatus.naoSeAplica) plan,
-    ];
+    if (list == null) return (inUse: const [], notApplicable: const []);
+    return (
+      inUse: [
+        for (final plan in list)
+          if (plan.status != MaintenanceStatus.naoSeAplica) plan,
+      ],
+      notApplicable: [
+        for (final plan in list)
+          if (plan.status == MaintenanceStatus.naoSeAplica) plan,
+      ],
+    );
   }
 
   Future<void> _answer(
@@ -144,149 +163,183 @@ class VehicleProfileView extends ConsumerWidget {
 }
 
 /// The profile as pure presentation. No providers, so the copy is testable.
+///
+/// The screen is named "O que o seu carro tem", and for a while it did not
+/// answer that: with the fuel known and no question open it rendered one grey
+/// sentence saying there was nothing to do, which reads as a screen that
+/// failed to load. What was missing is the obvious half — **the list of items
+/// this car actually uses**. That list is the whole reason someone opens
+/// this screen: to check whether the app has the right idea of their car.
+///
+/// So it descends in that order: what is still unknown and can be answered,
+/// what the car uses, what it does not.
 class VehicleProfileContent extends StatelessWidget {
   const VehicleProfileContent({
     super.key,
     required this.profile,
+    required this.inUse,
     required this.notApplicable,
     this.onAnswer,
     this.onRestore,
     this.onFixFuel,
+    this.onPlanTap,
+    this.onAddPlan,
   });
 
   final MaintenanceProfile profile;
+
+  /// Every item this vehicle is tracked for, whatever its due state. Ordered
+  /// by the server.
+  final List<MaintenancePlan> inUse;
+
   final List<MaintenancePlan> notApplicable;
   final void Function(String question, String answer)? onAnswer;
   final ValueChanged<MaintenancePlan>? onRestore;
   final VoidCallback? onFixFuel;
+  final ValueChanged<MaintenancePlan>? onPlanTap;
+  final VoidCallback? onAddPlan;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
       children: [
-        if (profile.status == MaintenanceProfileStatus.unknown)
-          AppCard(
-            child: Text(
-              'Ainda não temos um plano para este carro. '
-              'Você pode adicionar o que quiser acompanhar em Cuidados.',
-              style: theme.textTheme.bodyLarge,
-            ),
+        if (profile.status == MaintenanceProfileStatus.unknown) ...[
+          Text(
+            'Ainda não temos um plano para este carro. '
+            'Você escolhe o que quer acompanhar.',
+            style: theme.textTheme.bodyLarge,
           ),
+          const SizedBox(height: appGroupGap),
+        ],
 
         // The one gap that blocks everything about the engine. It is not a
         // profile question, because the answer lives on the vehicle itself.
         if (!profile.powertrainKnown) ...[
-          const SizedBox(height: AppSpacing.s8),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Qual o combustível do seu carro?',
-                  style: theme.textTheme.titleSmall,
+          AppGroup(
+            children: [
+              AppListRowShell(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Qual o combustível do seu carro?',
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: AppSpacing.s4),
+                    Text(
+                      'É o que diz o que o seu carro tem e o que ele não tem. '
+                      'Sem essa resposta a gente não chuta.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: AppButton(
+                        label: 'Informar',
+                        variant: AppButtonVariant.secondary,
+                        onPressed: onFixFuel,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.s4),
-                Text(
-                  'É o que diz o que o seu carro tem e o que ele não tem. '
-                  'Sem essa resposta a gente não chuta.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.s12),
-                AppButton(
-                  label: 'Informar',
-                  variant: AppButtonVariant.secondary,
-                  onPressed: onFixFuel,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.s8),
+          const SizedBox(height: appGroupGap),
         ],
 
         for (final question in profile.questions) ...[
-          const SizedBox(height: AppSpacing.s8),
           _QuestionCard(
             question: question,
             onAnswer: onAnswer == null
                 ? null
                 : (answer) => onAnswer!(question.id, answer),
           ),
+          const SizedBox(height: appGroupGap),
         ],
 
-        if (profile.questions.isEmpty && profile.powertrainKnown) ...[
-          const SizedBox(height: AppSpacing.s8),
-          AppCard(
-            child: Text(
-              'Não falta nada por aqui. Os cuidados que aparecem no app são os '
-              'que fazem sentido para este carro.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+        // The answer to the question in the title, and the reason to open
+        // this screen at all.
+        AppGroup(
+          title: 'Seu carro usa',
+          subtitle: inUse.isEmpty
+              ? null
+              : 'Estes são os itens que o Meu Auto acompanha neste carro.',
+          // No count beside the label: the list is right there and short
+          // enough to see. A number earns its place when it is the reason not
+          // to open something, which is never true of a group already open.
+          children: [
+            for (final plan in inUse)
+              AppListRow(
+                key: ValueKey(plan.id),
+                icon: maintenanceIconFor(plan.itemSlug),
+                title: plan.itemName,
+                subtitle: planListSubtitle(plan),
+                onTap: onPlanTap == null ? null : () => onPlanTap!(plan),
+                showChevron: onPlanTap != null,
               ),
-            ),
-          ),
-        ],
+            if (onAddPlan != null)
+              AppListRow(
+                icon: Icons.add,
+                title: 'Acompanhar outro item',
+                onTap: onAddPlan,
+                showChevron: true,
+              ),
+          ],
+        ),
 
         if (notApplicable.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s24),
-          const AppSectionHeader(title: 'Seu carro não usa'),
-          const SizedBox(height: AppSpacing.s4),
-          Text(
-            'Não mostramos esses itens em lugar nenhum. Se algum estiver '
-            'errado, é só trazer de volta.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          for (final plan in notApplicable) ...[
-            AppCard(
-              child: Row(
-                children: [
-                  Icon(
-                    maintenanceIconFor(plan.itemSlug),
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: AppSpacing.s12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(plan.itemName, style: theme.textTheme.titleSmall),
-                        if (plan.notes != null) ...[
-                          const SizedBox(height: AppSpacing.s4),
-                          Text(
-                            plan.notes!,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  AppButton(
+          const SizedBox(height: appGroupGap),
+          AppGroup(
+            title: 'Seu carro não usa',
+            subtitle:
+                'Não mostramos esses itens em lugar nenhum. Se algum estiver '
+                'errado, é só trazer de volta.',
+            children: [
+              for (final plan in notApplicable)
+                AppListRow(
+                  key: ValueKey(plan.id),
+                  icon: maintenanceIconFor(plan.itemSlug),
+                  title: plan.itemName,
+                  subtitle: plan.notes,
+                  trailing: AppButton(
                     label: 'Tem sim',
                     variant: AppButtonVariant.tertiary,
                     onPressed: onRestore == null
                         ? null
                         : () => onRestore!(plan),
                   ),
-                ],
-              ),
+                ),
+            ],
+          ),
+        ],
+
+        if (profile.questions.isEmpty && profile.powertrainKnown) ...[
+          const SizedBox(height: appGroupGap),
+          Text(
+            'Não falta nada por aqui. Os cuidados que aparecem no app são os '
+            'que fazem sentido para este carro.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: AppSpacing.s8),
-          ],
+          ),
         ],
       ],
     );
   }
 }
 
+/// One question the server wrote, with the answers it offered.
 class _QuestionCard extends StatelessWidget {
   const _QuestionCard({required this.question, this.onAnswer});
 
@@ -296,37 +349,42 @@ class _QuestionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(question.prompt, style: theme.textTheme.titleSmall),
-          if (question.help.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.s4),
-            Text(
-              question.help,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.s12),
-          // Every option the server offered, in the order it offered them —
-          // including "não sei", which is a real answer and is never buried.
-          for (final option in question.options) ...[
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: onAnswer == null
-                    ? null
-                    : () => onAnswer!(option.value),
-                child: Text(option.label),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s8),
-          ],
-        ],
-      ),
+    return AppGroup(
+      children: [
+        AppListRowShell(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(question.prompt, style: theme.textTheme.titleSmall),
+              if (question.help.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.s4),
+                Text(
+                  question.help,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.s12),
+              // Every option the server offered, in the order it offered them
+              // — including "não sei", which is a real answer and is never
+              // buried.
+              for (final option in question.options) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: onAnswer == null
+                        ? null
+                        : () => onAnswer!(option.value),
+                    child: Text(option.label),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.s8),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

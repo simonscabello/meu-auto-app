@@ -65,6 +65,12 @@ abstract final class ApiPaths {
 
   static String maintenanceRecord(String id) => '/maintenance-records/$id';
 
+  /// Appends lines to a record that already exists. POST only: the contract
+  /// has no way to replace or remove one, because removing a line means
+  /// deciding what happens to the clock it was keeping.
+  static String maintenanceRecordItems(String id) =>
+      '/maintenance-records/$id/items';
+
   static String vehicleObligations(String id) => '/vehicles/$id/obligations';
 
   static String obligation(String id) => '/obligations/$id';

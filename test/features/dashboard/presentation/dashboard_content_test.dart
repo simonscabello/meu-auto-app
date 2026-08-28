@@ -23,15 +23,17 @@ void main() {
       expect(find.text('1 item vence em breve'), findsOneWidget);
     });
 
-    testWidgets('one item without history conjugates in the singular', (
+    // The history prompt is Cuidados work. Início says how the car is, and a
+    // count of unanswered setup questions is not how the car is.
+    testWidgets('an unfilled history is silent here, whatever the count', (
       tester,
     ) async {
       await _pump(tester, _dashboard(needsBaseline: 1));
-      expect(
-        find.textContaining('1 item ainda não tem histórico'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('itens ainda não têm'), findsNothing);
+      expect(find.textContaining('ainda não tem histórico'), findsNothing);
+
+      await _pump(tester, _dashboard(needsBaseline: 12));
+      expect(find.textContaining('ainda não têm histórico'), findsNothing);
+      expect(find.text('Tudo em dia'), findsOneWidget);
     });
   });
 
@@ -215,17 +217,10 @@ void main() {
       expect(profilePromptOf(DashboardProfile.empty), isNull);
     });
 
-    test('counts what is open, in the plural when it should', () {
-      expect(
-        profilePromptOf(
-          const DashboardProfile(
-            status: MaintenanceProfileStatus.incomplete,
-            powertrainKnown: true,
-            openQuestions: 1,
-          ),
-        ),
-        'Falta 1 informação sobre o seu carro.',
-      );
+    // Open questions are answerable on "O que o seu carro tem" and nowhere
+    // else, so counting them on Início was a number with no button under it.
+    // Only the two gaps that stop the app working are still reported here.
+    test('says nothing about answerable questions it cannot ask', () {
       expect(
         profilePromptOf(
           const DashboardProfile(
@@ -234,7 +229,7 @@ void main() {
             openQuestions: 3,
           ),
         ),
-        'Faltam 3 informações sobre o seu carro.',
+        isNull,
       );
     });
 

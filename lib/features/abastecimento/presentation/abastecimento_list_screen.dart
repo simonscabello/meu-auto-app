@@ -15,9 +15,10 @@ import 'package:meu_auto/features/abastecimento/domain/volume.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -76,17 +77,21 @@ class _AbastecimentoListScreenState
 
     return AppScaffold(
       title: 'Abastecimentos',
-      floatingActionButton: canRegister
-          ? FloatingActionButton(
-              tooltip: abastecimentoRegisterLabel,
-              onPressed: _openForm,
-              child: const Icon(Icons.add),
-            )
-          : null,
+      // In the app bar, not a floating button. Every screen in the app now
+      // puts its one action in the same place and names it, so "add" stops
+      // being a symbol the reader has to decode per screen.
+      actions: [
+        if (canRegister)
+          AppIconButton(
+            label: abastecimentoRegisterLabel,
+            icon: Icons.add,
+            onPressed: _openForm,
+          ),
+      ],
       body: history.when(
         loading: () => const Padding(
           padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 5, itemHeight: 88),
+          child: AppSkeletonList(count: 5, itemHeight: 56),
         ),
         error: (error, _) => AppErrorState.fromError(
           error: error,
@@ -136,22 +141,37 @@ class AbastecimentoListContent extends StatelessWidget {
 
     return ListView.builder(
       controller: scroll,
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
       itemCount: state.items.length + 1,
       itemBuilder: (context, index) {
         if (index == state.items.length) {
           return _Footer(state: state, onRetry: onRetryPage);
         }
         final fill = state.items[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.s8),
-          child: _FillTile(fill: fill, onTap: () => onOpen?.call(fill)),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (index > 0) const AppRowDivider(),
+            _FillTile(fill: fill, onTap: () => onOpen?.call(fill)),
+          ],
         );
       },
     );
   }
 }
 
+/// One fill, as a row.
+///
+/// Built here rather than from `AppListRow` because this list has a genuine
+/// third line: when the server could not work out a consumption it says why,
+/// and that sentence is the content of the screen rather than metadata on it.
+/// A row that computed cleanly puts its km/L in the figures column instead,
+/// beside the amount, where the numbers line up down the page.
 class _FillTile extends StatelessWidget {
   const _FillTile({required this.fill, this.onTap});
 
@@ -161,42 +181,79 @@ class _FillTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AppCard(
-      onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final scheme = theme.colorScheme;
+    final kmPerLiter = consumptionValueText(fill.consumption);
+
+    final body = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(
+            Icons.local_gas_station_outlined,
+            size: 22,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  formatCivilDate(fill.occurredOn),
-                  style: theme.textTheme.titleSmall,
+              Text(
+                formatCivilDate(fill.occurredOn),
+                style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${abastecimentoFuelLabel(fill.fuel)} · '
+                '${litersTextFromVolumeMl(fill.volumeMl)} L',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
+              if (kmPerLiter == null) ...[
+                const SizedBox(height: AppSpacing.s4),
+                Text(
+                  consumptionPhrase(fill.consumption),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              fill.totalCostCents.format(),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontFeatures: AppTypography.tabular,
+              ),
+            ),
+            if (kmPerLiter != null)
               Text(
-                fill.totalCostCents.format(),
-                style: theme.textTheme.titleSmall?.copyWith(
+                consumptionPhrase(fill.consumption),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
                   fontFeatures: AppTypography.tabular,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s4),
-          Text(
-            '${abastecimentoFuelLabel(fill.fuel)} · '
-            '${litersTextFromVolumeMl(fill.volumeMl)} L',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          Text(
-            consumptionPhrase(fill.consumption),
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
+    );
+
+    return AppListRowShell(
+      onTap: onTap,
+      semanticLabel:
+          '${formatCivilDate(fill.occurredOn)}. '
+          '${abastecimentoFuelLabel(fill.fuel)}. '
+          '${fill.totalCostCents.format()}',
+      child: body,
     );
   }
 }

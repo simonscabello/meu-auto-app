@@ -45,8 +45,7 @@ void main() {
     expect(body['items'], [
       {'maintenance_item_id': _care.maintenanceItemId},
     ]);
-    expect(find.text('Registrado hoje'), findsOneWidget);
-    expect(find.text('Próxima verificação em 15 dias'), findsOneWidget);
+    expect(find.text('Registrado hoje · Próxima verificação em 15 dias'), findsOneWidget);
   });
 
   testWidgets('a 200 retry is success, same as 201', (tester) async {
@@ -56,7 +55,7 @@ void main() {
     await tester.tap(find.text('Feito'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Registrado hoje'), findsOneWidget);
+    expect(find.textContaining('Registrado hoje'), findsOneWidget);
     expect(find.textContaining('Sessão inválida'), findsNothing);
   });
 
@@ -99,7 +98,7 @@ void main() {
 
     expect(find.text('Não foi possível registrar.'), findsOneWidget);
     expect(find.text('Feito'), findsOneWidget);
-    expect(find.text('Registrado hoje'), findsNothing);
+    expect(find.textContaining('Registrado hoje'), findsNothing);
   });
 
   testWidgets('a successful write invalidates plans, dashboard and timeline', (

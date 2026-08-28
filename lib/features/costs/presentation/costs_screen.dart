@@ -7,7 +7,7 @@ import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/costs/application/costs_provider.dart';
 import 'package:meu_auto/features/costs/domain/costs_copy.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -90,7 +90,12 @@ class CostsContent extends StatelessWidget {
     final bars = costs.bars;
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
       children: [
         Wrap(
           spacing: AppSpacing.s8,
@@ -107,40 +112,36 @@ class CostsContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.s24),
-        AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Custo registrado',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s4),
-              Text(
-                costs.totalCents.format(),
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontFeatures: AppTypography.tabular,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s4),
-              Text(
-                window,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              if (empty) ...[
-                const SizedBox(height: AppSpacing.s12),
-                Text(
-                  emptyPeriodPhrase(costs.periodMonths),
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
-            ],
+        // The total is the screen, so it is set as the screen's own heading
+        // rather than boxed. A card here would put the one figure everything
+        // else is measured against on the same footing as the bars below it.
+        const AppSectionHeader(title: 'Custo registrado'),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            costs.totalCents.format(),
+            style: theme.textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: -1,
+              fontFeatures: AppTypography.tabular,
+            ),
           ),
         ),
+        const SizedBox(height: AppSpacing.s4),
+        Text(
+          window,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (empty) ...[
+          const SizedBox(height: AppSpacing.s12),
+          Text(
+            emptyPeriodPhrase(costs.periodMonths),
+            style: theme.textTheme.bodyMedium,
+          ),
+        ],
         const SizedBox(height: AppSpacing.s24),
         for (var i = 0; i < bars.length; i++) ...[
           if (i > 0) const SizedBox(height: AppSpacing.s16),

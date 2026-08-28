@@ -57,6 +57,9 @@ void main() {
     );
 
     expect(find.text('O histórico do seu carro começa aqui'), findsOneWidget);
-    expect(find.text('Registrar manutenção'), findsOneWidget);
+    // One action, named for what this screen adds. The empty state used to
+    // offer two of the seven entries from the old global "+" sheet, which
+    // made the first thing a new owner saw a choice rather than a next step.
+    expect(find.text('Adicionar registro'), findsOneWidget);
   });
 }

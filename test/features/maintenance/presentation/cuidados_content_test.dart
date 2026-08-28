@@ -327,11 +327,13 @@ void main() {
       ]);
 
       expect(find.text('Feito'), findsNothing);
-      expect(find.text('Tudo certo'), findsOneWidget);
-      expect(find.text('Última verificação'), findsOneWidget);
-      expect(find.text('15 de julho de 2026'), findsOneWidget);
-      expect(find.text('Próxima'), findsOneWidget);
-      expect(find.text('11 de setembro de 2026'), findsOneWidget);
+      // One line, not six. The row used to print the status, "Tudo certo",
+      // "Última verificação", a long date, "Próxima" and a second long date,
+      // which is unreadable eighteen times over and buried the two items
+      // that actually needed doing. The last-done date lives on the plan.
+      expect(find.text('Tudo certo · próxima em 11 set'), findsOneWidget);
+      expect(find.text('Última verificação'), findsNothing);
+      expect(find.text('15 de julho de 2026'), findsNothing);
     });
 
     testWidgets('just recorded shows today and the server remaining days', (
@@ -351,8 +353,7 @@ void main() {
         justRecordedIds: {'plan-calibrar_pneus'},
       );
 
-      expect(find.text('Registrado hoje'), findsOneWidget);
-      expect(find.text('Próxima verificação em 15 dias'), findsOneWidget);
+      expect(find.text('Registrado hoje · Próxima verificação em 15 dias'), findsOneWidget);
       expect(find.text('Feito'), findsNothing);
     });
 

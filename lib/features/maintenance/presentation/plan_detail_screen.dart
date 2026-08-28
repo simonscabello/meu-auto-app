@@ -7,6 +7,7 @@ import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
+import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
@@ -355,27 +356,18 @@ class PlanDetailContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.s24),
-        const AppSectionHeader(title: 'Última vez'),
-        const SizedBox(height: AppSpacing.s8),
-        AppCard(
+        // Three facts, each a label and a value. They used to be three cards
+        // holding one line of text apiece, which is the clearest case of a
+        // container that groups nothing: a box around a single sentence adds
+        // a border and takes away the relationship between the sentence and
+        // the word above it.
+        _PlanFact(
+          label: 'Última vez',
+          value: last ?? 'Informe a última vez para começarmos a contar',
           onTap: last == null ? onRegister : null,
-          child: Text(
-            last ?? 'Informe a última vez para começarmos a contar',
-            style: theme.textTheme.bodyLarge,
-          ),
         ),
-        if (next != null) ...[
-          const SizedBox(height: AppSpacing.s24),
-          const AppSectionHeader(title: 'Próxima'),
-          const SizedBox(height: AppSpacing.s8),
-          AppCard(child: Text(next, style: theme.textTheme.bodyLarge)),
-        ],
-        if (interval != null) ...[
-          const SizedBox(height: AppSpacing.s24),
-          const AppSectionHeader(title: 'Intervalo'),
-          const SizedBox(height: AppSpacing.s8),
-          AppCard(child: Text(interval, style: theme.textTheme.bodyLarge)),
-        ],
+        if (next != null) _PlanFact(label: 'Próxima', value: next),
+        if (interval != null) _PlanFact(label: 'Intervalo', value: interval),
         if (howItWorks != null) ...[
           const SizedBox(height: AppSpacing.s8),
           Text(
@@ -400,12 +392,10 @@ class PlanDetailContent extends StatelessWidget {
         if (historyLoading)
           const AppSkeleton(width: double.infinity, height: 72)
         else if (history.isEmpty)
-          AppCard(
-            child: Text(
-              'Ainda não há serviço deste item. O primeiro registro começa o histórico.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+          Text(
+            'Ainda não há serviço deste item. O primeiro registro começa o histórico.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           )
         else
@@ -517,6 +507,78 @@ class _HistoryTile extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// A label and its value, on a detail screen.
+///
+/// The shape a "what is this set to" fact takes everywhere in the app now:
+/// the label quiet and small above, the value in body type below, and no
+/// container at all. Tappable only when the value is a prompt rather than a
+/// fact — "informe a última vez" is somewhere to go, "15 de julho" is not.
+class _PlanFact extends StatelessWidget {
+  const _PlanFact({required this.label, required this.value, this.onTap});
+
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
+            letterSpacing: 0.4,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            Expanded(
+              child: Text(value, style: theme.textTheme.bodyLarge),
+            ),
+            if (onTap != null)
+              Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+          ],
+        ),
+      ],
+    );
+
+    if (onTap == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.s20),
+        child: body,
+      );
+    }
+
+    return Semantics(
+      button: true,
+      label: '$label. $value',
+      excludeSemantics: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.borderS,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: AppSpacing.minTapTarget,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.s20),
+              child: body,
+            ),
+          ),
+        ),
       ),
     );
   }

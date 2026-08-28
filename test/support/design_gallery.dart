@@ -18,6 +18,12 @@ import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_status_chip.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_segmented.dart';
+import 'package:meu_auto/shared/widgets/app_setting_row.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
+import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
 import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
 /// Catalogue of every design token and base widget, rendered on one page.
@@ -36,6 +42,7 @@ class DesignGallery extends StatefulWidget {
 class _DesignGalleryState extends State<DesignGallery> {
   bool _dark = false;
   bool _loadingButton = true;
+  int _segment = 2;
   final _money = TextEditingController(text: 'R\$ 420,00');
   late final TextEditingController _km = kmController(98450);
   final _liters = TextEditingController(text: '34,7');
@@ -179,6 +186,101 @@ class _DesignGalleryState extends State<DesignGallery> {
               title: 'Manutenção',
               actionLabel: 'Ver tudo',
               onAction: () {},
+            ),
+            const _SectionTitle('Linhas de lista'),
+            const AppListRow(
+              icon: Icons.oil_barrel,
+              title: 'Troca de óleo do motor',
+              subtitle: 'Em dia · próxima em 11 set',
+            ),
+            const AppRowDivider(),
+            AppListRow(
+              icon: Icons.settings,
+              title: 'Correia dentada',
+              subtitle: 'venceu há 40 dias · passou 1.200 km',
+              accent: statusColors(
+                AppStatus.vencido,
+                theme.brightness,
+              ).foreground,
+              onTap: () {},
+              showChevron: true,
+            ),
+            const AppRowDivider(),
+            AppListRow(
+              icon: Icons.tire_repair,
+              title: 'Calibrar os pneus',
+              subtitle: 'Está na hora de verificar.',
+              trailing: AppButton(label: 'Feito', onPressed: () {}),
+            ),
+            const _SectionTitle('Grupos'),
+            AppGroup(
+              title: 'Documentos e prazos',
+              footnote: 'Inclui IPVA, licenciamento e seguro',
+              children: [
+                AppListRow(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'IPVA 2026',
+                  subtitle: 'Pago em 12 fev',
+                  onTap: () {},
+                  showChevron: true,
+                ),
+                AppListRow(
+                  icon: Icons.description_outlined,
+                  title: 'Licenciamento 2026',
+                  subtitle: 'vence em 30 nov',
+                  onTap: () {},
+                  showChevron: true,
+                ),
+                AppListRow(
+                  icon: Icons.add,
+                  title: 'Registrar seguro',
+                  onTap: () {},
+                ),
+              ],
+            ),
+            const _SectionTitle('Linha do tempo'),
+            AppTimelineTile(
+              title: '138.798 km',
+              subtitle: 'Quilometragem registrada',
+              icon: Icons.speed_outlined,
+              onTap: () {},
+            ),
+            const AppTimelineTile(
+              title: 'Revisão',
+              subtitle: 'Bateria · discos de freio · filtros',
+              icon: Icons.build_outlined,
+              isLast: true,
+            ),
+            const _SectionTitle('Configurações'),
+            AppSettingRow(label: 'Nome', value: 'Simon Scabello', onTap: () {}),
+            const AppRowDivider(indent: 0),
+            const AppSettingRow(label: 'E-mail', value: 'simon@example.com'),
+            const AppRowDivider(indent: 0),
+            AppSettingRow(
+              label: 'Sair',
+              icon: Icons.logout,
+              destructive: true,
+              onTap: () {},
+            ),
+            const _SectionTitle('Segmentado'),
+            AppSegmented<int>(
+              value: _segment,
+              onChanged: (value) => setState(() => _segment = value),
+              options: const [
+                AppSegmentedOption(value: 0, label: 'Claro'),
+                AppSegmentedOption(value: 1, label: 'Escuro'),
+                AppSegmentedOption(value: 2, label: 'Sistema'),
+              ],
+            ),
+            const _SectionTitle('Superfícies'),
+            const AppSurface(
+              variant: AppSurfaceVariant.grouped,
+              child: Text('grouped'),
+            ),
+            const SizedBox(height: AppSpacing.s8),
+            const AppSurface(
+              variant: AppSurfaceVariant.raised,
+              child: Text('raised'),
             ),
             const _SectionTitle('Marca'),
             const Align(alignment: Alignment.centerLeft, child: AppWordmark()),

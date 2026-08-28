@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:meu_auto/core/router/quick_add_sheet.dart';
-import 'package:meu_auto/core/theme/app_spacing.dart';
 
+/// The four top-level destinations, split by where in time they sit.
+///
+/// Início is now, Cuidados is what is coming, Histórico is what happened, and
+/// Perfil is the account. That division is why four is enough: every screen
+/// in the app answers one of those questions, and a fifth tab would only be a
+/// second door into one of them.
+///
+/// There is no global add button. The one that used to sit in the middle of
+/// this bar opened a sheet of seven things, which made adding a two-step
+/// choice from a control that could not say what it would do; and it was
+/// present on screens where none of the seven was the obvious next move.
+/// Each screen now offers its own action, in its own words.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -12,57 +22,35 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      floatingActionButton: Semantics(
-        button: true,
-        label: 'Adicionar',
-        excludeSemantics: true,
-        child: FloatingActionButton(
-          tooltip: 'Adicionar',
-          onPressed: () => QuickAddSheet.show(context),
-          child: const Icon(Icons.add),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        padding: EdgeInsets.zero,
-        child: Row(
-          children: [
-            _NavItem(
-              index: 0,
-              currentIndex: navigationShell.currentIndex,
-              icon: Icons.home_outlined,
-              selectedIcon: Icons.home,
-              label: 'Início',
-              onTap: _goBranch,
-            ),
-            _NavItem(
-              index: 1,
-              currentIndex: navigationShell.currentIndex,
-              icon: Icons.build_outlined,
-              selectedIcon: Icons.build,
-              label: 'Cuidados',
-              onTap: _goBranch,
-            ),
-            const SizedBox(width: 72),
-            _NavItem(
-              index: 2,
-              currentIndex: navigationShell.currentIndex,
-              icon: Icons.history,
-              selectedIcon: Icons.history,
-              label: 'Histórico',
-              onTap: _goBranch,
-            ),
-            _NavItem(
-              index: 3,
-              currentIndex: navigationShell.currentIndex,
-              icon: Icons.person_outline,
-              selectedIcon: Icons.person,
-              label: 'Perfil',
-              onTap: _goBranch,
-            ),
-          ],
-        ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: navigationShell.currentIndex,
+        onDestinationSelected: _goBranch,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.speed_outlined),
+            selectedIcon: Icon(Icons.speed),
+            label: 'Início',
+            tooltip: '',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_available_outlined),
+            selectedIcon: Icon(Icons.event_available),
+            label: 'Cuidados',
+            tooltip: '',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history),
+            label: 'Histórico',
+            tooltip: '',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Perfil',
+            tooltip: '',
+          ),
+        ],
       ),
     );
   }
@@ -71,61 +59,6 @@ class AppShell extends StatelessWidget {
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.index,
-    required this.currentIndex,
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final int index;
-  final int currentIndex;
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-  final ValueChanged<int> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = index == currentIndex;
-    final scheme = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-    final color = selected ? scheme.primary : scheme.onSurfaceVariant;
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: label,
-        excludeSemantics: true,
-        child: InkWell(
-          onTap: () => onTap(index),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: AppSpacing.minTapTarget,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(selected ? selectedIcon : icon, color: color, size: 24),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    label,
-                    style: theme.textTheme.labelSmall?.copyWith(color: color),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

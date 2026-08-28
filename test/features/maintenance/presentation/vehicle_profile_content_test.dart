@@ -242,6 +242,55 @@ void main() {
     expect(find.text('Correia ou corrente?'), findsOneWidget);
     expect(find.text('Seu carro não usa'), findsNothing);
   });
+
+  // The screen is called "O que o seu carro tem". With the fuel known and no
+  // question open it used to render one grey sentence and nothing else, which
+  // reads as a screen that failed to load — on a screen whose entire job is to
+  // list what the car uses.
+  group('what the car uses', () {
+    testWidgets('lists the items the vehicle is tracked for', (tester) async {
+      await _pump(
+        tester,
+        _profile(status: MaintenanceProfileStatus.ready),
+        inUse: [
+          _inUsePlan(id: 'p1', slug: 'troca_oleo', name: 'Troca de óleo'),
+          _inUsePlan(id: 'p2', slug: 'pneus', name: 'Pneus'),
+        ],
+      );
+
+      expect(find.text('Seu carro usa'), findsOneWidget);
+      expect(find.text('Troca de óleo'), findsOneWidget);
+      expect(find.text('Pneus'), findsOneWidget);
+    });
+
+    testWidgets('a row opens the plan behind it', (tester) async {
+      final opened = <String>[];
+      await _pump(
+        tester,
+        _profile(status: MaintenanceProfileStatus.ready),
+        inUse: [_inUsePlan(id: 'p1', slug: 'pneus', name: 'Pneus')],
+        onPlanTap: (plan) => opened.add(plan.id),
+      );
+
+      await tester.tap(find.text('Pneus'));
+      expect(opened, ['p1']);
+    });
+
+    testWidgets('the two lists are named apart, never mixed', (tester) async {
+      await _pump(
+        tester,
+        _profile(status: MaintenanceProfileStatus.ready),
+        inUse: [_inUsePlan(id: 'p1', slug: 'pneus', name: 'Pneus')],
+        notApplicable: [_notApplicablePlan()],
+      );
+
+      expect(
+        tester.getTopLeft(find.text('Seu carro não usa')).dy,
+        greaterThan(tester.getTopLeft(find.text('Seu carro usa')).dy),
+      );
+      expect(find.text('Tem sim'), findsOneWidget);
+    });
+  });
 }
 
 const _vehicleId = '11111111-1111-7111-8111-111111111111';
@@ -265,6 +314,28 @@ MaintenanceProfile _profile({
   );
 }
 
+MaintenancePlan _inUsePlan({
+  required String id,
+  required String slug,
+  required String name,
+}) {
+  return MaintenancePlan(
+    id: id,
+    maintenanceItemId: 'item-$id',
+    itemSlug: slug,
+    itemName: name,
+    itemKind: MaintenanceItemKind.maintenance,
+    intervalKm: 10000,
+    intervalMonths: 12,
+    alertKm: 1000,
+    alertDays: 15,
+    origin: MaintenancePlanOrigin.suggested,
+    strategy: MaintenanceStrategy.periodic,
+    historyStatus: MaintenanceHistoryStatus.notAsked,
+    status: MaintenanceStatus.semBaseline,
+  );
+}
+
 MaintenancePlan _notApplicablePlan() {
   return const MaintenancePlan(
     id: 'plan-belt',
@@ -285,9 +356,11 @@ MaintenancePlan _notApplicablePlan() {
 Future<void> _pump(
   WidgetTester tester,
   MaintenanceProfile profile, {
+  List<MaintenancePlan> inUse = const [],
   List<MaintenancePlan> notApplicable = const [],
   void Function(String question, String answer)? onAnswer,
   ValueChanged<MaintenancePlan>? onRestore,
+  ValueChanged<MaintenancePlan>? onPlanTap,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -295,9 +368,11 @@ Future<void> _pump(
       home: Scaffold(
         body: VehicleProfileContent(
           profile: profile,
+          inUse: inUse,
           notApplicable: notApplicable,
           onAnswer: onAnswer,
           onRestore: onRestore,
+          onPlanTap: onPlanTap,
         ),
       ),
     ),

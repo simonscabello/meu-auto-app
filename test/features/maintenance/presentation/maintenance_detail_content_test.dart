@@ -148,6 +148,45 @@ void main() {
       });
     }
   });
+  // The case this exists for: a revisão registered with five items, and the
+  // brake fluid remembered afterwards. The only ways out used to be leaving
+  // the history wrong or retracting the record and typing all six again.
+  group('adding an item that was forgotten', () {
+    testWidgets('the way in is the last row of the group, and it fires', (
+      tester,
+    ) async {
+      var tapped = false;
+      await _pump(tester, _record(), onAddItem: () => tapped = true);
+
+      expect(find.text('Adicionar item que faltou'), findsOneWidget);
+      await tester.tap(find.text('Adicionar item que faltou'));
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('no row at all when the caller offers no way to add', (
+      tester,
+    ) async {
+      await _pump(tester, _record());
+      expect(find.text('Adicionar item que faltou'), findsNothing);
+    });
+
+    // Two writes in flight on one record is how a duplicate line gets in.
+    testWidgets('the row stops taking taps while the write is in flight', (
+      tester,
+    ) async {
+      var taps = 0;
+      await _pump(
+        tester,
+        _record(),
+        onAddItem: () => taps++,
+        addingItem: true,
+      );
+
+      await tester.tap(find.text('Adicionar item que faltou'));
+      expect(taps, 0);
+    });
+  });
+
 }
 
 Future<void> _pump(
@@ -155,13 +194,21 @@ Future<void> _pump(
   MaintenanceRecord record, {
   ThemeData? theme,
   double scale = 1.0,
+  VoidCallback? onAddItem,
+  bool addingItem = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: theme ?? AppTheme.light,
       home: MediaQuery(
         data: MediaQueryData(textScaler: TextScaler.linear(scale)),
-        child: Scaffold(body: MaintenanceDetailContent(record: record)),
+        child: Scaffold(
+          body: MaintenanceDetailContent(
+            record: record,
+            onAddItem: onAddItem,
+            addingItem: addingItem,
+          ),
+        ),
       ),
     ),
   );

@@ -61,7 +61,7 @@ StatusVisual statusColors(AppStatus status, Brightness brightness) {
     AppStatus.vencido => StatusVisual(
       foreground: dark ? const Color(0xFFFECBA1) : const Color(0xFF9A3412),
       background: dark ? const Color(0xFF3B1A0A) : const Color(0xFFFFF1E6),
-      icon: Icons.report,
+      icon: Icons.error,
       label: 'Vencido',
     ),
     AppStatus.venceEmBreve => StatusVisual(
@@ -79,7 +79,7 @@ StatusVisual statusColors(AppStatus status, Brightness brightness) {
     AppStatus.semBaseline => StatusVisual(
       foreground: dark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
       background: dark ? const Color(0xFF1E293B) : const Color(0xFFE8EEF4),
-      icon: Icons.info_outline,
+      icon: Icons.info,
       label: 'Sem registro',
     ),
     AppStatus.semPeriodicidade => StatusVisual(
@@ -94,7 +94,7 @@ StatusVisual statusColors(AppStatus status, Brightness brightness) {
     AppStatus.naoSeAplica => StatusVisual(
       foreground: dark ? const Color(0xFFC5D0D0) : const Color(0xFF3F4C4E),
       background: dark ? const Color(0xFF252A2A) : const Color(0xFFEEF0F1),
-      icon: Icons.remove_circle_outline,
+      icon: Icons.remove_circle,
       label: 'Não usa',
     ),
     AppStatus.pago => StatusVisual(

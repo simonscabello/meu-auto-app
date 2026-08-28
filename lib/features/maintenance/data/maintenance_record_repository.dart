@@ -71,6 +71,26 @@ final class MaintenanceRecordRepository {
     return MaintenanceRecord.fromJson(body);
   }
 
+  /// Appends lines to a record that already exists.
+  ///
+  /// The forgotten brake fluid on a revisão that was otherwise complete. It
+  /// touches nothing about the event — not the date, not the mileage, not the
+  /// total — so unlike [update] it cannot answer `odometer_rollback`: the
+  /// reading this record produced does not move.
+  ///
+  /// The whole record comes back, lines included, so the caller replaces what
+  /// it is showing instead of stitching a partial answer onto it.
+  Future<MaintenanceRecord> addItems(
+    String recordId,
+    List<MaintenanceRecordLineDraft> lines,
+  ) async {
+    final body = await api.post(
+      ApiPaths.maintenanceRecordItems(recordId),
+      body: {'items': [for (final line in lines) line.toJson()]},
+    );
+    return MaintenanceRecord.fromJson(body);
+  }
+
   /// Retracts the record.
   ///
   /// A logical delete on the server, and it undoes what the record caused: the

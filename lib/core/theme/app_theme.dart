@@ -38,16 +38,20 @@ abstract final class AppTheme {
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge,
       ),
-      cardTheme: CardThemeData(
+      // No border, and a fill one step off the page.
+      //
+      // The outline used to be on every card in the app, which meant every
+      // piece of information — an alert, a nudge, a total, a row of a list —
+      // arrived inside the same box, and a box that is around everything is
+      // around nothing. Separation now comes from fill, spacing and type, and
+      // a container is a decision rather than a default. Screens reach for
+      // `AppSurface`; this only keeps stock Material cards in step.
+      cardTheme: const CardThemeData(
         elevation: 0,
-        color: scheme.surface,
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.transparent,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.borderM,
-          side: BorderSide(color: scheme.outlineVariant),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderM),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -107,8 +111,20 @@ abstract final class AppTheme {
         side: BorderSide.none,
         labelStyle: textTheme.labelLarge,
       ),
+      listTileTheme: ListTileThemeData(
+        contentPadding: EdgeInsets.zero,
+        minVerticalPadding: AppSpacing.s12,
+        iconColor: scheme.onSurfaceVariant,
+        titleTextStyle: textTheme.bodyLarge,
+        subtitleTextStyle: textTheme.bodyMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+        ),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.borderS),
+      ),
+      // Hairline, and quieter than full-strength outlineVariant. A divider
+      // separates rows inside one group; it is not a frame around one.
       dividerTheme: DividerThemeData(
-        color: scheme.outlineVariant,
+        color: scheme.outlineVariant.withValues(alpha: 0.55),
         thickness: 1,
         space: 1,
       ),
@@ -132,37 +148,35 @@ abstract final class AppTheme {
         ),
         shape: shapeM,
       ),
+      // A flat bar with no indicator pill: selection is carried by the filled
+      // icon and the brand colour instead. The pill was the last piece of
+      // stock Material chrome on the app's most-seen surface, and next to a
+      // notched bar with a hole in the middle it made four destinations look
+      // like five.
       navigationBarTheme: NavigationBarThemeData(
-        elevation: 1,
-        height: 80,
+        elevation: 0,
+        height: 68,
         backgroundColor: scheme.surfaceContainer,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: scheme.primaryContainer,
+        indicatorColor: Colors.transparent,
+        overlayColor: WidgetStatePropertyAll(
+          scheme.primary.withValues(alpha: 0.08),
+        ),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
             size: 24,
-            color: selected
-                ? scheme.onPrimaryContainer
-                : scheme.onSurfaceVariant,
+            color: selected ? scheme.primary : scheme.onSurfaceVariant,
           );
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return textTheme.labelMedium?.copyWith(
-            color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           );
         }),
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        elevation: 1,
-        focusElevation: 1,
-        hoverElevation: 1,
-        highlightElevation: 1,
-        disabledElevation: 0,
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
       ),
       dialogTheme: DialogThemeData(
         elevation: 1,

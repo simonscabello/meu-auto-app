@@ -11,23 +11,45 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
+bool _never(String id) => false;
+
 /// Multi-select catalogue. Search, grouped by kind, already-chosen items
 /// marked, cap of 20, and a way out for anything the catalogue does not name.
 class ItemPickerSheet extends ConsumerStatefulWidget {
-  const ItemPickerSheet({super.key, required this.selected});
+  const ItemPickerSheet({
+    super.key,
+    required this.selected,
+    this.lockedItemIds = const {},
+    this.title = 'O que foi feito',
+  });
 
   final List<MaintenanceItem> selected;
+
+  /// Items that are already on the record being added to: shown ticked, and
+  /// not untickable. The picker cannot remove a line, so offering a tick that
+  /// looks like it would is worse than showing the truth.
+  final Set<String> lockedItemIds;
+
+  /// What this picker is for. The default is the record form; adding to a
+  /// record that already exists is a different question and says so.
+  final String title;
 
   static Future<List<MaintenanceItem>?> show(
     BuildContext context, {
     required List<MaintenanceItem> selected,
+    Set<String> lockedItemIds = const {},
+    String title = 'O que foi feito',
   }) {
     return showModalBottomSheet<List<MaintenanceItem>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       useSafeArea: true,
-      builder: (sheetContext) => ItemPickerSheet(selected: selected),
+      builder: (sheetContext) => ItemPickerSheet(
+        selected: selected,
+        lockedItemIds: lockedItemIds,
+        title: title,
+      ),
     );
   }
 
@@ -104,7 +126,7 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'O que foi feito',
+              widget.title,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: AppSpacing.s12),
@@ -147,7 +169,10 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
       data: (items) => _GroupedList(
         items: _filtered(items),
         isSelected: _isSelected,
-        atCap: _selected.length >= MaintenanceRecordDraft.maxItems,
+        isLocked: widget.lockedItemIds.contains,
+        atCap:
+            _selected.length + widget.lockedItemIds.length >=
+            MaintenanceRecordDraft.maxItems,
         onToggle: _toggle,
       ),
     );
@@ -169,10 +194,12 @@ class _GroupedList extends StatelessWidget {
     required this.isSelected,
     required this.atCap,
     required this.onToggle,
+    this.isLocked = _never,
   });
 
   final List<MaintenanceItem> items;
   final bool Function(String id) isSelected;
+  final bool Function(String id) isLocked;
   final bool atCap;
   final ValueChanged<MaintenanceItem> onToggle;
 
@@ -208,12 +235,14 @@ class _GroupedList extends StatelessWidget {
   }
 
   Widget _tile(MaintenanceItem item) {
-    final selected = isSelected(item.id);
+    final locked = isLocked(item.id);
+    final selected = locked || isSelected(item.id);
     return CheckboxListTile(
       value: selected,
-      onChanged: !selected && atCap ? null : (_) => onToggle(item),
+      onChanged: locked || (!selected && atCap) ? null : (_) => onToggle(item),
       secondary: Icon(maintenanceIconFor(item.slug)),
       title: Text(item.name),
+      subtitle: locked ? const Text('Já está neste registro') : null,
       controlAffinity: ListTileControlAffinity.trailing,
     );
   }

@@ -37,13 +37,18 @@ void main() {
     },
   );
 
-  testWidgets('needs_baseline alone produces the invite phrase', (
+  // Início reports on the car; it does not chase the owner for setup. A brand
+  // new vehicle has one of these per suggested plan, and putting eighteen of
+  // them where the verdict goes made a healthy car look like a broken one.
+  testWidgets('needs_baseline alone is not a state the verdict reports', (
     tester,
   ) async {
     await _pump(tester, _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 18));
 
-    expect(find.text('Falta informar o histórico'), findsOneWidget);
-    expect(find.text('Tudo em dia'), findsNothing);
+    expect(find.text('Tudo em dia'), findsOneWidget);
+    expect(find.text('Falta informar o histórico'), findsNothing);
+    expect(find.textContaining('ainda não têm histórico'), findsNothing);
+    expect(find.text('Configurar histórico'), findsNothing);
   });
 
   testWidgets('all-zero counts produce the on-track phrase', (tester) async {
@@ -53,19 +58,13 @@ void main() {
     expect(find.text('Falta informar o histórico'), findsNothing);
   });
 
-  testWidgets('setup card appears only when needs_baseline is above zero', (
+  testWidgets('the overdue verdict still wins over an empty history', (
     tester,
   ) async {
-    await _pump(tester, _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 18));
-    expect(
-      find.textContaining('18 itens ainda não têm histórico'),
-      findsOneWidget,
-    );
-    expect(find.text('Configurar'), findsOneWidget);
+    await _pump(tester, _dashboard(overdue: 2, dueSoon: 0, needsBaseline: 18));
 
-    await _pump(tester, _dashboard(overdue: 2, dueSoon: 0, needsBaseline: 0));
+    expect(find.text('2 itens precisam de atenção'), findsOneWidget);
     expect(find.textContaining('ainda não têm histórico'), findsNothing);
-    expect(find.text('Configurar'), findsNothing);
   });
 
   testWidgets('cost card says registered cost and lists included categories', (
@@ -108,7 +107,10 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Custo registrado · últimos 12 meses'));
+    // The figure, not the label: the label is the group's name and now sits
+    // outside the surface the row is in, the same as every other section
+    // header in the app.
+    await tester.tap(find.text('R\$ 1.540,00'));
     await tester.pump();
 
     expect(opened, isTrue);
@@ -176,6 +178,72 @@ void main() {
 
     expect(find.text('Tudo em dia'), findsOneWidget);
     expect(find.byType(AppErrorState), findsNothing);
+  });
+
+  // Registering a fill or a service is the most common reason to open the app,
+  // and it used to take a tab change and an app-bar icon to reach. These are
+  // named actions on the one screen where all of them are plausible — not the
+  // global "+" that was removed, which could not say what it would do.
+  group('quick actions', () {
+    testWidgets('names each action, and routes each to its own form', (
+      tester,
+    ) async {
+      final tapped = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: DashboardContent(
+              dashboard: _dashboard(),
+              refuelingSupported: true,
+              onRegisterAbastecimento: () => tapped.add('abastecer'),
+              onRegisterMaintenance: () => tapped.add('manutencao'),
+              onOdometerTap: () => tapped.add('km'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Abastecer'));
+      await tester.tap(find.text('Manutenção'));
+      await tester.tap(find.text('Km atual'));
+
+      expect(tapped, ['abastecer', 'manutencao', 'km']);
+    });
+
+    // Absent, not disabled: an electric car has nothing to fill, and a greyed
+    // control invites a tap that can never work.
+    testWidgets('a vehicle that does not refuel gets no Abastecer', (
+      tester,
+    ) async {
+      await _pump(tester, _dashboard());
+      expect(find.text('Abastecer'), findsNothing);
+      expect(find.text('Manutenção'), findsOneWidget);
+    });
+  });
+
+  // The reading and the verdict are one object: this odometer, on this car, is
+  // or is not fine. They were two floating elements with a gap between them.
+  group('vehicle panel', () {
+    testWidgets('the verdict is part of the panel and opens Cuidados', (
+      tester,
+    ) async {
+      var opened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: DashboardContent(
+              dashboard: _dashboard(overdue: 2),
+              onSeeAllAlerts: () => opened = true,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('2 itens precisam de atenção'));
+      expect(opened, isTrue);
+    });
   });
 
   test('an obligation alert opens the detail, not Cuidados', () {

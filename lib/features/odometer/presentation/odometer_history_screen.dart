@@ -13,7 +13,7 @@ import 'package:meu_auto/features/odometer/domain/odometer_reading.dart';
 import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
@@ -176,7 +176,12 @@ class _HistoryList extends StatelessWidget {
 
     return ListView.builder(
       controller: scroll,
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
       itemCount: rows.length + 1,
       itemBuilder: (context, index) {
         if (index == rows.length) {
@@ -191,19 +196,24 @@ class _HistoryList extends StatelessWidget {
             ),
             child: Text(
               label,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
+                letterSpacing: 0.4,
               ),
             ),
           ),
-          _ReadingRow(:final reading) => Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.s8),
-            child: _ReadingTile(
-              reading: reading,
-              deleting: deletingId == reading.id,
-              onDelete: onDelete,
-              onBlockedDelete: onBlockedDelete,
-            ),
+          _ReadingRow(:final reading) => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (index > 0 && rows[index - 1] is _ReadingRow)
+                const AppRowDivider(indent: 0),
+              _ReadingTile(
+                reading: reading,
+                deleting: deletingId == reading.id,
+                onDelete: onDelete,
+                onBlockedDelete: onBlockedDelete,
+              ),
+            ],
           ),
         };
       },
@@ -262,7 +272,11 @@ class _ReadingTile extends StatelessWidget {
     final origin = reading.source.originLabel;
     final canDelete = reading.source.isOwnEntry;
 
-    return AppCard(
+    final when = origin == null
+        ? formatCivilDate(reading.occurredOn)
+        : '${formatCivilDate(reading.occurredOn)} · $origin';
+
+    return AppListRowShell(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -272,26 +286,17 @@ class _ReadingTile extends StatelessWidget {
               children: [
                 Text(
                   formatKm(reading.mileageKm),
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontFeatures: AppTypography.tabular,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.s4),
+                const SizedBox(height: 2),
                 Text(
-                  formatCivilDate(reading.occurredOn),
+                  when,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                if (origin != null) ...[
-                  const SizedBox(height: AppSpacing.s4),
-                  Text(
-                    origin,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
                 if (reading.notes != null && reading.notes!.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.s4),
                   Text(reading.notes!, style: theme.textTheme.bodySmall),

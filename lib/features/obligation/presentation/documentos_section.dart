@@ -9,12 +9,10 @@ import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/domain/obligation_copy.dart';
 import 'package:meu_auto/features/obligation/domain/seguro.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_form_sheet.dart';
-import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
-import 'package:meu_auto/shared/widgets/app_status_chip.dart';
 
 class DocumentosSection extends ConsumerWidget {
   const DocumentosSection({super.key, required this.vehicleId});
@@ -33,9 +31,9 @@ class DocumentosSection extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AppSkeleton(width: 200, height: 24),
-            SizedBox(height: AppSpacing.s12),
-            AppSkeletonList(count: 3, itemHeight: 88),
+            AppSkeleton(width: 180, height: 14),
+            SizedBox(height: AppSpacing.s16),
+            AppSkeletonList(count: 3, itemHeight: 44),
           ],
         ),
       );
@@ -76,7 +74,23 @@ class DocumentosSection extends ConsumerWidget {
     );
   }
 }
-
+/// IPVA, licenciamento and seguro, at the foot of Cuidados.
+///
+/// Same shape as the plans above it — a quiet label, then its rows inside one
+/// surface — because it is the same kind of question: what is coming, and
+/// what have I not done yet. It used to be three blocks of cards, each ending
+/// in its own filled button, so a car with no documents registered showed
+/// three primary CTAs stacked and the screen had four things claiming to be
+/// the main action.
+///
+/// The way to add one is the last row of its own group, which reads as "and
+/// one more here" and cannot overflow the way a header button does when the
+/// label is "Registrar licenciamento" at a large text scale.
+///
+/// The three kinds are separate groups rather than one long list on purpose:
+/// IPVA, licenciamento and seguro have nothing to do with each other beyond
+/// arriving in the same envelope, and a row that says "Nenhum seguro
+/// registrado" has to sit under the word Seguro to mean anything.
 class DocumentosContent extends StatelessWidget {
   const DocumentosContent({
     super.key,
@@ -99,6 +113,7 @@ class DocumentosContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final ipva = obligationsOfKind(obligations, ObligationKind.ipva);
     final licenciamento = obligationsOfKind(
       obligations,
@@ -108,62 +123,66 @@ class DocumentosContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: AppSpacing.s8),
-        const AppSectionHeader(title: 'Documentos e prazos'),
-        const SizedBox(height: AppSpacing.s8),
-        _KindBlock(
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.s12),
+          child: Semantics(
+            header: true,
+            child: Text(
+              'Documentos e prazos',
+              style: theme.textTheme.titleMedium,
+            ),
+          ),
+        ),
+        _KindGroup(
           title: 'IPVA',
           emptyTitle: 'Nenhum IPVA registrado',
           emptyMessage: 'Registre o IPVA deste ano para acompanhar o prazo.',
           actionLabel: 'Registrar IPVA',
           onRegister: onRegisterIpva,
-          children: [
-            for (final obligation in ipva) ...[
-              _ObligationTile(
+          rows: [
+            for (final obligation in ipva)
+              _ObligationRow(
+                key: ValueKey(obligation.id),
                 obligation: obligation,
                 onTap: onObligationTap == null
                     ? null
                     : () => onObligationTap!(obligation),
               ),
-              const SizedBox(height: AppSpacing.s8),
-            ],
           ],
         ),
-        const SizedBox(height: AppSpacing.s8),
-        _KindBlock(
+        const SizedBox(height: appGroupGap),
+        _KindGroup(
           title: 'Licenciamento',
           emptyTitle: 'Nenhum licenciamento registrado',
           emptyMessage:
               'Registre o licenciamento deste ano para acompanhar o prazo.',
           actionLabel: 'Registrar licenciamento',
           onRegister: onRegisterLicenciamento,
-          children: [
-            for (final obligation in licenciamento) ...[
-              _ObligationTile(
+          rows: [
+            for (final obligation in licenciamento)
+              _ObligationRow(
+                key: ValueKey(obligation.id),
                 obligation: obligation,
                 onTap: onObligationTap == null
                     ? null
                     : () => onObligationTap!(obligation),
               ),
-              const SizedBox(height: AppSpacing.s8),
-            ],
           ],
         ),
-        const SizedBox(height: AppSpacing.s8),
-        _KindBlock(
+        const SizedBox(height: appGroupGap),
+        _KindGroup(
           title: 'Seguro',
           emptyTitle: 'Nenhum seguro registrado',
           emptyMessage: 'Registre a apólice para acompanhar a vigência.',
           actionLabel: 'Registrar seguro',
           onRegister: onRegisterSeguro,
-          children: [
-            for (final seguro in seguros) ...[
-              _SeguroTile(
+          rows: [
+            for (final seguro in seguros)
+              _SeguroRow(
+                key: ValueKey(seguro.id),
                 seguro: seguro,
                 onTap: onSeguroTap == null ? null : () => onSeguroTap!(seguro),
               ),
-              const SizedBox(height: AppSpacing.s8),
-            ],
           ],
         ),
       ],
@@ -171,13 +190,15 @@ class DocumentosContent extends StatelessWidget {
   }
 }
 
-class _KindBlock extends StatelessWidget {
-  const _KindBlock({
+/// One document kind: its label, and either its rows or the sentence saying
+/// there are none — always ending with the row that adds one.
+class _KindGroup extends StatelessWidget {
+  const _KindGroup({
     required this.title,
     required this.emptyTitle,
     required this.emptyMessage,
     required this.actionLabel,
-    required this.children,
+    required this.rows,
     this.onRegister,
   });
 
@@ -185,149 +206,89 @@ class _KindBlock extends StatelessWidget {
   final String emptyTitle;
   final String emptyMessage;
   final String actionLabel;
-  final List<Widget> children;
+  final List<Widget> rows;
   final VoidCallback? onRegister;
 
   @override
   Widget build(BuildContext context) {
-    if (children.isEmpty) {
-      return _KindEmpty(
-        title: emptyTitle,
-        message: emptyMessage,
-        actionLabel: actionLabel,
-        onAction: onRegister,
-      );
-    }
+    final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppGroup(
+      title: title,
       children: [
-        AppSectionHeader(
-          title: title,
-          actionLabel: onRegister == null ? null : 'Registrar',
-          onAction: onRegister,
-        ),
-        const SizedBox(height: AppSpacing.s8),
-        ...children,
+        if (rows.isEmpty)
+          AppListRowShell(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(emptyTitle, style: theme.textTheme.bodyLarge),
+                const SizedBox(height: 2),
+                Text(
+                  emptyMessage,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...rows,
+        if (onRegister != null)
+          AppListRow(icon: Icons.add, title: actionLabel, onTap: onRegister),
       ],
     );
   }
 }
 
-class _KindEmpty extends StatelessWidget {
-  const _KindEmpty({
-    required this.title,
-    required this.message,
-    required this.actionLabel,
-    this.onAction,
-  });
-
-  final String title;
-  final String message;
-  final String actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: theme.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.s4),
-          Text(
-            message,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (onAction != null) ...[
-            const SizedBox(height: AppSpacing.s12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppButton(label: actionLabel, onPressed: onAction),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ObligationTile extends StatelessWidget {
-  const _ObligationTile({required this.obligation, this.onTap});
+class _ObligationRow extends StatelessWidget {
+  const _ObligationRow({super.key, required this.obligation, this.onTap});
 
   final Obligation obligation;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final phrase = obligationStatusPhrase(obligation);
-    return AppCard(
+    final visual = statusColors(
+      AppStatus.fromWire(obligation.status.wire),
+      Theme.of(context).brightness,
+    );
+    final overdue = obligation.status == ObligationStatus.vencido;
+
+    return AppListRow(
+      icon: obligation.kind == ObligationKind.ipva
+          ? Icons.receipt_long_outlined
+          : Icons.description_outlined,
+      title: obligationTitle(obligation),
+      subtitle: obligationListSubtitle(obligation),
+      accent: overdue ? visual.foreground : null,
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(obligationTitle(obligation), style: theme.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.s4),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: AppSpacing.s8,
-            runSpacing: AppSpacing.s4,
-            children: [
-              AppStatusChip(status: AppStatus.fromWire(obligation.status.wire)),
-              if (phrase.isNotEmpty)
-                Text(
-                  phrase,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
+      showChevron: onTap != null,
     );
   }
 }
 
-class _SeguroTile extends StatelessWidget {
-  const _SeguroTile({required this.seguro, this.onTap});
+class _SeguroRow extends StatelessWidget {
+  const _SeguroRow({super.key, required this.seguro, this.onTap});
 
   final Seguro seguro;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final phrase = seguroStatusPhrase(seguro);
-    return AppCard(
+    final visual = statusColors(
+      AppStatus.fromWire(seguro.status.wire),
+      Theme.of(context).brightness,
+    );
+    final overdue = seguro.status == SeguroStatus.vencido;
+
+    return AppListRow(
+      icon: Icons.shield_outlined,
+      title: seguro.insurerName,
+      subtitle: seguroListSubtitle(seguro),
+      accent: overdue ? visual.foreground : null,
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(seguro.insurerName, style: theme.textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.s4),
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: AppSpacing.s8,
-            runSpacing: AppSpacing.s4,
-            children: [
-              AppStatusChip(status: AppStatus.fromWire(seguro.status.wire)),
-              if (phrase.isNotEmpty)
-                Text(
-                  phrase,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
+      showChevron: onTap != null,
     );
   }
 }

@@ -99,6 +99,51 @@ String seguroVigenciaPhrase(Seguro seguro) {
   return '${formatCivilDateLong(seguro.startsOn)} a ${formatCivilDateLong(seguro.endsOn)}';
 }
 
+/// The single line under an obligation in the Cuidados list.
+///
+/// The status used to arrive as a coloured chip beside the title. In a list
+/// of rows the state has to be readable as text, both because the chip is
+/// gone and because a chip is a poor thing to hand a screen reader. The word
+/// comes first, the figure after it.
+///
+/// "Pago · Em dia" would be saying it twice, so a policy paid on time is just
+/// "Pago"; only a late payment adds its clause.
+String obligationListSubtitle(Obligation obligation) {
+  if (obligation.status == ObligationStatus.pago) {
+    final late = paidLatePhrase(obligation.remainingDays);
+    return late == null ? 'Pago' : 'Pago · $late';
+  }
+  final label = switch (obligation.status) {
+    ObligationStatus.vencido => 'Vencido',
+    ObligationStatus.venceEmBreve => 'Vence em breve',
+    ObligationStatus.pendente => 'A pagar',
+    ObligationStatus.pago || ObligationStatus.desconhecido => '',
+  };
+  final phrase = obligationStatusPhrase(obligation);
+  if (label.isEmpty) return phrase;
+  if (phrase.isEmpty) return label;
+  return '$label · $phrase';
+}
+
+/// The same, for a policy.
+///
+/// `vigente` has no phrase of its own — a policy that is simply in force has
+/// nothing to add — so the word stands alone rather than trailing a
+/// separator with nothing after it.
+String seguroListSubtitle(Seguro seguro) {
+  final label = switch (seguro.status) {
+    SeguroStatus.futuro => 'Ainda não começou',
+    SeguroStatus.vigente => 'Vigente',
+    SeguroStatus.venceEmBreve => 'Vence em breve',
+    SeguroStatus.vencido => 'Vencido',
+    SeguroStatus.desconhecido => '',
+  };
+  final phrase = seguroStatusPhrase(seguro);
+  if (label.isEmpty) return phrase;
+  if (phrase.isEmpty) return label;
+  return '$label · $phrase';
+}
+
 List<Obligation> obligationsOfKind(
   List<Obligation> obligations,
   ObligationKind kind,

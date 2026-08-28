@@ -8,7 +8,6 @@ class AppScaffold extends StatelessWidget {
     this.title,
     this.titleWidget,
     this.actions,
-    this.floatingActionButton,
     this.bottomNavigationBar,
     this.onRefresh,
   });
@@ -17,7 +16,6 @@ class AppScaffold extends StatelessWidget {
   final String? title;
   final Widget? titleWidget;
   final List<Widget>? actions;
-  final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
   final Future<void> Function()? onRefresh;
 
@@ -28,7 +26,6 @@ class AppScaffold extends StatelessWidget {
       appBar: hasAppBar
           ? AppBar(title: titleWidget ?? Text(title!), actions: actions)
           : null,
-      floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       body: SafeArea(
         top: !hasAppBar,

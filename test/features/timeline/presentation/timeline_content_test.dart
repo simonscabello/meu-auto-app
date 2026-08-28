@@ -8,7 +8,7 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
 
 void main() {
   setUpAll(ensurePtBrFormatting);
@@ -101,7 +101,9 @@ void main() {
       expect(find.text('Oficina do João'), findsOneWidget);
       expect(find.text(r'R$ 420,00'), findsOneWidget);
       expect(find.text('98.200 km'), findsOneWidget);
-      expect(find.text('10 AGO'), findsOneWidget);
+      // The weekday is part of the header now: a service is remembered as
+      // "that Monday" long after the day of the month has gone.
+      expect(find.text('10 AGO 2026 · seg'), findsOneWidget);
     });
 
     testWidgets('labels a null title from kind', (tester) async {
@@ -118,8 +120,8 @@ void main() {
       expect(find.text('Quilometragem registrada'), findsOneWidget);
       expect(find.text('IPVA'), findsOneWidget);
       expect(find.text('2026'), findsOneWidget);
-      expect(find.text('10 AGO'), findsOneWidget);
-      expect(find.text('15 MAR'), findsOneWidget);
+      expect(find.text('10 AGO 2026 · seg'), findsOneWidget);
+      expect(find.text('15 MAR 2026 · dom'), findsOneWidget);
     });
 
     testWidgets('an abastecimento row shows the fuel and the amount', (
@@ -166,13 +168,14 @@ void main() {
       expect(find.textContaining('R\$'), findsNothing);
       expect(find.textContaining('km'), findsNothing);
 
-      final row = tester.widget<Row>(
-        find.descendant(
-          of: find.byType(AppCard),
-          matching: find.byType(Row),
-        ).first,
+      // The trailing column is built only when there is something to put in
+      // it. An empty Column would still take a gap out of the title's width,
+      // which is the whole reason a row with nothing on the right has to be
+      // a different widget tree rather than the same one with blanks in it.
+      final tile = tester.widget<AppTimelineTile>(
+        find.byType(AppTimelineTile),
       );
-      expect(row.children, hasLength(3));
+      expect(tile.trailing, isNull);
     });
 
     testWidgets('an unknown kind does not navigate', (tester) async {
@@ -208,8 +211,7 @@ void main() {
       await _pump(tester, const []);
 
       expect(find.text('O histórico do seu carro começa aqui'), findsOneWidget);
-      expect(find.text('Registrar manutenção'), findsOneWidget);
-      expect(find.text('Registrar quilometragem'), findsOneWidget);
+      expect(find.text('Adicionar registro'), findsOneWidget);
     });
 
     testWidgets('a later page error keeps the list and offers retry', (

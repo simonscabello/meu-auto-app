@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meu_auto/core/router/quick_add_sheet.dart';
+import 'package:meu_auto/features/timeline/presentation/add_record_sheet.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
@@ -48,7 +48,6 @@ void main() {
       'Registrar IPVA',
       'Registrar licenciamento',
       'Registrar seguro',
-      'Adicionar veículo',
     ]);
   });
 }
@@ -61,7 +60,7 @@ Future<void> _pump(WidgetTester tester, Vehicle vehicle) async {
       ],
       child: MaterialApp(
         theme: AppTheme.light,
-        home: const Scaffold(body: QuickAddSheet()),
+        home: const Scaffold(body: AddRecordSheet()),
       ),
     ),
   );

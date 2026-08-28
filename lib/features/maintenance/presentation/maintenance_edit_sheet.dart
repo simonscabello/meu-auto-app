@@ -20,8 +20,12 @@ import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
-/// Edits the event, never its item lines — the contract does not allow the
-/// second, and offering something that fails is worse than not offering it.
+/// Edits the event, never its item lines.
+///
+/// Changing the lines from here would mean replacing the list, and removing
+/// one has to decide what happens to the clock it was keeping. Appending a
+/// line does not, so that is a separate action on the record itself — see
+/// `MaintenanceDetailContent.onAddItem`.
 class MaintenanceEditSheet extends ConsumerStatefulWidget {
   const MaintenanceEditSheet({super.key, required this.record});
 
@@ -187,7 +191,8 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
             Text('Editar manutenção', style: theme.textTheme.titleLarge),
             const SizedBox(height: AppSpacing.s4),
             Text(
-              'Os itens desta manutenção não podem ser alterados.',
+              'Para acrescentar um serviço que ficou de fora, use '
+              'Adicionar item na tela da manutenção.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

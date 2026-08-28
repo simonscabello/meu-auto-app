@@ -49,6 +49,30 @@ String formatCivilDayMonthShort(CivilDate date) {
   return '$day ${_shortMonths[date.month - 1]}';
 }
 
+/// The same date inside a sentence: `'11 set'`.
+///
+/// Lower case and unpadded, because this one is read as prose — "próxima em
+/// 11 set" — while [formatCivilDayMonthShort] is a column heading and is
+/// padded so a list of them lines up.
+String formatCivilDayMonthAbbrev(CivilDate date) {
+  return '${date.day} ${_shortMonths[date.month - 1].toLowerCase()}';
+}
+
+/// The weekday, short and lower case: `'qui'`.
+///
+/// Sits beside the date on the timeline, because a service is remembered as
+/// "that Saturday" long after the day of the month has gone.
+String formatCivilWeekdayShort(CivilDate date) {
+  ensurePtBrFormatting();
+  final anchor = DateTime(date.year, date.month, date.day);
+  // pt-BR abbreviations arrive with a trailing dot ("qui."), which reads as an
+  // abbreviation inside a sentence and as noise inside a header.
+  return DateFormat('EEE', 'pt_BR')
+      .format(anchor)
+      .replaceAll('.', '')
+      .toLowerCase();
+}
+
 const _shortMonths = [
   'JAN',
   'FEV',

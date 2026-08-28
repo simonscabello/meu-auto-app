@@ -1,24 +1,24 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
-import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/theme_mode_provider.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
-import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/profile/domain/profile_copy.dart';
-import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/features/profile/presentation/name_edit_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
+import 'package:meu_auto/shared/widgets/app_segmented.dart';
+import 'package:meu_auto/shared/widgets/app_setting_row.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -30,108 +30,37 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _nameController = TextEditingController();
-  User? _filledFor;
-  bool _savingName = false;
   bool _loggingOut = false;
-  bool _offline = false;
-  String? _banner;
-  Map<String, String> _fieldErrors = {};
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _fillName(User user) {
-    if (_filledFor?.id == user.id && _filledFor?.name == user.name) {
-      return;
-    }
-    _filledFor = user;
-    if (_nameController.text != user.name) {
-      _nameController.text = user.name;
-    }
-  }
-
-  bool _nameDirty(User user) => _nameController.text.trim() != user.name;
-
-  Future<void> _saveName() async {
-    final previous = _filledFor?.name;
-    setState(() {
-      _savingName = true;
-      _banner = null;
-      _offline = false;
-      _fieldErrors = {};
-    });
-    try {
-      await ref
-          .read(authControllerProvider.notifier)
-          .updateName(_nameController.text.trim());
-      if (!mounted) {
-        return;
-      }
-      setState(() => _savingName = false);
-      showAppSnackBar(
-        ScaffoldMessenger.of(context),
-        message: 'Nome atualizado.',
-        onUndo: previous == null
-            ? null
-            : () => unawaited(_restoreName(previous)),
-      );
-    } on ApiFailure catch (failure) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _savingName = false;
-        _fieldErrors = ApiFormErrors.fieldsOf(failure);
-        _banner = ApiFormErrors.bannerOf(failure);
-        _offline = ApiFormErrors.isOffline(failure);
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _savingName = false;
-        _banner = 'Algo deu errado. Tente novamente.';
-      });
-    }
+  /// Opens the name sheet, and owns what happens after it closes.
+  ///
+  /// The confirmation and the undo live here rather than in the sheet because
+  /// by the time either is worth showing, the sheet has been dismissed.
+  Future<void> _editName(User user) async {
+    final saved = await NameEditSheet.show(context, user.name);
+    if (saved == null || !mounted) return;
+    showAppSnackBar(
+      ScaffoldMessenger.of(context),
+      message: 'Nome atualizado.',
+      onUndo: () => unawaited(_restoreName(user.name)),
+    );
   }
 
   Future<void> _restoreName(String name) async {
-    _nameController.text = name;
-    setState(() {
-      _savingName = true;
-      _banner = null;
-      _offline = false;
-      _fieldErrors = {};
-    });
     try {
       await ref.read(authControllerProvider.notifier).updateName(name);
-      if (!mounted) {
-        return;
-      }
-      setState(() => _savingName = false);
     } on ApiFailure catch (failure) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _savingName = false;
-        _fieldErrors = ApiFormErrors.fieldsOf(failure);
-        _banner = ApiFormErrors.bannerOf(failure);
-        _offline = ApiFormErrors.isOffline(failure);
-      });
+      if (!mounted) return;
+      showAppSnackBar(
+        ScaffoldMessenger.of(context),
+        message: failure.message,
+      );
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _savingName = false;
-        _banner = 'Algo deu errado. Tente novamente.';
-      });
+      if (!mounted) return;
+      showAppSnackBar(
+        ScaffoldMessenger.of(context),
+        message: 'Algo deu errado. Tente novamente.',
+      );
     }
   }
 
@@ -166,23 +95,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: AppSkeletonList(),
             );
           }
-          _fillName(status.user);
           return ProfileContent(
             user: status.user,
-            nameController: _nameController,
-            nameError: _fieldErrors['name'],
-            banner: _banner,
-            savingName: _savingName,
-            nameDirty: _nameDirty(status.user),
-            loggingOut: _loggingOut,
-            offline: _offline,
             themeMode: themeMode,
-            onSaveName: _saveName,
-            onNameChanged: () => setState(() {
-              if (_fieldErrors.containsKey('name')) {
-                _fieldErrors.remove('name');
-              }
-            }),
+            loggingOut: _loggingOut,
+            onEditName: () => unawaited(_editName(status.user)),
             onThemeMode: (mode) {
               unawaited(ref.read(themeModeProvider.notifier).setMode(mode));
             },
@@ -196,37 +113,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
+/// Perfil as a settings screen, which is what it always was.
+///
+/// It used to open with a text field and a "Salvar nome" button that were on
+/// screen whether or not anyone wanted to rename themselves, followed by
+/// three loose radio tiles and a full-width "Sair" in the middle of the page.
+/// A settings screen is a list of what is set and a way to change each thing,
+/// grouped, with the dangerous rows kept apart from the ordinary ones.
+///
+/// Nothing here is invented. There is no version row and no privacy link
+/// because the app has neither yet — a settings screen that lies about what
+/// it can do is worse than a short one. The sections are laid out so both
+/// drop in without moving anything else.
 class ProfileContent extends StatelessWidget {
   const ProfileContent({
     super.key,
     required this.user,
-    required this.nameController,
-    required this.nameError,
-    required this.banner,
-    required this.savingName,
-    required this.nameDirty,
-    required this.loggingOut,
     required this.themeMode,
-    required this.onSaveName,
-    required this.onNameChanged,
+    required this.onEditName,
     required this.onThemeMode,
     required this.onVehicles,
     required this.onLogout,
     required this.onDeleteAccount,
-    this.offline = false,
+    this.loggingOut = false,
   });
 
   final User user;
-  final TextEditingController nameController;
-  final String? nameError;
-  final String? banner;
-  final bool savingName;
-  final bool nameDirty;
-  final bool loggingOut;
-  final bool offline;
   final ThemeMode themeMode;
-  final VoidCallback onSaveName;
-  final VoidCallback onNameChanged;
+  final bool loggingOut;
+  final VoidCallback onEditName;
   final ValueChanged<ThemeMode> onThemeMode;
   final VoidCallback onVehicles;
   final VoidCallback onLogout;
@@ -235,111 +150,100 @@ class ProfileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final busy = savingName || loggingOut;
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s24),
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
       children: [
-        if (banner != null) AuthFormBanner(message: banner!),
-        TextField(
-          controller: nameController,
-          enabled: !busy,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.done,
-          autofillHints: const [AutofillHints.name],
-          inputFormatters: [LengthLimitingTextInputFormatter(120)],
-          onChanged: (_) => onNameChanged(),
-          onSubmitted: (_) {
-            if (nameDirty && !busy) {
-              onSaveName();
-            }
-          },
-          decoration: InputDecoration(
-            labelText: 'Nome',
-            errorText: nameError,
-            errorMaxLines: 3,
-          ),
+        const AppSectionHeader(title: 'Conta'),
+        AppSettingRow(
+          label: 'Nome',
+          value: user.name,
+          onTap: loggingOut ? null : onEditName,
         ),
-        const SizedBox(height: AppSpacing.s12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: AppButton(
-            label: offline ? 'Tentar de novo' : 'Salvar nome',
-            loading: savingName,
-            onPressed: nameDirty && !loggingOut ? onSaveName : null,
+        const AppRowDivider(indent: 0),
+        AppSettingRow(label: 'E-mail', value: user.email),
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.s4),
+          child: Text(
+            ProfileCopy.emailExplanation,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.s24),
-        Text('E-mail', style: theme.textTheme.titleSmall),
-        const SizedBox(height: AppSpacing.s8),
-        Text(user.email, style: theme.textTheme.bodyLarge),
-        const SizedBox(height: AppSpacing.s8),
-        Text(
-          ProfileCopy.emailExplanation,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        const AppSectionHeader(title: 'Veículos'),
+        AppSettingRow(
+          label: 'Meus veículos',
+          icon: Icons.directions_car_outlined,
+          onTap: loggingOut ? null : onVehicles,
         ),
         const SizedBox(height: AppSpacing.s24),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.directions_car_outlined),
-          title: const Text('Meus veículos'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: busy ? null : onVehicles,
-        ),
-        const SizedBox(height: AppSpacing.s16),
         const AppSectionHeader(title: 'Aparência'),
-        RadioGroup<ThemeMode>(
-          groupValue: themeMode,
-          onChanged: (mode) {
-            if (mode == null || busy) {
-              return;
-            }
-            onThemeMode(mode);
-          },
-          child: Column(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
+          child: Row(
             children: [
-              RadioListTile<ThemeMode>(
-                value: ThemeMode.light,
-                title: const Text('Claro'),
-                contentPadding: EdgeInsets.zero,
-                enabled: !busy,
+              Expanded(
+                child: Text('Tema', style: theme.textTheme.bodyLarge),
               ),
-              RadioListTile<ThemeMode>(
-                value: ThemeMode.dark,
-                title: const Text('Escuro'),
-                contentPadding: EdgeInsets.zero,
-                enabled: !busy,
-              ),
-              RadioListTile<ThemeMode>(
-                value: ThemeMode.system,
-                title: const Text('Seguir o sistema'),
-                contentPadding: EdgeInsets.zero,
-                enabled: !busy,
+              const SizedBox(width: AppSpacing.s16),
+              // Constrained rather than Expanded: at a large text scale the
+              // three labels need room, but the control must never grow wide
+              // enough to push the label off a 360dp screen.
+              SizedBox(
+                width: 210,
+                child: AppSegmented<ThemeMode>(
+                  value: themeMode,
+                  enabled: !loggingOut,
+                  onChanged: onThemeMode,
+                  options: const [
+                    AppSegmentedOption(
+                      value: ThemeMode.light,
+                      label: 'Claro',
+                    ),
+                    AppSegmentedOption(
+                      value: ThemeMode.dark,
+                      label: 'Escuro',
+                    ),
+                    AppSegmentedOption(
+                      value: ThemeMode.system,
+                      label: 'Sistema',
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.s16),
-        SizedBox(
-          width: double.infinity,
-          child: AppButton(
-            label: 'Sair',
-            variant: AppButtonVariant.secondary,
-            loading: loggingOut,
-            onPressed: savingName ? null : onLogout,
-          ),
+        const SizedBox(height: AppSpacing.s32),
+        // Kept apart, and last. Signing out and deleting an account are not
+        // settings; they are exits, and they must not sit a thumb's width
+        // from the theme picker.
+        const AppSectionHeader(title: 'Sessão'),
+        AppSettingRow(
+          label: 'Sair',
+          icon: Icons.logout,
+          onTap: onLogout,
+          trailing: loggingOut
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : null,
         ),
-        const SizedBox(height: AppSpacing.s40),
-        Divider(color: theme.colorScheme.outlineVariant),
-        const SizedBox(height: AppSpacing.s16),
-        AppButton(
+        const AppRowDivider(indent: 0),
+        AppSettingRow(
           label: 'Excluir minha conta',
-          variant: AppButtonVariant.tertiary,
-          foregroundColor: theme.colorScheme.error,
-          onPressed: busy ? null : onDeleteAccount,
+          icon: Icons.delete_outline,
+          destructive: true,
+          onTap: loggingOut ? null : onDeleteAccount,
         ),
       ],
     );

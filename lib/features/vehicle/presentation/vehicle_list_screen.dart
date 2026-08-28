@@ -6,7 +6,7 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
@@ -49,10 +49,14 @@ class VehicleListScreen extends ConsumerWidget {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.s16),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.s16,
+              AppSpacing.s8,
+              AppSpacing.s16,
+              AppSpacing.s32,
+            ),
             itemCount: state.vehicles.length,
-            separatorBuilder: (context, index) =>
-                const SizedBox(height: AppSpacing.s12),
+            separatorBuilder: (context, index) => const AppRowDivider(),
             itemBuilder: (context, index) {
               return _VehicleTile(vehicle: state.vehicles[index]);
             },
@@ -70,35 +74,28 @@ class _VehicleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final nick = vehicle.nickname?.trim();
-    final hasNick = nick != null && nick.isNotEmpty;
-    return AppCard(
+    return AppListRow(
+      icon: Icons.directions_car_outlined,
+      title: vehicle.displayName,
+      subtitle: _detail(),
       onTap: () => context.push(AppRoutes.vehicle(vehicle.id)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(vehicle.displayName, style: theme.textTheme.titleMedium),
-          if (hasNick) ...[
-            const SizedBox(height: AppSpacing.s4),
-            Text(
-              '${vehicle.brand} ${vehicle.model}',
-              style: theme.textTheme.bodyMedium,
-            ),
-          ],
-          if (vehicle.plate != null) ...[
-            const SizedBox(height: AppSpacing.s4),
-            Text(vehicle.plate!, style: theme.textTheme.bodyMedium),
-          ],
-          const SizedBox(height: AppSpacing.s4),
-          Text(
-            formatKm(vehicle.currentMileageKm),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
+      showChevron: true,
     );
+  }
+
+  /// What tells two of the owner's cars apart, in one line.
+  ///
+  /// The nickname is already the title when there is one, so the make and
+  /// model only appear underneath in that case — repeating "Fiat Argo" as
+  /// both title and subtitle is how the old card ended up four lines tall
+  /// for a vehicle with three facts.
+  String _detail() {
+    final nick = vehicle.nickname?.trim();
+    final parts = <String>[
+      if (nick != null && nick.isNotEmpty) '${vehicle.brand} ${vehicle.model}',
+      ?vehicle.plate,
+      formatKm(vehicle.currentMileageKm),
+    ];
+    return parts.join(' · ');
   }
 }

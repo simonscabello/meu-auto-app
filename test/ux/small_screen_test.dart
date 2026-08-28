@@ -42,6 +42,7 @@ import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_detail_screen.dart';
+import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
@@ -124,6 +125,23 @@ void main() {
           ],
           answers: {},
         ),
+        inUse: [
+          MaintenancePlan(
+            id: 'p1',
+            maintenanceItemId: 'i1',
+            itemSlug: 'troca_oleo',
+            itemName: 'Troca de óleo do motor',
+            itemKind: MaintenanceItemKind.maintenance,
+            intervalKm: 10000,
+            intervalMonths: 12,
+            alertKm: 1000,
+            alertDays: 15,
+            origin: MaintenancePlanOrigin.suggested,
+            strategy: MaintenanceStrategy.periodic,
+            historyStatus: MaintenanceHistoryStatus.notAsked,
+            status: MaintenanceStatus.semBaseline,
+          ),
+        ],
         notApplicable: [
           MaintenancePlan(
             id: 'p9',
@@ -265,6 +283,60 @@ void main() {
         child: DocumentosContent(obligations: [], seguros: []),
       ),
     ),
+    // Documentos with something in every group: the widest the rows get is a
+    // long insurer name beside a status phrase, and each group also carries
+    // its own "registrar" row underneath.
+    'documentos preenchido': () => Scaffold(
+      body: SingleChildScrollView(
+        child: DocumentosContent(
+          obligations: [
+            Obligation(
+              id: 'o1',
+              vehicleId: 'v1',
+              kind: ObligationKind.ipva,
+              referenceYear: 2026,
+              dueOn: const CivilDate(2026, 3, 15),
+              amountCents: const Money.fromCents(184237),
+              status: ObligationStatus.vencido,
+              remainingDays: -12,
+              createdAt: _fixedInstant,
+              updatedAt: _fixedInstant,
+            ),
+            Obligation(
+              id: 'o2',
+              vehicleId: 'v1',
+              kind: ObligationKind.licenciamento,
+              referenceYear: 2026,
+              dueOn: const CivilDate(2026, 9, 30),
+              amountCents: const Money.fromCents(16050),
+              paidOn: const CivilDate(2026, 8, 2),
+              status: ObligationStatus.pago,
+              remainingDays: 34,
+              createdAt: _fixedInstant,
+              updatedAt: _fixedInstant,
+            ),
+          ],
+          seguros: [
+            Seguro(
+              id: 's1',
+              vehicleId: 'v1',
+              insurerName: 'Porto Seguro Auto Residencial',
+              startsOn: const CivilDate(2026, 1, 10),
+              endsOn: const CivilDate(2027, 1, 10),
+              status: SeguroStatus.venceEmBreve,
+              remainingDays: 21,
+              createdAt: _fixedInstant,
+              updatedAt: _fixedInstant,
+            ),
+          ],
+          onObligationTap: (_) {},
+          onRegisterIpva: _noop,
+          onRegisterLicenciamento: _noop,
+          onSeguroTap: (_) {},
+          onRegisterSeguro: _noop,
+        ),
+      ),
+    ),
     'obligation detail': () => Scaffold(
       body: ObligationDetailContent(
         obligation: Obligation(
@@ -314,6 +386,10 @@ void main() {
     ),
     'dashboard': () => const Scaffold(
       body: DashboardContent(
+        // Three tiles side by side is the tightest row on the screen: at a 1.6
+        // scale on a 360dp phone each one gets about a hundred points for a
+        // word like "Manutenção".
+        refuelingSupported: true,
         dashboard: Dashboard(
           profile: DashboardProfile(
             status: MaintenanceProfileStatus.incomplete,
@@ -352,6 +428,36 @@ void main() {
             ],
           ),
         ),
+      ),
+    ),
+    'vehicle switcher': () => Scaffold(
+      body: VehicleSwitcherContent(
+        selectedId: 'v1',
+        vehicles: [
+          Vehicle(
+            id: 'v1',
+            vehicleType: VehicleType.car,
+            brand: 'Toyota',
+            model: 'Prius',
+            modelYear: 2013,
+            nickname: 'Prius',
+            plate: 'QAF5G33',
+            currentMileageKm: 138798,
+            createdAt: DateTime.utc(2026, 1, 1),
+            updatedAt: DateTime.utc(2026, 1, 1),
+          ),
+          Vehicle(
+            id: 'v2',
+            vehicleType: VehicleType.car,
+            brand: 'Volkswagen',
+            model: 'Gol',
+            modelYear: 2009,
+            plate: 'ABC1D23',
+            currentMileageKm: 210400,
+            createdAt: DateTime.utc(2026, 1, 1),
+            updatedAt: DateTime.utc(2026, 1, 1),
+          ),
+        ],
       ),
     ),
     'vehicle empty': () => const AppEmptyState(
@@ -592,36 +698,16 @@ final _profileUser = User(
   createdAt: DateTime.parse('2026-01-15T12:00:00Z').toLocal(),
 );
 
-class _ProfileHarness extends StatefulWidget {
+class _ProfileHarness extends StatelessWidget {
   const _ProfileHarness();
-
-  @override
-  State<_ProfileHarness> createState() => _ProfileHarnessState();
-}
-
-class _ProfileHarnessState extends State<_ProfileHarness> {
-  final name = TextEditingController(text: 'Ana');
-
-  @override
-  void dispose() {
-    name.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: ProfileContent(
         user: _profileUser,
-        nameController: name,
-        nameError: null,
-        banner: null,
-        savingName: false,
-        nameDirty: false,
-        loggingOut: false,
         themeMode: ThemeMode.system,
-        onSaveName: () {},
-        onNameChanged: () {},
+        onEditName: () {},
         onThemeMode: (_) {},
         onVehicles: () {},
         onLogout: () {},

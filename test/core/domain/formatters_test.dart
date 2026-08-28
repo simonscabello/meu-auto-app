@@ -53,4 +53,13 @@ void main() {
       expect(digitsOnly('abc'), '');
     });
   });
+
+  group('formatCivilWeekdayShort', () {
+    // A Monday and a Sunday: the two ends of the pt-BR week, and the two most
+    // likely to come back with the trailing abbreviation dot intl adds.
+    test('is short, lower case and carries no dot', () {
+      expect(formatCivilWeekdayShort(const CivilDate(2026, 8, 10)), 'seg');
+      expect(formatCivilWeekdayShort(const CivilDate(2026, 3, 15)), 'dom');
+    });
+  });
 }
