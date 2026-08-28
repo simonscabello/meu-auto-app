@@ -51,7 +51,7 @@ These are conventions, not laws from the user — say so if you want to change o
 
 ## State of the repo
 
-**The MVP is feature-complete and audited four times.** Against the local API the app signs in and registers, manages vehicles and switches between them, shows the dashboard and its alerts, records and corrects mileage, keeps maintenance plans and service records, tracks IPVA, licenciamento and seguro, shows a unified timeline and a costs view, runs the `calibrar` onboarding, and lets someone edit their profile or delete the account. Vehicle registration picks brand, model and year from the FIPE catalogue instead of asking for four free-text fields.
+**The MVP is feature-complete and audited four times.** Against the local API the app signs in and registers, manages vehicles and switches between them, shows the dashboard and its alerts, records and corrects mileage, keeps maintenance plans and service records, tracks IPVA, licenciamento and seguro (`lib/features/obligation`), logs abastecimentos and shows derived consumption (`lib/features/abastecimento`), shows a unified timeline and a costs view, runs the `calibrar` onboarding, and lets someone edit their profile or delete the account. Vehicle registration picks brand, model and year from the FIPE catalogue instead of asking for four free-text fields.
 
 **Visual identity** lives in [`docs/IDENTIDADE-VISUAL.md`](./docs/IDENTIDADE-VISUAL.md). The four PNGs in `assets/icon/` are processed art, not sketches: do not resize, recolour, or “optimize” the alpha. Regenerating native resources is two commands, recorded there.
 
@@ -66,11 +66,13 @@ What exists, and is the pattern to follow rather than re-invent:
 - `lib/core/application` — `PagedFamilyController` and `shouldLoadMore`, the base for every cursor-paginated list.
 - `lib/features/auth` — the reference feature. Copy its `domain/data/application/presentation` shape.
 - `lib/features/catalog` — the vehicle catalogue (brand → model → year), read-only. The app never writes to it.
+- `lib/features/obligation` — IPVA, licenciamento and seguro. Status arrives computed; the app never derives a due date.
+- `lib/features/abastecimento` — fills and full-tank consumption. The number comes from the server; unknown `ConsumptionStatus` is `desconhecido`, never `ok`.
 
 **Architecture decisions already made. Do not relitigate them mid-feature:**
 
 - Riverpod **without** code generation; `go_router`; Dio; models written by hand.
-- **No `build_runner`, no `freezed`, no `json_serializable`, no `get_it`, no OpenAPI client generator.** Note that this diverges from what the backend's `CLAUDE.md` and `SPEC.md` still claim — see `docs/DECISOES-EM-ABERTO.md`, which explains why and what to fix over there.
+- **No `build_runner`, no `freezed`, no `json_serializable`, no `get_it`, no OpenAPI client generator.** The backend's `SPEC.md` D-03 records the same decision.
 - Dependencies are exactly: `flutter_localizations`, `flutter_riverpod`, `go_router`, `dio`, `flutter_secure_storage`, `shared_preferences`, `intl`, `uuid`, `url_launcher`. Adding another is a decision, not a detail.
 - `intl` is **pinned by `flutter_localizations` from the SDK** (0.20.2). Bumping it past that breaks version solving.
 - Riverpod 3.x and go_router 18.x are available and deliberately not taken until after the MVP ships. Sequencing, not neglect.

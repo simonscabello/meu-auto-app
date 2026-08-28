@@ -2,46 +2,37 @@
 
 Este arquivo registra incompatibilidades entre o que o app precisa e o que a API oferece, para que o trabalho continue sem parar: anote o gap, siga com a alternativa menos custosa e deixe a decisão explícita para resolver depois.
 
-Consolidado no fechamento do MVP (2026-08-26). Quatro seções:
+Consolidado no fechamento do MVP (2026-08-26) e de novo na Fase 11 (2026-08-27). Quatro seções:
 
-1. **[Para o repositório do backend](#para-o-repositório-do-backend)** — o que precisa ser levado para o outro repositório. Nada aqui se resolve neste.
-2. **[Bloqueando o app](#bloqueando-o-app)** — o que impede um item de fechar aqui, e quem decide.
+1. **[Para o repositório do backend](#para-o-repositório-do-backend)** — o que foi levado para o outro repositório. Os resolvidos na Fase 11 estão riscados.
+2. **[Bloqueando o app](#bloqueando-o-app)** — o que impede um item de fechar aqui, e quem decide. Troca de senha autenticada e as migrações de Riverpod/go_router continuam abertas; ícone, splash e telas de prazo fecharam.
 3. **[Confronto com o contrato](#confronto-com-o-contrato--fechamento-do-mvp)** — endpoint por endpoint: o que o app consome, o que não consome e por quê.
-4. **[Contrato × app](#contrato--app)** — o histórico de gaps encontrados e a alternativa adotada em cada um.
+4. **[Contrato × app](#contrato--app)** — o histórico de gaps encontrados e a alternativa adotada em cada um. `DELETE /odometer` sem filtro de origem continua aberto.
 
 ---
 
 ## Para o repositório do backend
 
-Quatro pontos para levar a `meu-auto-backend`. **Nenhum deles se resolve neste repositório** — estão aqui para não se perderem entre uma sessão e outra. Nada foi alterado lá.
+Pontos levados a `meu-auto-backend` durante o fechamento do MVP. Os resolvidos ficam
+riscados para o histórico; os que restam não se resolvem neste repositório.
 
-### 1. O `CLAUDE.md` e o `SPEC.md` do backend descrevem um client que não existe
+### 1. ~~O `CLAUDE.md` e o `SPEC.md` do backend descrevem um client que não existe~~ — RESOLVIDO
 
-Os dois afirmam que o app "gera o client Dart com openapi-generator". **Não é o que foi feito.** Os modelos são escritos à mão, sem `build_runner`, sem `json_serializable`, sem gerador.
+Os dois afirmavam que o app "gera o client Dart com openapi-generator". **Não é o que foi feito.** Os modelos são escritos à mão, sem `build_runner`, sem `json_serializable`, sem gerador.
 
-O motivo é de correção, não de gosto: o contrato exige que um valor de enum desconhecido caia num default seguro em vez de lançar — um servidor que passa a devolver `fuel_type: "hidrogenio"` não pode quebrar um app já publicado. No `json_serializable` isso é opt-in por enum (`unknownEnumValue`), fácil de esquecer num enum novo, e o esquecimento só aparece em produção.
+**Resolvido.** `SPEC.md` D-03 e o `CLAUDE.md` do backend descrevem o client escrito à mão e o guarda `test/contract/openapi_paths_test.dart`.
 
-A compensação está no lugar: `test/contract/openapi_paths_test.dart` lê o `openapi.yaml` do backend e falha se o app referenciar uma rota que não existe no contrato.
+### 2. ~~Falta o GET individual de `maintenance-plans/{id}`~~ — RESOLVIDO
 
-**O que fazer:** corrigir a frase nos dois arquivos. Enquanto ela estiver lá, o próximo agente que abrir o repositório do backend parte de uma premissa errada sobre como o app consome a API.
+`obligations/{id}` e `seguros/{id}` passaram a ter GET. `maintenance-plans/{id}` ainda só expunha `PATCH` e `DELETE`.
 
-### 2. Falta o GET individual de `maintenance-plans/{id}`
+**Resolvido.** Os três `GET` existem e devolvem o mesmo shape da listagem. O detalhe de plano, obrigação e seguro deixa de procurar o id na lista.
 
-`obligations/{id}` e `seguros/{id}` passaram a ter GET. `maintenance-plans/{id}` ainda só expõe `PATCH` e `DELETE`.
+### 3. ~~`PATCH` não consegue limpar campo opcional do veículo~~ — RESOLVIDO
 
-Consequência: o detalhe de um plano continua procurando o id na lista do veículo. Um alerta de obrigação ou seguro agora abre o GET direto.
+No `PATCH /v1/vehicles/{id}`, `null` significa "não altere". Não existia flag `clear_*` para os campos opcionais.
 
-**O que fazer:** acrescentar `GET /v1/maintenance-plans/{id}`, devolvendo o mesmo shape que a lista devolve por item.
-
-### 3. `PATCH` não consegue limpar campo opcional do veículo
-
-No `PATCH /v1/vehicles/{id}`, `null` significa "não altere". Não existe flag `clear_*` para os campos opcionais.
-
-Consequência: **apelido e placa não podem ser apagados pelo app.** Quem cadastrou um apelido consegue trocá-lo, nunca voltar a não ter um. O mesmo vale para placa, cor, renavam e chassi. Não há string vazia que resolva sem ambiguidade — `""` como "limpe" colidiria com validação de formato.
-
-**O precedente já existe no próprio contrato:** `UpdateObligationRequest` aceita `clear_payment: true` justamente para desfazer um pagamento. A forma está decidida — falta aplicá-la aos campos opcionais do veículo.
-
-**O que fazer:** seguir o mesmo padrão (`clear_nickname`, `clear_plate`, …) ou generalizar num array (`clear: ["nickname", "plate"]`). O app não tem como contornar isso sozinho.
+**Resolvido.** `UpdateVehicleRequest.clear` aceita `nickname`, `plate`, `color`, `renavam`, `chassis`, `version`, `fuel_type`, `fipe_code`, `manufacture_year`, `model_year`. Ausente, o comportamento é o de antes.
 
 ### 4. ~~`fipe_code` está na resposta e em nenhum request~~ — RESOLVIDO
 
@@ -89,24 +80,26 @@ Não existe `POST /v1/me/password` nem equivalente. Quem está logado e quer tro
 
 ## Confronto com o contrato — fechamento do MVP
 
-`docs/API.md` declara **41 operações em 25 paths**. Percorridas uma a uma contra `openapi.yaml` e contra o que os repositórios em `lib/features/*/data/` realmente chamam:
+`openapi.yaml` declara **55 operações**. Percorridas contra o que os repositórios em `lib/features/*/data/` realmente chamam:
 
 | Grupo | No contrato | Consumidas | Não consumidas |
 | --- | --- | --- | --- |
 | Operação (`/healthz`, `/readyz`) | 2 | 0 | 2 — probes de ops, não do app |
 | Auth | 6 | 6 | — |
 | Conta | 3 | 3 | — |
-| Veículos | 8 | 8 | — |
-| Manutenção | 11 | 11 | — |
-| Prazos (obligations, seguros) | 8 | 8 | — |
+| Veículos + odômetro | 8 | 8 | — |
+| Catálogo de veículos | 4 | 4 | — |
+| Manutenção | 14 | 14 | — |
+| Prazos (obligations, seguros) | 10 | 10 | — |
+| Abastecimento | 5 | 5 | — |
 | Telas (read models) | 3 | 2 | 1 — `GET /alerts` |
-| **Total** | **41** | **38** | **3** |
+| **Total** | **55** | **52** | **3** |
 
-**Nenhuma rota inexistente é chamada.** `test/contract/openapi_paths_test.dart` prova isso a cada `flutter test`: lê o `openapi.yaml` do repositório irmão e falha se `ApiPaths` referenciar um path que não está lá. O teste roda de verdade (não é pulado) quando `../meu-auto-backend` está clonado — que é o caso.
+**Nenhuma rota inexistente é chamada.** `test/contract/openapi_paths_test.dart` prova isso a cada `flutter test`: lê o `openapi.yaml` do repositório irmão e falha se `ApiPaths` referenciar um path que não está lá. O teste roda de verdade (não é pulado) quando `../meu-auto-backend` está clonado — que é o caso. Fase 11: `+1` no reporter, não skipped.
 
-Métodos conferidos um a um, não só paths. Dois pontos que valem registro porque parecem erro e não são:
+Métodos conferidos um a um, não só paths. Pontos que valem registro porque parecem erro e não são:
 
-- **`maintenance-plans/{id}` só tem `PATCH` e `DELETE`.** O app nunca faz `GET` nele — `PlanDetailScreen` acha o plano dentro da lista. Não é preguiça, é o que o contrato permite (ver seção 2 acima). `obligations/{id}` e `seguros/{id}` têm GET e o detalhe usa.
+- **`GET /v1/maintenance-plans/{id}` existe** e o detalhe usa. O mesmo para obrigação e seguro.
 - **`GET /v1/vehicles/{id}/alerts` não é chamado** porque `GET /dashboard` já devolve `alerts` embutido. Chamar os dois seria uma volta de rede a mais para o mesmo dado, e abriria a chance de as duas telas discordarem.
 
 Query params conferidos contra o contrato: `cost_months` no dashboard, `vehicle_type` e `kind` em `maintenance-items`, `limit`/`cursor` nas três listas paginadas.
@@ -115,7 +108,7 @@ Query params conferidos contra o contrato: `cost_months` no dashboard, `vehicle_
 
 Varredura em `lib/features` por soma de meses, comparação com "hoje", cálculo de vencimento e de garantia:
 
-- Os quatro `DateTime.now()` que sobraram são **limites de date picker** (`firstDate`/`lastDate`), hoje concentrados em `pickPastDate()`. Nenhum decide status.
+- Os `DateTime.now()` em `lib/` são limites de date picker (`pickPastDate` / `pickCivilDate`), o rótulo "Hoje" via `CivilDate.todayLocal()`, o relógio da sessão e a duração do log de request. Nenhum decide status, vencimento ou consumo.
 - `status`, `due_on`, `due_at_km`, `remaining_days`, `remaining_km`, `warranty_until` e `warranty_until_km` são **lidos** do JSON, nunca calculados.
 - O item de manutenção não ganha rótulo "garantia ativa/vencida" no app: isso exigiria comparar com hoje, e a regra é do servidor (ver tabela abaixo).
 
@@ -135,9 +128,9 @@ Varredura em `lib/features` por soma de meses, comparação com "hoje", cálculo
 | 2026-08-26 | `odometer_rollback` tem duas formas, o OpenAPI documenta uma | `CheckOdometerConsistency` rejeita tanto contra o vizinho ANTERIOR (`previous_mileage_km`, `previous_occurred_on`) quanto contra o POSTERIOR (`next_mileage_km`, `next_occurred_on`). O `openapi.yaml` só traz o exemplo do anterior. | O app trata as duas e escreve frases diferentes para cada uma. Vale acrescentar o segundo exemplo ao contrato — quem gerar client a partir dele hoje não descobre a outra forma. |
 | 2026-08-26 | Apagar leitura de odômetro não é restrito por origem | `DELETE /v1/odometer/{id}` é `DELETE ... WHERE id = $1`, sem filtrar `source`. Dá para apagar uma leitura gerada por manutenção, deixando o registro de serviço sem a quilometragem que o sustenta. | **O app guarda isso do lado dele** (só oferece apagar em `manual` e `correction`; nas demais mostra cadeado e explica). Candidato a `422` no servidor — hoje a regra existe só no cliente, e outro cliente não a respeitaria. |
 | 2026-08-26 | O `hint` do rollback é instrução de cliente, não texto de usuário | `details.hint` diz literalmente `reenvie com source "correction"`. | Não exibir. O app escreve a própria frase e oferece o override como botão. Coberto por teste. |
-| 2026-08-26 | Editar manutenção não tem como forçar um `odometer_rollback` | `POST /v1/vehicles/{id}/odometer` aceita `source: "correction"` para forçar um valor rejeitado. `PATCH /v1/maintenance-records/{id}` passa pela **mesma** validação de vizinhos, mas o `UpdateMaintenanceRecordRequest` não tem campo equivalente. Corrigir a data ou a km de um registro antigo pode ficar impossível pelo app. | O app mostra o conflito com os números reais e oferece só "Corrigir o valor" (`allowOverride: false`) — dar um botão que não funciona seria pior. Candidato a aceitar `source` também no PATCH. |
+| 2026-08-26 | ~~Editar manutenção não tem como forçar um `odometer_rollback`~~ | **Resolvido.** `UpdateMaintenanceRecordRequest.source` aceita `manual` \| `correction`. Ausente = `manual`. | — |
 | 2026-08-26 | O item de manutenção não traz estado da garantia | `MaintenanceRecordItem` devolve `warranty_until` e `warranty_until_km` derivados, mas nenhum status. Dizer "ativa" ou "vencida" na tela exigiria comparar com hoje — e essa regra é do servidor, que já a responde em `/alerts` com `kind: garantia`. | A tela mostra só o fato ("Garantia até 20/08/2028 ou até 138.200 km"). Se quisermos o estado, o certo é a API devolvê-lo no item, não o app recalcular e passar a discordar da lista de alertas. |
-| 2026-08-26 | Criar manutenção não tem como forçar um `odometer_rollback` | O diálogo compartilhado oferece "o valor está certo". `POST /odometer` honra `source: "correction"`. `CreateMaintenanceRecordRequest` não tem campo equivalente e `CreateRecord` sempre chama `CheckOdometerConsistency`. Reenviar o formulário (o que o Prompt 14 pede) bate na mesma 422. | O app reenvia o body inteiro, sem inventar `source`. No backend real o segundo POST falha de novo até o contrato ganhar um skip. Candidato a aceitar `source` também no POST de registro. |
+| 2026-08-26 | ~~Criar manutenção não tem como forçar um `odometer_rollback`~~ | **Resolvido.** `CreateMaintenanceRecordRequest.source` aceita `manual` \| `correction`. Ausente = `manual`. | — |
 | 2026-08-26 | Erro de item no POST não vem indexado | O Prompt 14 espera `items.0.warranty_months`. O servidor hoje grava tudo em `details.fields.items`. | O app liga as duas formas: chave indexada no cartão da linha; `items` no bloco "O que foi feito". |
 | 2026-08-26 | Troca de senha autenticada | Não existe `POST /v1/me/password` (nem equivalente). Quem está logado e quer trocar a senha usa o fluxo de recuperação. | Candidato a endpoint futuro: senha atual + senha nova, autenticado, encerrando as outras sessões. Até lá o app não oferece a ação no Perfil. |
 | 2026-08-26 | Deep link de reset em warm start | O esquema `meuauto` já está no Manifest (`singleTop`) e no Info.plist. O Flutter encaminha o URI via `pushRouteInformation` no `onNewIntent`. | Não adicionar `app_links` até constatar que o mecanismo padrão falha no aparelho. |
