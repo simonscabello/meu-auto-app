@@ -23,10 +23,7 @@ void main() {
     test('ok with a null value does not invent a number', () {
       expect(
         consumptionPhrase(
-          const Consumption(
-            unit: 'km_per_liter',
-            status: ConsumptionStatus.ok,
-          ),
+          const Consumption(unit: 'km_per_liter', status: ConsumptionStatus.ok),
         ),
         'Não foi possível calcular o consumo deste registro.',
       );
@@ -88,6 +85,9 @@ void main() {
     expect(abastecimentoFuelLabel(AbastecimentoFuel.etanol), 'Etanol');
     expect(abastecimentoFuelLabel(AbastecimentoFuel.diesel), 'Diesel');
     expect(abastecimentoFuelLabel(AbastecimentoFuel.gnv), 'GNV');
-    expect(abastecimentoFuelLabel(AbastecimentoFuel.desconhecido), 'Combustível');
+    expect(
+      abastecimentoFuelLabel(AbastecimentoFuel.desconhecido),
+      'Combustível',
+    );
   });
 }

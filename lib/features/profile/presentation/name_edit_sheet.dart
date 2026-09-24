@@ -70,7 +70,7 @@ class _NameEditSheetState extends ConsumerState<NameEditSheet> {
       setState(() {
         _saving = false;
         _fieldError = ApiFormErrors.fieldsOf(failure)['name'];
-        _banner = ApiFormErrors.bannerOf(failure);
+        _banner = ApiFormErrors.bannerOf(failure, shownFields: const ['name']);
       });
     } catch (_) {
       if (!mounted) return;
@@ -88,9 +88,7 @@ class _NameEditSheetState extends ConsumerState<NameEditSheet> {
     return Padding(
       // Lifts the sheet above the keyboard: without this the field it exists
       // to show is the part that ends up covered.
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(

@@ -9,6 +9,8 @@ import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_form_sheet.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
 /// What kind of record to add, asked from the one screen where the question
 /// makes sense.
@@ -40,7 +42,7 @@ class AddRecordSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vehicle = ref.watch(selectedVehicleProvider).value;
+    final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
     if (vehicle == null) {
       return const SafeArea(child: SizedBox.shrink());
     }
@@ -48,95 +50,100 @@ class AddRecordSheet extends ConsumerWidget {
 
     return SafeArea(
       child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.s16,
+          0,
+          AppSpacing.s16,
+          AppSpacing.s16,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.s16,
-                0,
-                AppSpacing.s16,
-                AppSpacing.s8,
-              ),
+              padding: const EdgeInsets.only(bottom: AppSpacing.s8),
               child: Text(
                 'Adicionar registro',
                 style: theme.textTheme.titleMedium,
               ),
             ),
-            // Ordered by how often a person actually does each one, not by
-            // how the data model is organised.
-            if (vehicle.refueling.supported)
-              ListTile(
-                leading: const Icon(Icons.local_gas_station_outlined),
-                title: const Text('Registrar abastecimento'),
-                onTap: () {
-                  Navigator.pop(context);
-                  final lastFuel = ref
-                      .read(dashboardProvider(vehicle.id))
-                      .value
-                      ?.lastAbastecimento
-                      ?.fuel;
-                  AbastecimentoFormSheet.show(
-                    context,
-                    vehicleId: vehicle.id,
-                    currentMileageKm: vehicle.currentMileageKm,
-                    fuelTypes: vehicle.refueling.offeredFuels,
-                    lastFuel: lastFuel,
-                  );
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.speed_outlined),
-              title: const Text('Atualizar quilometragem'),
-              onTap: () {
-                Navigator.pop(context);
-                OdometerSheet.show(
-                  context,
-                  vehicleId: vehicle.id,
-                  currentMileageKm: vehicle.currentMileageKm,
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.build_outlined),
-              title: const Text('Registrar manutenção'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push(AppRoutes.maintenanceNew);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long_outlined),
-              title: const Text('Registrar IPVA'),
-              onTap: () {
-                Navigator.pop(context);
-                ObligationFormSheet.show(
-                  context,
-                  vehicleId: vehicle.id,
-                  kind: ObligationKind.ipva,
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('Registrar licenciamento'),
-              onTap: () {
-                Navigator.pop(context);
-                ObligationFormSheet.show(
-                  context,
-                  vehicleId: vehicle.id,
-                  kind: ObligationKind.licenciamento,
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.shield_outlined),
-              title: const Text('Registrar seguro'),
-              onTap: () {
-                Navigator.pop(context);
-                context.push(AppRoutes.seguroNew);
-              },
+            AppGroup(
+              children: [
+                // Ordered by how often a person actually does each one, not
+                // by how the data model is organised.
+                if (vehicle.refueling.supported)
+                  AppListRow(
+                    icon: Icons.local_gas_station_outlined,
+                    title: 'Registrar abastecimento',
+                    onTap: () {
+                      Navigator.pop(context);
+                      final lastFuel = ref
+                          .read(dashboardProvider(vehicle.id))
+                          .valueOrNull
+                          ?.lastAbastecimento
+                          ?.fuel;
+                      AbastecimentoFormSheet.show(
+                        context,
+                        vehicleId: vehicle.id,
+                        currentMileageKm: vehicle.currentMileageKm,
+                        fuelTypes: vehicle.refueling.offeredFuels,
+                        lastFuel: lastFuel,
+                      );
+                    },
+                  ),
+                AppListRow(
+                  icon: Icons.speed_outlined,
+                  title: 'Atualizar quilometragem',
+                  onTap: () {
+                    Navigator.pop(context);
+                    OdometerSheet.show(
+                      context,
+                      vehicleId: vehicle.id,
+                      currentMileageKm: vehicle.currentMileageKm,
+                    );
+                  },
+                ),
+                AppListRow(
+                  icon: Icons.build_outlined,
+                  title: 'Registrar manutenção',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(AppRoutes.maintenanceNew);
+                  },
+                ),
+                AppListRow(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'Registrar IPVA',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ObligationFormSheet.show(
+                      context,
+                      vehicleId: vehicle.id,
+                      kind: ObligationKind.ipva,
+                    );
+                  },
+                ),
+                AppListRow(
+                  icon: Icons.description_outlined,
+                  title: 'Registrar licenciamento',
+                  onTap: () {
+                    Navigator.pop(context);
+                    ObligationFormSheet.show(
+                      context,
+                      vehicleId: vehicle.id,
+                      kind: ObligationKind.licenciamento,
+                    );
+                  },
+                ),
+                AppListRow(
+                  icon: Icons.shield_outlined,
+                  title: 'Registrar seguro',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(AppRoutes.seguroNew);
+                  },
+                ),
+              ],
             ),
           ],
         ),

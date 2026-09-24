@@ -14,6 +14,7 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
@@ -25,8 +26,8 @@ import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
-import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -91,7 +92,7 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
   }
 
   void _tryPreselect() {
-    final items = ref.read(maintenanceItemsProvider).value;
+    final items = ref.read(maintenanceItemsProvider).valueOrNull;
     if (items != null) _applyPreselectedId(items);
   }
 
@@ -152,12 +153,18 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
   }
 
   Future<void> _openPicker() async {
-    final selected = await ItemPickerSheet.show(context, selected: _items);
+    final selected = await ItemPickerSheet.show(
+      context,
+      selected: _items,
+      hiddenItemIds: notApplicableItemIds(
+        ref.read(maintenancePlansWithHiddenProvider(widget.vehicleId)),
+      ),
+    );
     if (selected == null || !mounted) return;
     setState(() => _setItems(selected));
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit({bool correction = false}) async {
     final mileage = kmFromField(_mileage.text);
     if (mileage == null) {
       setState(() {
@@ -174,7 +181,8 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
       _fieldErrors = {};
     });
 
-    final draft = _draft(mileage);
+    final typed = _draft(mileage);
+    final draft = correction ? typed.asCorrection() : typed;
     try {
       final created = await ref
           .read(maintenanceRecordRepositoryProvider)
@@ -200,7 +208,7 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
         );
         if (!mounted) return;
         if (override) {
-          await _submit();
+          await _submit(correction: true);
         }
         return;
       }
@@ -257,38 +265,41 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
   Future<void> _pickDate() async {
     final picked = await pickPastDate(context, initial: _occurredOn);
     if (picked == null || !mounted) return;
-    setState(() => _occurredOn = picked);
-  }
-
-  Future<bool> _confirmDiscard() {
-    return confirmAction(
-      context,
-      title: 'Descartar este registro?',
-      message: 'O que você preencheu será perdido.',
-      cancelLabel: 'Continuar editando',
-      confirmLabel: 'Descartar',
-      destructive: true,
-    );
+    setState(() {
+      _occurredOn = picked;
+      // Today's mileage is the right guess for a service done today and the
+      // wrong one for anything earlier. Left in place, it was saved as-is and
+      // every due point measured from the record came out late. A past date
+      // with the prefilled value untouched clears it, so the field asks.
+      if (picked != _initialOccurredOn && _mileage.text == _initialMileage) {
+        _mileage.clear();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Warmed here so the picker can leave out what the car does not have.
+    ref.watch(maintenancePlansWithHiddenProvider(widget.vehicleId));
     ref.listen(maintenanceItemsProvider, (previous, next) {
-      final items = next.value;
+      final items = next.valueOrNull;
       if (items != null) _applyPreselectedId(items);
     });
 
     final canSave = _items.isNotEmpty;
 
-    return PopScope(
-      canPop: !_submitting && !_isDirty,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop || _submitting) return;
-        final discard = await _confirmDiscard();
-        if (discard && context.mounted) {
-          Navigator.of(context).pop();
-        }
-      },
+    return AppDiscardGuard(
+      listenable: Listenable.merge([
+        _mileage,
+        _workshop,
+        _cost,
+        _notes,
+        for (final line in _lines.values) ...line.all,
+      ]),
+      isDirty: () => _isDirty,
+      busy: _submitting,
+      title: 'Descartar este registro?',
+      message: 'O que você preencheu será perdido.',
       child: AppScaffold(
         title: 'Registrar manutenção',
         body: Column(
@@ -337,7 +348,10 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                   AppKmField(
                     controller: _mileage,
                     enabled: !_submitting,
-                    helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
+                    label: _occurredOn == _initialOccurredOn
+                        ? 'Quilometragem'
+                        : 'Quilometragem no dia do serviço',
+                    helperText: 'Hoje: ${formatKm(widget.currentMileageKm)}',
                     errorText: _fieldErrors['mileage_km'],
                   ),
                   SwitchListTile(
@@ -427,10 +441,13 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!canSave) ...[
+                    // A hint, not an error: nothing has gone wrong on a form
+                    // that just opened. It used to arrive in the error colour
+                    // before a single tap.
                     Text(
                       MaintenanceRecordDraft.noItemsReason,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.s8),
@@ -630,6 +647,14 @@ class _LineControllers {
   final cost = TextEditingController();
   final warrantyMonths = TextEditingController();
   final warrantyKm = TextEditingController();
+
+  List<TextEditingController> get all => [
+    description,
+    partBrand,
+    cost,
+    warrantyMonths,
+    warrantyKm,
+  ];
 
   bool get isDirty =>
       description.text.trim().isNotEmpty ||

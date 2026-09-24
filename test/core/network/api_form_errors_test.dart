@@ -80,4 +80,36 @@ void main() {
     expect(ApiFormErrors.bannerOf(failure), 'Já existe um IPVA para este ano.');
     expect(ApiFormErrors.isOffline(failure), isFalse);
   });
+
+  test('a 422 the form cannot show on a field becomes the banner', () {
+    const failure = ApiFailure(
+      code: ApiErrorCode.validationFailed,
+      message: 'Não foi possível atualizar a manutenção.',
+      fields: {
+        'mileage_km': 'Informe a quilometragem.',
+        'total_cost_cents': 'Valor acima do permitido.',
+      },
+    );
+
+    // The edit sheet renders only the mileage error; the cost one would vanish.
+    expect(
+      ApiFormErrors.bannerOf(failure, shownFields: const ['mileage_km']),
+      'Valor acima do permitido.',
+    );
+    expect(
+      ApiFormErrors.bannerOf(
+        failure,
+        shownFields: const ['mileage_km', 'total_cost_cents'],
+      ),
+      isNull,
+    );
+  });
+
+  test('a 422 with no field at all is always shown', () {
+    const failure = ApiFailure(
+      code: ApiErrorCode.validationFailed,
+      message: 'Corpo da requisição inválido.',
+    );
+    expect(ApiFormErrors.bannerOf(failure), 'Corpo da requisição inválido.');
+  });
 }

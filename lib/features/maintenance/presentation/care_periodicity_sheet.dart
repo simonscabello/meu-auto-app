@@ -131,7 +131,8 @@ class _CarePeriodicitySheetState extends ConsumerState<CarePeriodicitySheet> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
-        _banner = ApiFormErrors.bannerOf(failure);
+        // Nothing on this sheet shows a field error, so all of them go here.
+        _banner = ApiFormErrors.bannerOf(failure, shownFields: const []);
         _offline = ApiFormErrors.isOffline(failure);
       });
     }
@@ -213,7 +214,8 @@ class _CarePeriodicitySheetState extends ConsumerState<CarePeriodicitySheet> {
                 onSubmitted: _submitting ? null : (_) => _submit(),
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(7),
+                  // The server takes up to 3650 days — ten years.
+                  LengthLimitingTextInputFormatter(4),
                 ],
                 decoration: const InputDecoration(
                   labelText: 'A cada quantos dias',

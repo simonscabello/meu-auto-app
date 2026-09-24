@@ -62,7 +62,17 @@ void main() {
 
   group('maintenanceStatusPhrase', () {
     test('maps each known status and never throws on unknown', () {
-      expect(maintenanceStatusPhrase('vencido'), 'Está vencida');
+      // By how much when the server said; a neutral word when it did not —
+      // never the feminine "Está vencida" on a "Filtro de óleo".
+      expect(maintenanceStatusPhrase('vencido'), 'Vencido');
+      expect(
+        maintenanceStatusPhrase(
+          'vencido',
+          remainingKm: -1200,
+          remainingDays: -20,
+        ),
+        'passou 1.200 km · venceu há 20 dias',
+      );
       expect(
         maintenanceStatusPhrase(
           'vence_em_breve',
@@ -87,11 +97,18 @@ void main() {
 
   group('paidLatePhrase', () {
     test('describes delay only when remaining days are negative', () {
-      expect(paidLatePhrase(-3), 'pago com 3 dias de atraso');
-      expect(paidLatePhrase(-1), 'pago com 1 dia de atraso');
+      // The argument is days paid after the due date — not days from today.
+      expect(paidLatePhrase(3), 'pago com 3 dias de atraso');
+      expect(paidLatePhrase(1), 'pago com 1 dia de atraso');
       expect(paidLatePhrase(0), isNull);
-      expect(paidLatePhrase(5), isNull);
-      expect(paidLatePhrase(-45), 'pago com 45 dias de atraso');
+      expect(paidLatePhrase(-5), isNull);
+      expect(paidLatePhrase(45), 'pago com 45 dias de atraso');
     });
+  });
+
+  test('past two years, a distance is said in years', () {
+    expect(remainingDaysPhrase(-1765), 'venceu há mais de 4 anos');
+    expect(remainingDaysPhrase(800), 'faltam mais de 2 anos');
+    expect(remainingDaysPhrase(-400), 'venceu há cerca de 13 meses');
   });
 }

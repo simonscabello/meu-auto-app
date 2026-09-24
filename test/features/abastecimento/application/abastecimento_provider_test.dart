@@ -64,7 +64,9 @@ void main() {
         .read(abastecimentoHistoryProvider(_vehicleId).notifier)
         .loadMore();
 
-    final state = container.read(abastecimentoHistoryProvider(_vehicleId)).value!;
+    final state = container
+        .read(abastecimentoHistoryProvider(_vehicleId))
+        .value!;
     expect(state.items.map((fill) => fill.id), ['a', 'b']);
     expect(state.hasMore, isFalse);
     expect(adapter.requested, [

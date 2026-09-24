@@ -56,9 +56,14 @@ void main() {
 
     expect(adapter.postedBodies, hasLength(2));
     expect(adapter.postedBodies.first['id'], _fixedId);
+    expect(adapter.postedBodies.first.containsKey('source'), isFalse);
     expect(adapter.postedBodies.last['id'], _fixedId);
     expect(adapter.postedBodies.last['mileage_km'], 48320);
     expect(adapter.postedBodies.last['items'], hasLength(1));
+    // The confirmation is what the server needs to skip the check. The same
+    // body without it answered the same rollback, and the dialog came back
+    // for ever.
+    expect(adapter.postedBodies.last['source'], 'correction');
     expect(find.text('detalhe:$_fixedId'), findsOneWidget);
   });
 
@@ -182,7 +187,9 @@ final class _Adapter implements HttpClientAdapter {
       final body = Map<String, dynamic>.from(options.data as Map);
       postedBodies.add(body);
 
-      if (rejectFirstPost && postedBodies.length == 1) {
+      // Like the server: the check is skipped only for a correction, so a
+      // resend of the same body is refused again.
+      if (rejectFirstPost && body['source'] != 'correction') {
         return _json(422, {
           'error': {
             'code': 'odometer_rollback',

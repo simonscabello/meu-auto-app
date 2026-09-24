@@ -25,6 +25,13 @@ String? remainingDaysPhrase(int? remainingDays) {
   }
 
   final months = _approximateMonths(distance);
+  // Past two years, months stop meaning anything: "há cerca de 58 meses" makes
+  // the owner divide by twelve.
+  if (months >= 24) {
+    final years = months ~/ 12;
+    if (remainingDays > 0) return 'faltam mais de $years anos';
+    return 'venceu há mais de $years anos';
+  }
   final unit = months == 1 ? 'mês' : 'meses';
   if (remainingDays > 0) return 'faltam cerca de $months $unit';
   return 'venceu há cerca de $months $unit';
@@ -50,7 +57,13 @@ String maintenanceStatusPhrase(
 }) {
   switch (status) {
     case 'vencido':
-      return 'Está vencida';
+      // By how much, when the server said. "Está vencida" was feminine for
+      // "Filtro de óleo" too, and said nothing the row's colour had not.
+      return dueSummary(
+            remainingKm: remainingKm,
+            remainingDays: remainingDays,
+          ) ??
+          'Vencido';
     case 'vence_em_breve':
       return dueSummary(
             remainingKm: remainingKm,
@@ -72,11 +85,16 @@ String maintenanceStatusPhrase(
   }
 }
 
-String? paidLatePhrase(int remainingDays) {
-  if (remainingDays >= 0) return null;
-  final days = remainingDays.abs();
-  final unit = days == 1 ? 'dia' : 'dias';
-  return 'pago com $days $unit de atraso';
+/// How late a payment was, from how many days after the due date it was paid.
+///
+/// It used to take `remaining_days`, which the server counts from TODAY to the
+/// due date: an IPVA paid on the day it fell due read "pago com 60 dias de
+/// atraso" two months later, and more every day after. Lateness is the gap
+/// between two dates that do not move — the due date and the payment date.
+String? paidLatePhrase(int daysLate) {
+  if (daysLate <= 0) return null;
+  final unit = daysLate == 1 ? 'dia' : 'dias';
+  return 'pago com $daysLate $unit de atraso';
 }
 
 /// Turns a day count the server already computed into a coarse month

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,24 +12,26 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_profile_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/cuidados_groups.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record_draft.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/maintenance/presentation/plan_create_sheet.dart';
-import 'package:meu_auto/features/obligation/application/obligation_provider.dart';
-import 'package:meu_auto/features/obligation/presentation/documentos_section.dart';
+import 'package:meu_auto/features/maintenance/presentation/vehicle_profile_screen.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
-import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -37,18 +41,11 @@ class CuidadosScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedVehicleProvider);
-    final vehicle = selected.value;
+    final vehicle = selected.valueOrNull;
 
     return AppScaffold(
-      title: 'Cuidados',
-      actions: [
-        if (vehicle != null)
-          AppIconButton(
-            label: 'O que o seu carro tem',
-            icon: Icons.tune,
-            onPressed: () => context.push(AppRoutes.vehicleProfile),
-          ),
-      ],
+      titleWidget: const VehicleContextTitle(title: 'Manutenção'),
+      actions: const [ProfileButton()],
       onRefresh: vehicle == null ? null : () => _refresh(ref, vehicle.id),
       body: selected.when(
         loading: () => const _CuidadosSkeleton(),
@@ -65,14 +62,9 @@ class CuidadosScreen extends ConsumerWidget {
 
   Future<void> _refresh(WidgetRef ref, String vehicleId) async {
     ref.invalidate(maintenancePlansProvider(vehicleId));
-    ref.invalidate(obligationsProvider(vehicleId));
-    ref.invalidate(segurosProvider(vehicleId));
+    ref.invalidate(maintenanceProfileProvider(vehicleId));
     try {
-      await Future.wait([
-        ref.read(maintenancePlansProvider(vehicleId).future),
-        ref.read(obligationsProvider(vehicleId).future),
-        ref.read(segurosProvider(vehicleId).future),
-      ]);
+      await ref.read(maintenancePlansProvider(vehicleId).future);
     } on Object {
       // The providers already hold the failure; the view renders it.
     }
@@ -105,18 +97,17 @@ class _CuidadosViewState extends ConsumerState<CuidadosView> {
       () => widget.newId?.call() ?? newClientId(),
     );
 
+    final repository = ref.read(maintenanceRecordRepositoryProvider);
     try {
-      await ref
-          .read(maintenanceRecordRepositoryProvider)
-          .create(
-            _vehicleId,
-            MaintenanceRecordDraft(
-              id: id,
-              occurredOn: CivilDate.todayLocal(),
-              kind: MaintenanceRecordKind.performed,
-              items: [MaintenanceRecordLineDraft(item: plan.toCatalogueItem())],
-            ),
-          );
+      final created = await repository.create(
+        _vehicleId,
+        MaintenanceRecordDraft(
+          id: id,
+          occurredOn: CivilDate.todayLocal(),
+          kind: MaintenanceRecordKind.performed,
+          items: [MaintenanceRecordLineDraft(item: plan.toCatalogueItem())],
+        ),
+      );
       invalidateAfterMaintenanceWrite(ref, _vehicleId);
       if (!mounted) return;
       setState(() {
@@ -124,19 +115,41 @@ class _CuidadosViewState extends ConsumerState<CuidadosView> {
         _justRecorded.add(plan.id);
         _inFlightIds.remove(plan.id);
       });
+      // One tap writes a record, so one tap takes it back: a "Feito" hit by
+      // accident on the wrong row used to leave a false entry in the history
+      // with no way out but finding it there and deleting it.
+      showAppSnackBar(
+        ScaffoldMessenger.of(context),
+        message: '${plan.itemName}: registrado hoje.',
+        onUndo: () => unawaited(_undoDone(plan, created.id)),
+      );
     } on ApiFailure catch (failure) {
       if (!mounted) return;
       setState(() => _submitting.remove(plan.id));
-      showAppSnackBar(
-        ScaffoldMessenger.of(context),
-        message: failure.message,
-      );
+      showAppSnackBar(ScaffoldMessenger.of(context), message: failure.message);
+    }
+  }
+
+  Future<void> _undoDone(MaintenancePlan plan, String recordId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(maintenanceRecordRepositoryProvider).delete(recordId);
+      invalidateAfterMaintenanceWrite(ref, _vehicleId);
+      if (!mounted) return;
+      setState(() => _justRecorded.remove(plan.id));
+    } on ApiFailure catch (failure) {
+      showAppErrorSnackBar(messenger, message: failure.message);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final plans = ref.watch(maintenancePlansProvider(_vehicleId));
+    final question = ref
+        .watch(maintenanceProfileProvider(_vehicleId))
+        .valueOrNull
+        ?.questions
+        .firstOrNull;
 
     return plans.when(
       skipLoadingOnReload: true,
@@ -160,15 +173,17 @@ class _CuidadosViewState extends ConsumerState<CuidadosView> {
                 onCreate: () =>
                     PlanCreateSheet.show(context, vehicleId: _vehicleId),
               ),
-              DocumentosSection(vehicleId: _vehicleId),
             ],
           );
         }
         return CuidadosContent(
           plans: list,
+          openQuestion: question,
+          onAnswer: (questionId, answer) => unawaited(
+            answerProfileQuestion(context, ref, _vehicleId, questionId, answer),
+          ),
           justRecordedIds: _justRecorded,
           submittingIds: _submitting,
-          trailing: DocumentosSection(vehicleId: _vehicleId),
           onPlanTap: (plan) => context.push(AppRoutes.plan(plan.id)),
           onBaselineTap: (plan) => context.push(
             AppRoutes.maintenanceNew,
@@ -201,14 +216,22 @@ class _CuidadosViewState extends ConsumerState<CuidadosView> {
 /// read as one undifferentiated column, and the labels stopped registering as
 /// labels at all.
 ///
-/// "Falta informar" lives here and only here. It used to be on Início as
-/// well, where a dozen unanswered items greeted someone who had come to check
-/// their car, not to fill in a form.
+/// The items with no date of their last service are one open group, "Sem data
+/// da última vez". They used to be two: the ones never asked about, open, and
+/// the ones answered "não sei", folded away under "Ainda sem registro" — which
+/// put the oil change and the revisão of an owner who did not remember out of
+/// sight, while Início said "Tudo em dia". Not knowing is the same problem
+/// either way; the row says which answer was given.
+///
+/// The one question about how the car is built (belt or chain) opens the
+/// screen when it is still open. It used to be reachable only through "O que
+/// o seu carro tem", and it is the one technical fact worth asking for.
 class CuidadosContent extends StatelessWidget {
   const CuidadosContent({
     super.key,
     required this.plans,
-    this.trailing,
+    this.openQuestion,
+    this.onAnswer,
     this.onPlanTap,
     this.onBaselineTap,
     this.onNeedsBaselineGroupTap,
@@ -220,7 +243,8 @@ class CuidadosContent extends StatelessWidget {
   });
 
   final List<MaintenancePlan> plans;
-  final Widget? trailing;
+  final MaintenanceProfileQuestion? openQuestion;
+  final void Function(String questionId, String answer)? onAnswer;
   final ValueChanged<MaintenancePlan>? onPlanTap;
   final ValueChanged<MaintenancePlan>? onBaselineTap;
   final VoidCallback? onProfileTap;
@@ -242,6 +266,17 @@ class CuidadosContent extends StatelessWidget {
         AppSpacing.s32,
       ),
       children: [
+        if (openQuestion != null) ...[
+          const AppSectionHeader(title: 'Uma pergunta sobre o seu carro'),
+          const SizedBox(height: AppSpacing.s8),
+          ProfileQuestionCard(
+            question: openQuestion!,
+            onAnswer: onAnswer == null
+                ? null
+                : (answer) => onAnswer!(openQuestion!.id, answer),
+          ),
+          const SizedBox(height: appGroupGap),
+        ],
         ..._openGroup(
           title: 'Precisam de atenção',
           plans: groups.needAttention,
@@ -257,32 +292,21 @@ class CuidadosContent extends StatelessWidget {
             plans: groups.everydayCare,
           ),
         ..._openGroup(
-          title: 'Falta informar',
+          title: 'Sem data da última vez',
           subtitle:
-              'O Meu Auto passa a avisar assim que souber quando cada um '
-              'foi feito pela última vez.',
-          plans: groups.needsBaseline,
-          actionLabel: onNeedsBaselineGroupTap == null ? null : 'Informar',
+              'Sem saber quando foram feitos, o Meu Auto não consegue avisar. '
+              'Toque num item para informar.',
+          plans: [...groups.needsBaseline, ...groups.historySettled],
+          actionLabel:
+              onNeedsBaselineGroupTap == null || groups.needsBaseline.isEmpty
+              ? null
+              : 'Informar',
           onAction: onNeedsBaselineGroupTap,
         ),
         if (groups.onTrack.isNotEmpty) ...[
           _CollapsedGroup(
             title: 'Em dia',
             plans: groups.onTrack,
-            onTap: _tapOf,
-            onMarkDone: onMarkDone,
-            justRecordedIds: justRecordedIds,
-            submittingIds: submittingIds,
-          ),
-          const SizedBox(height: appGroupGap),
-        ],
-        if (groups.historySettled.isNotEmpty) ...[
-          _CollapsedGroup(
-            title: 'Ainda sem registro',
-            explanation:
-                'Você já disse que não lembra ou que nunca foi feito. '
-                'Quando fizer, registre aqui e a contagem começa.',
-            plans: groups.historySettled,
             onTap: _tapOf,
             onMarkDone: onMarkDone,
             justRecordedIds: justRecordedIds,
@@ -314,10 +338,6 @@ class CuidadosContent extends StatelessWidget {
               ),
             ],
           ),
-        if (trailing != null) ...[
-          const SizedBox(height: appGroupGap),
-          trailing!,
-        ],
         if (onProfileTap != null) ...[
           const SizedBox(height: appGroupGap),
           AppGroup(
@@ -465,9 +485,7 @@ class _PlanRow extends StatelessWidget {
       theme.brightness,
     );
 
-    final subtitle = justRecorded
-        ? _recordedLine()
-        : planListSubtitle(plan);
+    final subtitle = justRecorded ? _recordedLine() : planListSubtitle(plan);
 
     return AppListRow(
       icon: maintenanceIconFor(plan.itemSlug),
@@ -475,9 +493,13 @@ class _PlanRow extends StatelessWidget {
       subtitle: subtitle,
       accent: urgent ? visual.foreground : null,
       onTap: onTap,
+      // Outlined, not filled: a list of habits can carry three or four of these
+      // at once, and a column of solid buttons outshouted the overdue items
+      // above them. The row's own words say what is due.
       trailing: _showDone
           ? AppButton(
               label: 'Feito',
+              variant: AppButtonVariant.secondary,
               loading: submitting,
               onPressed: submitting ? null : () => onMarkDone!(plan),
             )

@@ -38,6 +38,7 @@ final class Seguro {
     required this.remainingDays,
     required this.createdAt,
     required this.updatedAt,
+    this.renewed = false,
   });
 
   final String id;
@@ -55,6 +56,11 @@ final class Seguro {
   final int remainingDays;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Another policy on the car took over from this one. Its own status still
+  /// reads as its dates say; this is what stops an old policy telling the owner
+  /// the car is uninsured beside the new one. False from an older server.
+  final bool renewed;
 
   factory Seguro.fromJson(Map<String, dynamic> json) {
     final premium = json['premium_cents'] as int?;
@@ -74,6 +80,7 @@ final class Seguro {
       remainingDays: json['remaining_days'] as int,
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(json['updated_at'] as String).toLocal(),
+      renewed: json['renewed'] as bool? ?? false,
     );
   }
 }

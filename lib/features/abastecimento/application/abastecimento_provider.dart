@@ -4,10 +4,7 @@ import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/network/api_client.dart';
 import 'package:meu_auto/features/abastecimento/data/abastecimento_repository.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
-import 'package:meu_auto/features/costs/application/costs_provider.dart';
-import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
-import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
-import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 
 final abastecimentoRepositoryProvider = Provider<AbastecimentoRepository>((
@@ -51,12 +48,11 @@ final abastecimentoProvider = FutureProvider.family<Abastecimento, String>((
   return ref.watch(abastecimentoRepositoryProvider).get(fillId);
 });
 
+/// A fill carries a mileage, so it moves every distance-based due date — the
+/// plan list and the plan detail as much as Início.
 void invalidateAfterAbastecimentoWrite(WidgetRef ref, String vehicleId) {
   ref.invalidate(abastecimentoHistoryProvider(vehicleId));
   ref.invalidate(abastecimentoProvider);
-  ref.invalidate(dashboardProvider(vehicleId));
-  ref.invalidate(timelineProvider(vehicleId));
-  ref.invalidate(costsDashboardProvider);
-  ref.invalidate(odometerHistoryProvider(vehicleId));
+  invalidateVehicleDerived(ref, vehicleId);
   ref.read(vehiclesProvider.notifier).reload();
 }

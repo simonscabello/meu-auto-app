@@ -20,3 +20,11 @@ final dashboardProvider = FutureProvider.family<Dashboard, String>((
 ) {
   return ref.watch(dashboardRepositoryProvider).get(vehicleId);
 });
+
+/// The full list of what needs attention on one vehicle.
+final alertsProvider = FutureProvider.family<List<Alert>, String>((
+  ref,
+  vehicleId,
+) {
+  return ref.watch(dashboardRepositoryProvider).alerts(vehicleId);
+});

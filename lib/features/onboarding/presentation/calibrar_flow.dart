@@ -24,8 +24,8 @@ import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
-import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -72,7 +72,12 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   @override
   void initState() {
     super.initState();
-    _mileage = kmController(widget.currentMileageKm);
+    // Empty, not today's reading. Every answer here is about the past, and a
+    // field prefilled with the current mileage was accepted as-is: an oil
+    // change "eight months ago" went in at today's kilometres, and every due
+    // point measured from it came out late. The current reading stays as the
+    // helper line, for reference.
+    _mileage = TextEditingController();
   }
 
   @override
@@ -92,7 +97,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     _fieldErrors = {};
     _inFlightId = null;
     _submitting = false;
-    setKmText(_mileage, widget.currentMileageKm);
+    _mileage.clear();
   }
 
   void _advance() {
@@ -175,7 +180,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     _advance();
   }
 
-  Future<void> _confirm() async {
+  Future<void> _confirm({bool correction = false}) async {
     final occurredOn = _occurredOn;
     final mileage = kmFromField(_mileage.text);
     if (occurredOn == null) {
@@ -209,6 +214,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
       occurredOn: occurredOn,
       mileageKm: mileage,
       plan: questions[_index],
+      correction: correction,
     );
 
     try {
@@ -231,7 +237,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
         );
         if (!mounted) return;
         if (override) {
-          await _confirm();
+          await _confirm(correction: true);
         }
         return;
       }
@@ -484,7 +490,10 @@ class CalibrarQuestionContent extends StatelessWidget {
           enabled: !submitting,
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submitting ? null : onConfirm(),
-          helperText: 'Atual: ${formatKm(currentMileageKm)}',
+          label: 'Quilometragem na época',
+          helperText:
+              'Aproximada serve. Hoje o carro está com '
+              '${formatKm(currentMileageKm)}.',
           errorText: mileageError,
         ),
         const SizedBox(height: AppSpacing.s32),
@@ -551,14 +560,15 @@ class CalibrarDoneContent extends StatelessWidget {
 
 String _doneBody(int configured) {
   if (configured == 0) {
-    return 'Quando você souber, informe em Cuidados. '
-        'O Meu Auto não inventa o que você não lembra.';
+    return 'Quando souber, informe na aba Manutenção, em "Sem data da última '
+        'vez". Até lá, esses itens aparecem como sem histórico — o Meu Auto '
+        'não inventa o que você não lembra.';
   }
   if (configured == 1) {
-    return '1 cuidado já está no histórico. A partir de agora o Meu Auto '
+    return '1 item já está no histórico. A partir de agora o Meu Auto '
         'avisa quando ele estiver perto.';
   }
-  return '$configured cuidados já estão no histórico. A partir de agora '
+  return '$configured itens já estão no histórico. A partir de agora '
       'o Meu Auto avisa quando estiverem perto.';
 }
 

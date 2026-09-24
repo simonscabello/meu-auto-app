@@ -15,7 +15,7 @@ void main() {
   group('singular wording', () {
     testWidgets('one overdue item conjugates in the singular', (tester) async {
       await _pump(tester, _dashboard(overdue: 1));
-      expect(find.text('1 item precisa de atenção'), findsOneWidget);
+      expect(find.text('1 item vencido'), findsOneWidget);
     });
 
     testWidgets('one due-soon item conjugates in the singular', (tester) async {
@@ -23,17 +23,13 @@ void main() {
       expect(find.text('1 item vence em breve'), findsOneWidget);
     });
 
-    // The history prompt is Cuidados work. Início says how the car is, and a
-    // count of unanswered setup questions is not how the car is.
-    testWidgets('an unfilled history is silent here, whatever the count', (
-      tester,
-    ) async {
-      await _pump(tester, _dashboard(needsBaseline: 1));
-      expect(find.textContaining('ainda não tem histórico'), findsNothing);
-
-      await _pump(tester, _dashboard(needsBaseline: 12));
-      expect(find.textContaining('ainda não têm histórico'), findsNothing);
-      expect(find.text('Tudo em dia'), findsOneWidget);
+    // An unknown history is not "em dia". It is said once, in the verdict's
+    // quiet second line, and never in the status colours.
+    testWidgets('one unknown item conjugates in the singular', (tester) async {
+      await _pump(tester, _dashboard(unknownHistory: 1));
+      expect(find.text('Nada vencido até agora'), findsOneWidget);
+      expect(find.text('1 item sem data da última vez'), findsOneWidget);
+      expect(find.text('Tudo em dia'), findsNothing);
     });
   });
 
@@ -101,6 +97,83 @@ void main() {
     });
   });
 
+  group('what comes next', () {
+    testWidgets('upcoming items are listed with how far they are', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _dashboard(
+          upcoming: [
+            _upcoming(
+              title: 'Troca de óleo do motor',
+              remainingKm: 4200,
+              remainingDays: 30,
+            ),
+            _upcoming(
+              title: 'IPVA 2027',
+              remainingDays: 197,
+              dueOn: const CivilDate(2027, 1, 20),
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('Em seguida'), findsOneWidget);
+      expect(find.text('em 4.200 km ou faltam 30 dias'), findsOneWidget);
+      expect(find.text('em 20/01/2027'), findsOneWidget);
+    });
+
+    testWidgets('with something late, unknown items keep a quiet row', (
+      tester,
+    ) async {
+      await _pump(tester, _dashboard(overdue: 1, unknownHistory: 7));
+
+      expect(find.text('1 item vencido'), findsOneWidget);
+      expect(find.text('7 itens sem data da última vez'), findsOneWidget);
+    });
+
+    testWidgets('no row about unknown items when there are none', (
+      tester,
+    ) async {
+      await _pump(tester, _dashboard(overdue: 1, unknownHistory: 0));
+      expect(find.textContaining('sem data da última vez'), findsNothing);
+    });
+  });
+
+  group('costs', () {
+    // "R$ 0,00" under a cost label read like a finding on a brand-new car.
+    testWidgets('are left out while nothing was spent', (tester) async {
+      await _pump(tester, _dashboard(totalCents: 0));
+      expect(find.textContaining('Gastos registrados'), findsNothing);
+      expect(find.text('R\$ 0,00'), findsNothing);
+    });
+  });
+
+  group('odometer age', () {
+    test('a recent reading says its date, an old one says how old', () {
+      const today = CivilDate(2026, 9, 24);
+      expect(
+        odometerCaption(const CivilDate(2026, 9, 24), today),
+        'Atualizada hoje',
+      );
+      expect(
+        odometerCaption(const CivilDate(2026, 9, 23), today),
+        'Atualizada ontem',
+      );
+      expect(
+        odometerCaption(const CivilDate(2026, 9, 1), today),
+        'Atualizada em 1 de setembro',
+      );
+      expect(
+        odometerCaption(const CivilDate(2026, 5, 20), today),
+        'Atualizada há 4 meses — toque para conferir',
+      );
+      expect(odometerIsStale(const CivilDate(2026, 5, 20), today), isTrue);
+      expect(odometerIsStale(const CivilDate(2026, 9, 1), today), isFalse);
+    });
+  });
+
   group('cost categories', () {
     testWidgets('a single category is not joined with "e"', (tester) async {
       await _pump(tester, _dashboard(categories: ['manutencao']));
@@ -116,7 +189,7 @@ void main() {
   });
 
   group('last abastecimento', () {
-    testWidgets('sits after próximos cuidados and before custos', (
+    testWidgets('sits after what needs attention and before the costs', (
       tester,
     ) async {
       await _pump(
@@ -131,10 +204,10 @@ void main() {
 
       expect(
         tester.getTopLeft(find.text('Último abastecimento')).dy,
-        greaterThan(tester.getTopLeft(find.text('Próximos cuidados')).dy),
+        greaterThan(tester.getTopLeft(find.text('Precisa de atenção')).dy),
       );
       expect(
-        tester.getTopLeft(find.textContaining('Custo registrado')).dy,
+        tester.getTopLeft(find.textContaining('Gastos registrados')).dy,
         greaterThan(tester.getTopLeft(find.text('Último abastecimento')).dy),
       );
     });
@@ -173,10 +246,20 @@ void main() {
               ),
               child: Scaffold(
                 body: DashboardContent(
+                  today: const CivilDate(2026, 12, 20),
                   dashboard: _dashboard(
                     overdue: 2,
                     dueSoon: 3,
                     needsBaseline: 12,
+                    unknownHistory: 14,
+                    upcoming: [
+                      _upcoming(
+                        title: 'Fluido de arrefecimento',
+                        remainingKm: 4800,
+                        remainingDays: 197,
+                        dueOn: const CivilDate(2027, 7, 5),
+                      ),
+                    ],
                     items: [
                       _alert(
                         title: 'Correia dentada',
@@ -315,12 +398,32 @@ Alert _alert({
   );
 }
 
+Alert _upcoming({
+  required String title,
+  int? remainingKm,
+  int? remainingDays,
+  CivilDate? dueOn,
+}) {
+  return Alert(
+    kind: AlertKind.manutencao,
+    severity: AlertSeverity.emDia,
+    title: title,
+    remainingKm: remainingKm,
+    remainingDays: remainingDays,
+    dueOn: dueOn,
+    referenceType: AlertReferenceType.maintenancePlan,
+    referenceId: '33333333-3333-7333-8333-333333333333',
+  );
+}
+
 Dashboard _dashboard({
   int overdue = 0,
   int dueSoon = 0,
   int needsBaseline = 0,
+  int? unknownHistory,
   int periodMonths = 12,
   List<Alert> items = const [],
+  List<Alert> upcoming = const [],
   List<String> categories = const [
     'manutencao',
     'ipva',
@@ -329,6 +432,7 @@ Dashboard _dashboard({
   ],
   DashboardProfile profile = DashboardProfile.empty,
   LastAbastecimento? last,
+  int totalCents = 154000,
 }) {
   return Dashboard(
     vehicle: const DashboardVehicle(
@@ -346,8 +450,10 @@ Dashboard _dashboard({
       overdue: overdue,
       dueSoon: dueSoon,
       needsBaseline: needsBaseline,
+      unknownHistory: unknownHistory,
       items: items,
     ),
+    upcoming: upcoming,
     profile: profile,
     costs: DashboardCosts(
       periodMonths: periodMonths,
@@ -355,7 +461,7 @@ Dashboard _dashboard({
       maintenanceCents: const Money.fromCents(112000),
       obligationsCents: const Money.fromCents(32000),
       seguroCents: const Money.fromCents(10000),
-      trackedCents: const Money.fromCents(154000),
+      trackedCents: Money.fromCents(totalCents),
       trackedCategories: categories,
     ),
     lastAbastecimento: last,

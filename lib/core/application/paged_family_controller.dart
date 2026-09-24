@@ -38,7 +38,7 @@ abstract class PagedFamilyController<T, Arg>
   /// the reader can retry: losing a loaded list because page four failed would
   /// be worse than the failure itself.
   Future<void> loadMore() async {
-    final current = state.value;
+    final current = state.valueOrNull;
     if (current == null ||
         current.isLoadingMore ||
         !current.hasMore ||
@@ -68,7 +68,7 @@ abstract class PagedFamilyController<T, Arg>
   /// removal. Local only — it issues no request and refreshes nothing that
   /// derives from the list.
   void removeWhere(bool Function(T item) test) {
-    final current = state.value;
+    final current = state.valueOrNull;
     if (current == null) return;
     state = AsyncData(
       current.copyWith(

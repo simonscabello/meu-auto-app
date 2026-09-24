@@ -40,7 +40,10 @@ void main() {
   ) async {
     await _open(tester, adapter);
 
-    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value, isTrue);
+    expect(
+      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+      isTrue,
+    );
     expect(find.text('Hoje'), findsOneWidget);
   });
 
@@ -59,11 +62,7 @@ void main() {
   });
 
   testWidgets('a single fuel does not render a selector', (tester) async {
-    await _open(
-      tester,
-      adapter,
-      fuelTypes: const [AbastecimentoFuel.diesel],
-    );
+    await _open(tester, adapter, fuelTypes: const [AbastecimentoFuel.diesel]);
 
     expect(find.byType(ChoiceChip), findsNothing);
     expect(find.text('Diesel'), findsOneWidget);
@@ -89,7 +88,9 @@ void main() {
   testWidgets('saving posts volume_ml from a comma decimal', (tester) async {
     await _open(tester, adapter);
     await _fillRequired(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Registrar abastecimento'));
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
+    );
     await tester.pumpAndSettle();
 
     expect(adapter.postedBodies, hasLength(1));
@@ -108,7 +109,9 @@ void main() {
     adapter.rejectFirstPost = true;
     await _open(tester, adapter);
     await _fillRequired(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Registrar abastecimento'));
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsOneWidget);
@@ -124,7 +127,9 @@ void main() {
     adapter.rejectFirstPost = true;
     await _open(tester, adapter);
     await _fillRequired(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Registrar abastecimento'));
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('O valor está certo, registrar assim'));

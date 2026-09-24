@@ -20,7 +20,10 @@ void main() {
   ) async {
     await _pump(tester, _dashboard(overdue: 2, dueSoon: 1, needsBaseline: 4));
 
-    expect(find.text('2 itens precisam de atenção'), findsOneWidget);
+    // The phrase counts only what it names; the one due soon is the quiet
+    // line under it, not a second verdict.
+    expect(find.text('2 itens vencidos'), findsOneWidget);
+    expect(find.text('Mais 1 vence em breve'), findsOneWidget);
     expect(find.text('1 item vence em breve'), findsNothing);
     expect(find.text('Falta informar o histórico'), findsNothing);
     expect(find.text('Tudo em dia'), findsNothing);
@@ -37,22 +40,55 @@ void main() {
     },
   );
 
-  // Início reports on the car; it does not chase the owner for setup. A brand
-  // new vehicle has one of these per suggested plan, and putting eighteen of
-  // them where the verdict goes made a healthy car look like a broken one.
-  testWidgets('needs_baseline alone is not a state the verdict reports', (
+  // A car nobody told us about is not "em dia". It is not broken either: the
+  // verdict is neutral — no status colour — and says what is missing.
+  testWidgets('an unknown history is a neutral verdict, not "Tudo em dia"', (
     tester,
   ) async {
-    await _pump(tester, _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 18));
+    await _pump(
+      tester,
+      _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 11, unknownHistory: 16),
+    );
 
-    expect(find.text('Tudo em dia'), findsOneWidget);
-    expect(find.text('Falta informar o histórico'), findsNothing);
-    expect(find.textContaining('ainda não têm histórico'), findsNothing);
-    expect(find.text('Configurar histórico'), findsNothing);
+    expect(find.text('Tudo em dia'), findsNothing);
+    expect(find.text('Nada vencido até agora'), findsOneWidget);
+    expect(find.text('16 itens sem data da última vez'), findsOneWidget);
   });
 
+  // An owner who answered "não sei" to every question leaves needs_baseline at
+  // zero. The verdict reads unknown_history, which still counts them.
+  testWidgets('"não sei" everywhere is still unknown, not fine', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 0, unknownHistory: 5),
+    );
+
+    expect(find.text('Tudo em dia'), findsNothing);
+    expect(find.text('5 itens sem data da última vez'), findsOneWidget);
+  });
+
+  // An older server sends no unknown_history; needs_baseline is the most the
+  // app can say, and it says that rather than "Tudo em dia".
+  testWidgets(
+    'without unknown_history the verdict falls back to needs_baseline',
+    (tester) async {
+      await _pump(
+        tester,
+        _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 18),
+      );
+
+      expect(find.text('Tudo em dia'), findsNothing);
+      expect(find.text('18 itens sem data da última vez'), findsOneWidget);
+    },
+  );
+
   testWidgets('all-zero counts produce the on-track phrase', (tester) async {
-    await _pump(tester, _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 0));
+    await _pump(
+      tester,
+      _dashboard(overdue: 0, dueSoon: 0, needsBaseline: 0, unknownHistory: 0),
+    );
 
     expect(find.text('Tudo em dia'), findsOneWidget);
     expect(find.text('Falta informar o histórico'), findsNothing);
@@ -63,7 +99,8 @@ void main() {
   ) async {
     await _pump(tester, _dashboard(overdue: 2, dueSoon: 0, needsBaseline: 18));
 
-    expect(find.text('2 itens precisam de atenção'), findsOneWidget);
+    expect(find.text('2 itens vencidos'), findsOneWidget);
+    expect(find.textContaining('vence em breve'), findsNothing);
     expect(find.textContaining('ainda não têm histórico'), findsNothing);
   });
 
@@ -72,7 +109,7 @@ void main() {
   ) async {
     await _pump(tester, _dashboard(periodMonths: 12));
 
-    expect(find.text('Custo registrado · últimos 12 meses'), findsOneWidget);
+    expect(find.text('Gastos registrados · últimos 12 meses'), findsOneWidget);
     expect(
       find.text('Inclui manutenção, IPVA, licenciamento e seguro'),
       findsOneWidget,
@@ -87,7 +124,7 @@ void main() {
   ) async {
     await _pump(tester, _dashboard(periodMonths: 1));
 
-    expect(find.text('Custo registrado · últimos 30 dias'), findsOneWidget);
+    expect(find.text('Gastos registrados · últimos 30 dias'), findsOneWidget);
     expect(find.textContaining('este mês'), findsNothing);
   });
 
@@ -206,7 +243,7 @@ void main() {
 
       await tester.tap(find.text('Abastecer'));
       await tester.tap(find.text('Manutenção'));
-      await tester.tap(find.text('Km atual'));
+      await tester.tap(find.text('Atualizar km'));
 
       expect(tapped, ['abastecer', 'manutencao', 'km']);
     });
@@ -225,7 +262,7 @@ void main() {
   // The reading and the verdict are one object: this odometer, on this car, is
   // or is not fine. They were two floating elements with a gap between them.
   group('vehicle panel', () {
-    testWidgets('the verdict is part of the panel and opens Cuidados', (
+    testWidgets('the verdict is part of the panel and opens the full list', (
       tester,
     ) async {
       var opened = false;
@@ -241,7 +278,7 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('2 itens precisam de atenção'));
+      await tester.tap(find.text('2 itens vencidos'));
       expect(opened, isTrue);
     });
   });
@@ -306,6 +343,7 @@ Dashboard _dashboard({
   int overdue = 0,
   int dueSoon = 0,
   int needsBaseline = 0,
+  int? unknownHistory,
   int periodMonths = 12,
   DashboardProfile profile = DashboardProfile.empty,
 }) {
@@ -325,6 +363,7 @@ Dashboard _dashboard({
       overdue: overdue,
       dueSoon: dueSoon,
       needsBaseline: needsBaseline,
+      unknownHistory: unknownHistory,
       items: const [],
     ),
     profile: profile,

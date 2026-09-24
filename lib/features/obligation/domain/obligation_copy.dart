@@ -15,11 +15,21 @@ String obligationTitle(Obligation obligation) {
   return '${obligationKindLabel(obligation.kind)} ${obligation.referenceYear}';
 }
 
-/// Words for a status the server already decided. Never compares dates.
+/// Days between the due date and the payment, both as the server stored them.
+/// Positive when it was paid late; null when it is not paid.
+int? daysPaidLate(Obligation obligation) {
+  final paidOn = obligation.paidOn;
+  if (paidOn == null) return null;
+  return obligation.dueOn.daysUntil(paidOn);
+}
+
+/// Words for a status the server already decided. The status is never
+/// re-derived here; the one sum is how late a payment was, between two dates
+/// that were stored together.
 String obligationStatusPhrase(Obligation obligation) {
   switch (obligation.status) {
     case ObligationStatus.pago:
-      return paidLatePhrase(obligation.remainingDays) ?? 'Em dia';
+      return paidLatePhrase(daysPaidLate(obligation) ?? 0) ?? 'Em dia';
     case ObligationStatus.vencido:
     case ObligationStatus.venceEmBreve:
     case ObligationStatus.pendente:
@@ -67,6 +77,12 @@ String obligationDeletedMessage(ObligationKind kind) {
 }
 
 String seguroStatusPhrase(Seguro seguro) {
+  // A policy another one took over from is history, not a warning.
+  if (seguro.renewed &&
+      (seguro.status == SeguroStatus.vencido ||
+          seguro.status == SeguroStatus.venceEmBreve)) {
+    return 'Substituída pela apólice seguinte.';
+  }
   switch (seguro.status) {
     case SeguroStatus.futuro:
       return seguroStartsPhrase(seguro.remainingDays);
@@ -110,7 +126,7 @@ String seguroVigenciaPhrase(Seguro seguro) {
 /// "Pago"; only a late payment adds its clause.
 String obligationListSubtitle(Obligation obligation) {
   if (obligation.status == ObligationStatus.pago) {
-    final late = paidLatePhrase(obligation.remainingDays);
+    final late = paidLatePhrase(daysPaidLate(obligation) ?? 0);
     return late == null ? 'Pago' : 'Pago · $late';
   }
   final label = switch (obligation.status) {
@@ -131,6 +147,11 @@ String obligationListSubtitle(Obligation obligation) {
 /// nothing to add — so the word stands alone rather than trailing a
 /// separator with nothing after it.
 String seguroListSubtitle(Seguro seguro) {
+  if (seguro.renewed &&
+      (seguro.status == SeguroStatus.vencido ||
+          seguro.status == SeguroStatus.venceEmBreve)) {
+    return 'Renovado';
+  }
   final label = switch (seguro.status) {
     SeguroStatus.futuro => 'Ainda não começou',
     SeguroStatus.vigente => 'Vigente',

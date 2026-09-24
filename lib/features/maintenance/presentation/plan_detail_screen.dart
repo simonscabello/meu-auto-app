@@ -7,7 +7,6 @@ import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
@@ -21,9 +20,10 @@ import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dar
 import 'package:meu_auto/features/maintenance/presentation/plan_periodicity.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -37,9 +37,9 @@ class PlanDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vehicle = ref.watch(selectedVehicleProvider).value;
+    final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
     if (vehicle == null) {
-      return const AppScaffold(title: 'Plano', body: SizedBox.shrink());
+      return const AppScaffold(title: 'Manutenção', body: SizedBox.shrink());
     }
 
     final planAsync = ref.watch(
@@ -49,7 +49,7 @@ class PlanDetailScreen extends ConsumerWidget {
 
     return planAsync.when(
       loading: () => const AppScaffold(
-        title: 'Plano',
+        title: 'Manutenção',
         body: Padding(
           padding: EdgeInsets.all(AppSpacing.s16),
           child: AppSkeletonList(count: 4, itemHeight: 96),
@@ -59,10 +59,10 @@ class PlanDetailScreen extends ConsumerWidget {
         final inactive =
             error is ApiFailure && error.code == ApiErrorCode.notFound;
         return AppScaffold(
-          title: 'Plano',
+          title: 'Manutenção',
           body: inactive
               ? AppErrorState(
-                  message: 'Este plano não está mais ativo.',
+                  message: 'Este item não está mais sendo acompanhado.',
                   onRetry: () => ref.invalidate(
                     maintenancePlanProvider((
                       vehicleId: vehicle.id,
@@ -87,6 +87,17 @@ class PlanDetailScreen extends ConsumerWidget {
 
         return AppScaffold(
           title: plan.itemName,
+          actions: [
+            PlanDetailMenu(
+              onKeepHistoryOnly:
+                  plan.status == MaintenanceStatus.semPeriodicidade
+                  ? null
+                  : () => _clearIntervals(context, ref, vehicle.id, plan),
+              onNotApplicable: () =>
+                  _markNotApplicable(context, ref, vehicle.id, plan),
+              onDeactivate: () => _deactivate(context, ref, vehicle.id, plan),
+            ),
+          ],
           body: PlanDetailContent(
             plan: plan,
             history: history,
@@ -100,14 +111,8 @@ class PlanDetailScreen extends ConsumerWidget {
               vehicleId: vehicle.id,
               plan: plan,
             ),
-            onKeepHistoryOnly: plan.status == MaintenanceStatus.semPeriodicidade
-                ? null
-                : () => _clearIntervals(context, ref, vehicle.id, plan),
-            onNotApplicable: () =>
-                _markNotApplicable(context, ref, vehicle.id, plan),
             onHistoryUnknown: (status) =>
                 _setHistory(context, ref, vehicle.id, plan, status),
-            onDeactivate: () => _deactivate(context, ref, vehicle.id, plan),
             onOpenRecord: (record) =>
                 context.push(AppRoutes.maintenanceRecord(record.id)),
           ),
@@ -120,7 +125,7 @@ class PlanDetailScreen extends ConsumerWidget {
     AsyncValue<PagedState<MaintenanceRecord>> records,
     String itemId,
   ) {
-    final page = records.value;
+    final page = records.valueOrNull;
     if (page == null) return const [];
     return historyOfItem(page.items, itemId);
   }
@@ -230,8 +235,8 @@ Future<void> _setHistory(
     showAppSnackBar(
       messenger,
       message: status == MaintenanceHistoryStatus.never
-          ? 'Anotado: nunca foi feito.'
-          : 'Tudo bem. Não vamos perguntar de novo.',
+          ? 'Anotado. Contamos a partir de quando o carro era novo.'
+          : 'Anotado. Quando fizer, registre aqui e a contagem começa.',
     );
   } on ApiFailure catch (failure) {
     if (!context.mounted) return;
@@ -250,11 +255,11 @@ Future<void> _deactivate(
 ) async {
   final confirmed = await confirmAction(
     context,
-    title: 'Desativar este plano?',
+    title: 'Parar de acompanhar ${plan.itemName.toLowerCase()}?',
     message:
-        'Ele sai da lista de cuidados, mas o histórico deste item '
-        'permanece. Dá para criar de novo depois.',
-    confirmLabel: 'Desativar',
+        'O Meu Auto deixa de avisar sobre este item. O que já foi registrado '
+        'continua no histórico, e dá para voltar a acompanhar depois.',
+    confirmLabel: 'Parar de acompanhar',
     destructive: true,
   );
   if (!confirmed || !context.mounted) return;
@@ -265,11 +270,64 @@ Future<void> _deactivate(
     await ref.read(maintenancePlanRepositoryProvider).deactivate(plan.id);
     invalidateAfterPlanWrite(ref, vehicleId);
     navigator.pop();
-    showAppSnackBar(messenger, message: 'Plano desativado.');
+    showAppSnackBar(
+      messenger,
+      message: 'Não vamos mais avisar sobre este item.',
+    );
   } on ApiFailure catch (failure) {
     showAppSnackBar(
       messenger,
       message: ApiFormErrors.bannerOf(failure) ?? failure.message,
+    );
+  }
+}
+
+/// The plan's rarer choices, out of the way of the common one.
+///
+/// The detail used to end in seven stacked buttons, three of which meant
+/// "stop reminding me" in different ways. What someone opens this screen to
+/// do is register the service or change how often it comes due; the rest is a
+/// correction made once, and belongs in a menu.
+class PlanDetailMenu extends StatelessWidget {
+  const PlanDetailMenu({
+    super.key,
+    this.onKeepHistoryOnly,
+    this.onNotApplicable,
+    this.onDeactivate,
+  });
+
+  final VoidCallback? onKeepHistoryOnly;
+  final VoidCallback? onNotApplicable;
+  final VoidCallback? onDeactivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <PopupMenuEntry<VoidCallback>>[
+      if (onNotApplicable != null)
+        PopupMenuItem(
+          value: onNotApplicable,
+          child: const Text('Meu carro não tem isso'),
+        ),
+      if (onKeepHistoryOnly != null)
+        PopupMenuItem(
+          value: onKeepHistoryOnly,
+          child: const Text('Só guardar o histórico'),
+        ),
+      if (onDeactivate != null)
+        PopupMenuItem(
+          value: onDeactivate,
+          child: Text(
+            'Parar de acompanhar',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ),
+    ];
+    if (items.isEmpty) return const SizedBox.shrink();
+    return PopupMenuButton<VoidCallback>(
+      tooltip: 'Mais opções',
+      icon: const Icon(Icons.more_vert),
+      itemBuilder: (context) => items,
+      onSelected: (action) => action(),
     );
   }
 }
@@ -282,10 +340,7 @@ class PlanDetailContent extends StatelessWidget {
     this.historyLoading = false,
     this.onRegister,
     this.onAdjustInterval,
-    this.onKeepHistoryOnly,
-    this.onNotApplicable,
     this.onHistoryUnknown,
-    this.onDeactivate,
     this.onOpenRecord,
   });
 
@@ -294,22 +349,17 @@ class PlanDetailContent extends StatelessWidget {
   final bool historyLoading;
   final VoidCallback? onRegister;
   final VoidCallback? onAdjustInterval;
-  final VoidCallback? onKeepHistoryOnly;
-
-  /// "Meu carro não tem isso."
-  final VoidCallback? onNotApplicable;
 
   /// "Não sei" / "nunca foi feito". Only offered while there is no baseline —
   /// once a service is recorded, the record is the answer.
   final ValueChanged<MaintenanceHistoryStatus>? onHistoryUnknown;
 
-  final VoidCallback? onDeactivate;
   final ValueChanged<MaintenanceRecord>? onOpenRecord;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final phrase = planStatusPhrase(plan);
+    final scheme = theme.colorScheme;
     final last = lastDonePhrase(
       occurredOn: plan.lastOccurredOn,
       mileageKm: plan.lastMileageKm,
@@ -321,24 +371,40 @@ class PlanDetailContent extends StatelessWidget {
       days: plan.intervalDays,
     );
     final howItWorks = strategyExplanation(plan);
+    final noBaseline = plan.status == MaintenanceStatus.semBaseline;
+    final headline = planDetailHeadline(plan);
     // One rule, one place. The two answers about the past make sense only while
     // there is nothing to measure from AND nobody has answered yet: once a
     // service is recorded the record IS the answer, and once somebody has said
     // "não sei" asking again is the nagging this change exists to remove.
     final canAnswerHistory =
         onHistoryUnknown != null &&
-        plan.status == MaintenanceStatus.semBaseline &&
+        noBaseline &&
         plan.historyStatus == MaintenanceHistoryStatus.notAsked;
 
+    final lastValue = switch (plan) {
+      _ when last != null => last,
+      _ when plan.countsFromNew =>
+        'Nunca foi feito — contamos a partir de quando o carro era novo',
+      _ when plan.historyStatus == MaintenanceHistoryStatus.unknown =>
+        'Você não lembra quando foi',
+      _ => 'Sem data',
+    };
+
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
               maintenanceIconFor(plan.itemSlug),
-              color: theme.colorScheme.onSurfaceVariant,
+              color: scheme.onSurfaceVariant,
             ),
             const SizedBox(width: AppSpacing.s12),
             Expanded(
@@ -348,119 +414,116 @@ class PlanDetailContent extends StatelessWidget {
                 runSpacing: AppSpacing.s4,
                 children: [
                   AppStatusChip(status: AppStatus.fromWire(plan.status.wire)),
-                  if (phrase.isNotEmpty)
-                    Text(phrase, style: theme.textTheme.bodyLarge),
+                  if (headline.isNotEmpty)
+                    Text(headline, style: theme.textTheme.bodyLarge),
                 ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.s24),
-        // Three facts, each a label and a value. They used to be three cards
-        // holding one line of text apiece, which is the clearest case of a
-        // container that groups nothing: a box around a single sentence adds
-        // a border and takes away the relationship between the sentence and
-        // the word above it.
-        _PlanFact(
-          label: 'Última vez',
-          value: last ?? 'Informe a última vez para começarmos a contar',
-          onTap: last == null ? onRegister : null,
+        const SizedBox(height: AppSpacing.s16),
+        // The facts are one object — this item on this car — so they share one
+        // surface, the same grouped list the rest of the app uses.
+        AppGroup(
+          dividerIndent: 0,
+          footnote: howItWorks,
+          children: [
+            _PlanFact(label: 'Última vez', value: lastValue),
+            if (next != null) _PlanFact(label: 'Próxima', value: next),
+            if (interval != null)
+              _PlanFact(
+                label: 'Intervalo',
+                value: interval,
+                onTap: onAdjustInterval,
+              ),
+          ],
         ),
-        if (next != null) _PlanFact(label: 'Próxima', value: next),
-        if (interval != null) _PlanFact(label: 'Intervalo', value: interval),
-        if (howItWorks != null) ...[
-          const SizedBox(height: AppSpacing.s8),
-          Text(
-            howItWorks,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
         if (plan.notes != null) ...[
           const SizedBox(height: AppSpacing.s8),
           Text(
             plan.notes!,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],
         const SizedBox(height: AppSpacing.s24),
-        const AppSectionHeader(title: 'Histórico deste item'),
-        const SizedBox(height: AppSpacing.s8),
-        if (historyLoading)
-          const AppSkeleton(width: double.infinity, height: 72)
-        else if (history.isEmpty)
+        if (noBaseline) ...[
+          // Without a date the item cannot come due, so the question the screen
+          // asks first is when it was last done — with the two honest ways of
+          // not knowing right under it, instead of at the foot of a list of
+          // seven buttons.
+          Text('Quando foi a última vez?', style: theme.textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.s4),
           Text(
-            'Ainda não há serviço deste item. O primeiro registro começa o histórico.',
+            'Com a data e a quilometragem, o Meu Auto calcula a próxima e '
+            'avisa na hora certa.',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: scheme.onSurfaceVariant,
             ),
-          )
-        else
-          for (var i = 0; i < history.length; i++) ...[
-            if (i > 0) const SizedBox(height: AppSpacing.s8),
-            _HistoryTile(
-              record: history[i],
-              previous: i + 1 < history.length ? history[i + 1] : null,
-              onTap: onOpenRecord == null
-                  ? null
-                  : () => onOpenRecord!(history[i]),
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          AppButton(label: 'Informar a última vez', onPressed: onRegister),
+          if (canAnswerHistory) ...[
+            const SizedBox(height: AppSpacing.s4),
+            AppButton(
+              label: 'Não sei quando foi',
+              variant: AppButtonVariant.tertiary,
+              onPressed: () =>
+                  onHistoryUnknown!(MaintenanceHistoryStatus.unknown),
+            ),
+            AppButton(
+              label: 'Nunca foi feito',
+              variant: AppButtonVariant.tertiary,
+              onPressed: () =>
+                  onHistoryUnknown!(MaintenanceHistoryStatus.never),
             ),
           ],
-        const SizedBox(height: AppSpacing.s24),
-        AppButton(label: 'Registrar agora', onPressed: onRegister),
-        const SizedBox(height: AppSpacing.s8),
-        AppButton(
-          label: 'Ajustar intervalo',
-          variant: AppButtonVariant.secondary,
-          onPressed: onAdjustInterval,
-        ),
-        // Offered before the destructive options, because it is the honest
-        // answer far more often than "desativar": most people who do not want a
-        // reminder do not have the part.
-        if (canAnswerHistory) ...[
+        ] else ...[
+          AppButton(label: 'Registrar serviço', onPressed: onRegister),
           const SizedBox(height: AppSpacing.s8),
           AppButton(
-            label: 'Não sei quando foi',
-            variant: AppButtonVariant.tertiary,
-            onPressed: () =>
-                onHistoryUnknown!(MaintenanceHistoryStatus.unknown),
-          ),
-          AppButton(
-            label: 'Nunca foi feito',
-            variant: AppButtonVariant.tertiary,
-            onPressed: () => onHistoryUnknown!(MaintenanceHistoryStatus.never),
+            label: 'Ajustar intervalo',
+            variant: AppButtonVariant.secondary,
+            onPressed: onAdjustInterval,
           ),
         ],
-        if (onKeepHistoryOnly != null) ...[
+        const SizedBox(height: appGroupGap),
+        if (historyLoading) ...[
+          const AppSectionHeader(title: 'Histórico deste item'),
           const SizedBox(height: AppSpacing.s8),
-          AppButton(
-            label: 'Só quero guardar o histórico',
-            variant: AppButtonVariant.tertiary,
-            onPressed: onKeepHistoryOnly,
+          const AppSkeleton(width: double.infinity, height: 72),
+        ] else if (history.isEmpty)
+          const AppGroup(
+            title: 'Histórico deste item',
+            footnote:
+                'Ainda não há serviço deste item. O primeiro registro começa o '
+                'histórico.',
+            children: [],
+          )
+        else
+          AppGroup(
+            title: 'Histórico deste item',
+            dividerIndent: 0,
+            children: [
+              for (var i = 0; i < history.length; i++)
+                _HistoryTile(
+                  record: history[i],
+                  previous: i + 1 < history.length ? history[i + 1] : null,
+                  onTap: onOpenRecord == null
+                      ? null
+                      : () => onOpenRecord!(history[i]),
+                ),
+            ],
           ),
-        ],
-        if (onNotApplicable != null)
-          AppButton(
-            label: 'Meu carro não usa isso',
-            variant: AppButtonVariant.tertiary,
-            onPressed: onNotApplicable,
-          ),
-        const SizedBox(height: AppSpacing.s8),
-        AppButton(
-          label: 'Desativar plano',
-          variant: AppButtonVariant.destructive,
-          onPressed: onDeactivate,
-        ),
         if (plan.origin == MaintenancePlanOrigin.suggested) ...[
           const SizedBox(height: AppSpacing.s16),
           Text(
-            'Se você alterar este plano, ele deixa de seguir os padrões '
-            'sugeridos e passa a ser só o seu.',
+            'O intervalo sugerido é uma referência de mercado, não a '
+            'recomendação do fabricante do seu carro. Se o manual disser outra '
+            'coisa, ajuste o intervalo e os avisos passam a seguir o seu.',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -485,39 +548,46 @@ class _HistoryTile extends StatelessWidget {
     final delta = km == null || previousKm == null
         ? null
         : mileageSincePreviousPhrase(km, previousKm);
+    final title = km == null
+        ? formatCivilDateLong(record.occurredOn)
+        : '${formatCivilDateLong(record.occurredOn)} · ${formatKm(km)}';
 
-    return AppCard(
+    return AppListRowShell(
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      semanticLabel: delta == null ? title : '$title. $delta',
+      child: Row(
         children: [
-          Text(
-            km == null
-                ? formatCivilDateLong(record.occurredOn)
-                : '${formatCivilDateLong(record.occurredOn)} · ${formatKm(km)}',
-            style: theme.textTheme.titleSmall,
-          ),
-          if (delta != null) ...[
-            const SizedBox(height: AppSpacing.s4),
-            Text(
-              delta,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.bodyLarge),
+                if (delta != null)
+                  Text(
+                    delta,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
             ),
-          ],
+          ),
+          if (onTap != null)
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: theme.colorScheme.outline,
+            ),
         ],
       ),
     );
   }
 }
 
-/// A label and its value, on a detail screen.
+/// A label and its value, as one row of the facts group.
 ///
-/// The shape a "what is this set to" fact takes everywhere in the app now:
-/// the label quiet and small above, the value in body type below, and no
-/// container at all. Tappable only when the value is a prompt rather than a
-/// fact — "informe a última vez" is somewhere to go, "15 de julho" is not.
+/// Tappable only when there is something to change — the interval opens its
+/// sheet; "15 de julho" is not somewhere to go.
 class _PlanFact extends StatelessWidget {
   const _PlanFact({required this.label, required this.value, this.onTap});
 
@@ -530,55 +600,30 @@ class _PlanFact extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: scheme.onSurfaceVariant,
-            letterSpacing: 0.4,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Row(
-          children: [
-            Expanded(
-              child: Text(value, style: theme.textTheme.bodyLarge),
-            ),
-            if (onTap != null)
-              Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-          ],
-        ),
-      ],
-    );
-
-    if (onTap == null) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.s20),
-        child: body,
-      );
-    }
-
-    return Semantics(
-      button: true,
-      label: '$label. $value',
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.borderS,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: AppSpacing.minTapTarget,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.s20),
-              child: body,
+    return AppListRowShell(
+      onTap: onTap,
+      semanticLabel: '$label. $value',
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(value, style: theme.textTheme.bodyLarge),
+              ],
             ),
           ),
-        ),
+          if (onTap != null)
+            Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+        ],
       ),
     );
   }

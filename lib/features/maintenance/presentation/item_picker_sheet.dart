@@ -21,9 +21,16 @@ class ItemPickerSheet extends ConsumerStatefulWidget {
     required this.selected,
     this.lockedItemIds = const {},
     this.title = 'O que foi feito',
+    this.hiddenItemIds = const {},
   });
 
   final List<MaintenanceItem> selected;
+
+  /// Items the car does not have — marked "não usa" on its profile, or ruled
+  /// out by its fuel. Left out of the list: offering an oil change to an
+  /// electric car in the form that records a service is the same false
+  /// suggestion the plan list was fixed to stop making.
+  final Set<String> hiddenItemIds;
 
   /// Items that are already on the record being added to: shown ticked, and
   /// not untickable. The picker cannot remove a line, so offering a tick that
@@ -39,6 +46,7 @@ class ItemPickerSheet extends ConsumerStatefulWidget {
     required List<MaintenanceItem> selected,
     Set<String> lockedItemIds = const {},
     String title = 'O que foi feito',
+    Set<String> hiddenItemIds = const {},
   }) {
     return showModalBottomSheet<List<MaintenanceItem>>(
       context: context,
@@ -49,6 +57,7 @@ class ItemPickerSheet extends ConsumerStatefulWidget {
         selected: selected,
         lockedItemIds: lockedItemIds,
         title: title,
+        hiddenItemIds: hiddenItemIds,
       ),
     );
   }
@@ -125,10 +134,7 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              widget.title,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.s12),
             TextField(
               controller: _query,
@@ -180,10 +186,11 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
 
   List<MaintenanceItem> _filtered(List<MaintenanceItem> items) {
     final needle = _query.text.trim().toLowerCase();
-    if (needle.isEmpty) return items;
     return [
       for (final item in items)
-        if (item.name.toLowerCase().contains(needle)) item,
+        if (!widget.hiddenItemIds.contains(item.id) &&
+            (needle.isEmpty || item.name.toLowerCase().contains(needle)))
+          item,
     ];
   }
 }

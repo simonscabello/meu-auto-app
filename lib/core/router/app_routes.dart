@@ -8,9 +8,15 @@ abstract final class AppRoutes {
   static const passwordResetConfirm = '/redefinir-senha';
 
   static const deleteAccount = '/excluir-conta';
+  static const changePassword = '/alterar-senha';
   static const home = '/';
   static const care = '/cuidados';
+  static const documents = '/documentos';
   static const history = '/historico';
+
+  /// Everything that needs attention on the selected vehicle — the full list
+  /// behind Início's "Ver todos".
+  static const alerts = '/avisos';
   static const profile = '/perfil';
   static const vehicles = '/vehicles';
   static const vehicleNew = '/vehicles/new';

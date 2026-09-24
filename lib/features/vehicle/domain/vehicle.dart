@@ -54,6 +54,39 @@ String normalizePlate(String raw) {
   return buffer.toString();
 }
 
+/// The model without its specification: the words before the first one that
+/// starts with a digit or carries a dot (an engine size, "16V", "5p", "Aut."),
+/// at most two of them, with an all-capitals word written as a name.
+///
+/// Presentation only. It never touches what is stored — the snapshot the owner
+/// confirmed stays exactly as it was.
+String shortModelName(String model) {
+  final words = <String>[];
+  for (final raw in model.trim().split(RegExp(r'\s+'))) {
+    if (raw.isEmpty) continue;
+    if (RegExp(r'^[0-9(]').hasMatch(raw) || raw.contains('.')) break;
+    words.add(_asName(raw));
+    if (words.length == 2) break;
+  }
+  return words.join(' ');
+}
+
+String _asName(String word) {
+  final shouting =
+      word.length > 2 &&
+      word == word.toUpperCase() &&
+      !RegExp(r'[0-9]').hasMatch(word);
+  if (!shouting) return word;
+  return word
+      .split('-')
+      .map(
+        (part) => part.isEmpty
+            ? part
+            : part[0].toUpperCase() + part.substring(1).toLowerCase(),
+      )
+      .join('-');
+}
+
 final class Vehicle {
   const Vehicle({
     required this.id,
@@ -133,6 +166,22 @@ final class Vehicle {
       return nick;
     }
     return '$brand $model';
+  }
+
+  /// The name for a title bar and a switcher row: the nickname, or the brand
+  /// and the model without its FIPE specification.
+  ///
+  /// The catalogue stores the model and the version as one string — "PRIUS
+  /// 1.8 16V 5p Aut. (Híbrido)" — which truncated the Início title to "Toyota
+  /// PRIUS 1.8 16V 5p Aut. (H…" and hid the switcher arrow behind it. The
+  /// full string stays on the vehicle detail; here it is "Toyota Prius".
+  String get shortName {
+    final nick = nickname?.trim();
+    if (nick != null && nick.isNotEmpty) {
+      return nick;
+    }
+    final short = shortModelName(model);
+    return short.isEmpty ? brand : '$brand $short';
   }
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {

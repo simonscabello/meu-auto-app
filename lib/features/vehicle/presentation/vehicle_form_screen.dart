@@ -9,13 +9,15 @@ import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
+import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/catalog/domain/vehicle_catalog.dart';
 import 'package:meu_auto/features/catalog/presentation/vehicle_catalog_sheet.dart';
-import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -64,12 +66,53 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
   /// the existing link alone, and null means exactly that: say nothing.
   String? _existingCatalogId;
 
+  /// What the fields held when the screen opened — empty for a new vehicle,
+  /// the stored values when editing. Leaving with anything different asks
+  /// first.
+  List<String> _openedWith = const [];
+  FuelType? _fuelOpenedWith;
+
   bool _filled = false;
   bool _submitting = false;
   bool _loggingOut = false;
   bool _offline = false;
   String? _banner;
   Map<String, String> _fieldErrors = {};
+
+  List<TextEditingController> get _allFields => [
+    _nickname,
+    _brand,
+    _model,
+    _version,
+    _manufactureYear,
+    _modelYear,
+    _plate,
+    _color,
+    _mileage,
+    _renavam,
+    _chassis,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _snapshot();
+  }
+
+  void _snapshot() {
+    _openedWith = [for (final field in _allFields) field.text];
+    _fuelOpenedWith = _fuel;
+  }
+
+  bool get _isDirty {
+    if (_catalog != null) return true;
+    if (_fuel != _fuelOpenedWith) return true;
+    final fields = _allFields;
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i].text != _openedWith[i]) return true;
+    }
+    return false;
+  }
 
   @override
   void dispose() {
@@ -106,6 +149,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
     _fuelInitial = _fuel;
     _existingCatalogId = vehicle.catalogModelYearId;
     _fipeCode = vehicle.fipeCode;
+    _snapshot();
   }
 
   /// Opens the picker and copies what came back into the fields.
@@ -160,7 +204,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       final notifier = ref.read(vehiclesProvider.notifier);
       final wasFirstVehicle =
           !widget.isEditing &&
-          (ref.read(vehiclesProvider).value?.vehicles.isEmpty ?? true);
+          (ref.read(vehiclesProvider).valueOrNull?.vehicles.isEmpty ?? true);
       if (widget.isEditing) {
         await notifier.updateVehicle(
           id: widget.vehicleId!,
@@ -202,6 +246,10 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       }
       final messenger = ScaffoldMessenger.of(context);
       if (widget.isEditing) {
+        // Correcting the fuel re-derives which plans the car has (RN-11), and
+        // the name and year appear on Início: everything about this vehicle
+        // is read again.
+        invalidateVehicleDerived(ref, widget.vehicleId!);
         context.pop();
         showAppSnackBar(messenger, message: 'Veículo atualizado.');
         return;
@@ -245,7 +293,7 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
   Widget build(BuildContext context) {
     final list = ref.watch(vehiclesProvider);
     final onboarding =
-        !widget.isEditing && (list.value?.vehicles.isEmpty ?? false);
+        !widget.isEditing && (list.valueOrNull?.vehicles.isEmpty ?? false);
     if (widget.isEditing) {
       return list.when(
         loading: () => const AppScaffold(
@@ -289,141 +337,148 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
     // to correct and always was.
     final identified = _catalog != null && !_carFieldsHaveError;
 
-    return AppScaffold(
-      title: title,
-      actions: [
-        if (onboarding)
-          AppButton(
-            label: 'Sair',
-            variant: AppButtonVariant.tertiary,
-            onPressed: _loggingOut || _submitting ? null : _logout,
-          ),
-      ],
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.s24),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        children: [
-          if (onboarding) ...[
-            Text(
-              'Seu primeiro carro',
-              style: Theme.of(context).textTheme.headlineSmall,
+    return AppDiscardGuard(
+      listenable: Listenable.merge(_allFields),
+      isDirty: () => _isDirty,
+      busy: _submitting,
+      child: AppScaffold(
+        title: title,
+        actions: [
+          if (onboarding)
+            AppButton(
+              label: 'Sair',
+              variant: AppButtonVariant.tertiary,
+              onPressed: _loggingOut || _submitting ? null : _logout,
             ),
-            const SizedBox(height: AppSpacing.s8),
-            Text(
-              'Marca e modelo bastam para começar. O resto pode vir depois.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s24),
-          ],
-          if (_banner != null) AuthFormBanner(message: _banner!),
-          // Above the fields it fills, because it is the shortcut past them.
-          // Typing everything by hand still works and is never hidden.
-          if (_catalog != null)
-            VehicleCatalogSummary(
-              selection: _catalog!,
-              enabled: !_submitting,
-              onChange: _pickFromCatalog,
-              onClear: _clearCatalog,
-            )
-          else
-            VehicleCatalogPrompt(
-              enabled: !_submitting,
-              alreadyLinked: _existingCatalogId != null,
-              onPressed: _pickFromCatalog,
-            ),
-          if (identified)
-            VehicleFoldedSection(
-              title: 'Marca, modelo, ano e combustível',
-              subtitle: 'Preenchidos pela tabela FIPE. Dá para corrigir.',
-              children: _carFields(),
-            )
-          else ...[
-            const AppSectionHeader(title: 'O carro'),
-            const SizedBox(height: AppSpacing.s8),
-            ..._carFields(),
-          ],
-          if (!widget.isEditing) ...[
-            const SizedBox(height: AppSpacing.s8),
-            const AppSectionHeader(title: 'Quilometragem'),
-            const SizedBox(height: AppSpacing.s8),
-            AppKmField(
-              controller: _mileage,
-              label: 'Quilometragem atual',
-              enabled: !_submitting,
-              helperText: 'É daqui que o Meu Auto conta os próximos cuidados.',
-              errorText: _fieldErrors['current_mileage_km'],
-              onChanged: (_) => _clearError('current_mileage_km'),
-            ),
-            const SizedBox(height: AppSpacing.s24),
-          ],
-          const AppSectionHeader(title: 'Como você reconhece'),
-          const SizedBox(height: AppSpacing.s8),
-          _textField(
-            controller: _nickname,
-            label: 'Apelido',
-            hint: 'como você chama o carro',
-            fieldKey: 'nickname',
-            optional: true,
-            textCapitalization: TextCapitalization.sentences,
-          ),
-          _textField(
-            controller: _plate,
-            label: 'Placa',
-            hint: 'ABC1D23',
-            fieldKey: 'plate',
-            optional: true,
-            inputFormatters: const [PlateInputFormatter()],
-          ),
-          _textField(
-            controller: _color,
-            label: 'Cor',
-            fieldKey: 'color',
-            optional: true,
-            textCapitalization: TextCapitalization.sentences,
-            textInputAction: TextInputAction.done,
-          ),
-          VehicleFoldedSection(
-            title: 'Dados do documento',
-            subtitle: 'Renavam e chassi, se você tiver o CRLV à mão.',
-            children: [
-              _textField(
-                controller: _renavam,
-                label: 'Renavam',
-                fieldKey: 'renavam',
-                optional: true,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(11),
-                ],
-              ),
-              _textField(
-                controller: _chassis,
-                label: 'Chassi',
-                fieldKey: 'chassis',
-                optional: true,
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [LengthLimitingTextInputFormatter(17)],
-                textInputAction: TextInputAction.done,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s24),
-          SizedBox(
-            width: double.infinity,
-            child: AppButton(
-              label: _offline
-                  ? 'Tentar de novo'
-                  : widget.isEditing
-                  ? 'Salvar'
-                  : 'Cadastrar veículo',
-              loading: _submitting,
-              onPressed: _submit,
-            ),
-          ),
         ],
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.s24),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          children: [
+            if (onboarding) ...[
+              Text(
+                'Seu primeiro carro',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: AppSpacing.s8),
+              Text(
+                'Marca e modelo bastam para começar. O resto pode vir depois.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s24),
+            ],
+            if (_banner != null) AuthFormBanner(message: _banner!),
+            // Above the fields it fills, because it is the shortcut past them.
+            // Typing everything by hand still works and is never hidden.
+            if (_catalog != null)
+              VehicleCatalogSummary(
+                selection: _catalog!,
+                enabled: !_submitting,
+                onChange: _pickFromCatalog,
+                onClear: _clearCatalog,
+              )
+            else
+              VehicleCatalogPrompt(
+                enabled: !_submitting,
+                alreadyLinked: _existingCatalogId != null,
+                onPressed: _pickFromCatalog,
+              ),
+            if (identified)
+              VehicleFoldedSection(
+                title: 'Marca, modelo, ano e combustível',
+                subtitle: 'Preenchidos pela tabela FIPE. Dá para corrigir.',
+                children: _carFields(),
+              )
+            else ...[
+              const AppSectionHeader(title: 'O carro'),
+              const SizedBox(height: AppSpacing.s8),
+              ..._carFields(),
+            ],
+            if (!widget.isEditing) ...[
+              const SizedBox(height: AppSpacing.s8),
+              const AppSectionHeader(title: 'Quilometragem'),
+              const SizedBox(height: AppSpacing.s8),
+              AppKmField(
+                controller: _mileage,
+                label: 'Quilometragem atual',
+                enabled: !_submitting,
+                helperText:
+                    'O que está no painel hoje. É daqui que o Meu Auto conta as '
+                    'próximas manutenções.',
+                errorText: _fieldErrors['current_mileage_km'],
+                onChanged: (_) => _clearError('current_mileage_km'),
+              ),
+              const SizedBox(height: AppSpacing.s24),
+            ],
+            const AppSectionHeader(title: 'Como você reconhece'),
+            const SizedBox(height: AppSpacing.s8),
+            _textField(
+              controller: _nickname,
+              label: 'Apelido',
+              hint: 'como você chama o carro',
+              fieldKey: 'nickname',
+              optional: true,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            _textField(
+              controller: _plate,
+              label: 'Placa',
+              hint: 'ABC1D23',
+              fieldKey: 'plate',
+              optional: true,
+              inputFormatters: const [PlateInputFormatter()],
+            ),
+            _textField(
+              controller: _color,
+              label: 'Cor',
+              fieldKey: 'color',
+              optional: true,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+            ),
+            VehicleFoldedSection(
+              title: 'Dados do documento',
+              subtitle: 'Renavam e chassi, se você tiver o CRLV à mão.',
+              children: [
+                _textField(
+                  controller: _renavam,
+                  label: 'Renavam',
+                  fieldKey: 'renavam',
+                  optional: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(11),
+                  ],
+                ),
+                _textField(
+                  controller: _chassis,
+                  label: 'Chassi',
+                  fieldKey: 'chassis',
+                  optional: true,
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: [LengthLimitingTextInputFormatter(17)],
+                  textInputAction: TextInputAction.done,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s24),
+            SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                label: _offline
+                    ? 'Tentar de novo'
+                    : widget.isEditing
+                    ? 'Salvar'
+                    : 'Cadastrar veículo',
+                loading: _submitting,
+                onPressed: _submit,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -490,13 +545,20 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
         child: DropdownButtonFormField<FuelType?>(
           initialValue: _fuelInitial,
           isExpanded: true,
+          // Not marked optional, although the server accepts it empty: the fuel
+          // is what decides which items the car has at all — an electric has
+          // no oil change, a diesel no spark plugs. Left blank, the engine
+          // items are simply missing, and "Não sei" says that honestly.
           decoration: InputDecoration(
-            labelText: 'Combustível (opcional)',
+            labelText: 'Combustível',
+            helperText:
+                'Define o que o carro precisa: um elétrico não troca '
+                'óleo, um diesel não tem vela.',
             errorText: _fieldErrors['fuel_type'],
             errorMaxLines: 3,
           ),
           items: [
-            const DropdownMenuItem(value: null, child: Text('Não informado')),
+            const DropdownMenuItem(value: null, child: Text('Não sei')),
             for (final fuel in FuelType.values)
               if (fuel != FuelType.desconhecido)
                 DropdownMenuItem(value: fuel, child: Text(fuel.label)),

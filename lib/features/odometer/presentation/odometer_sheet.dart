@@ -7,15 +7,14 @@ import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/features/costs/application/costs_provider.dart';
-import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog.dart';
-import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -58,11 +57,24 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
   final _notes = TextEditingController();
 
   CivilDate _occurredOn = CivilDate.todayLocal();
+
+  /// Taken on the first submit and kept: a retry after a dropped connection
+  /// must be the same reading, not a second one.
+  String? _createId;
   bool _showNotes = false;
   bool _submitting = false;
   bool _offline = false;
   String? _fieldError;
   String? _banner;
+
+  late final String _mileageOpenedWith;
+
+  /// A single number, so the sheet still closes by dragging; the back button
+  /// asks first once something was typed.
+  bool get _isDirty =>
+      _mileage.text != _mileageOpenedWith ||
+      _notes.text.trim().isNotEmpty ||
+      _occurredOn != CivilDate.todayLocal();
 
   @override
   void initState() {
@@ -70,6 +82,7 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
     // Prefilled and fully selected: the current reading is the useful starting
     // point, and typing should replace it rather than append to it.
     _mileage = kmController(widget.currentMileageKm);
+    _mileageOpenedWith = _mileage.text;
   }
 
   @override
@@ -93,25 +106,24 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
       _offline = false;
     });
 
+    final repository = ref.read(odometerRepositoryProvider);
+    _createId ??= repository.nextId();
     try {
-      final created = await ref
-          .read(odometerRepositoryProvider)
-          .create(
-            vehicleId: widget.vehicleId,
-            mileageKm: parsed,
-            occurredOn: _occurredOn,
-            notes: _notes.text,
-            force: force,
-          );
+      final created = await repository.create(
+        vehicleId: widget.vehicleId,
+        mileageKm: parsed,
+        occurredOn: _occurredOn,
+        notes: _notes.text,
+        force: force,
+        id: _createId,
+      );
 
       // The response already carries the updated vehicle, so the switcher and
-      // every mileage prefill are current without a second request. The
-      // dashboard still has to be refetched: distances to every due date moved.
+      // every mileage prefill are current without a second request. What the
+      // server derives from the mileage still has to be refetched: distances to
+      // every due date moved, on Início and on Cuidados alike.
       ref.read(vehiclesProvider.notifier).applyUpdated(created.vehicle);
-      ref.invalidate(dashboardProvider(widget.vehicleId));
-      ref.invalidate(odometerHistoryProvider(widget.vehicleId));
-      ref.invalidate(timelineProvider(widget.vehicleId));
-      ref.invalidate(costsDashboardProvider);
+      invalidateVehicleDerived(ref, widget.vehicleId);
 
       if (!mounted) return;
       // Both are looked up before the pop: afterwards this element is on its
@@ -148,7 +160,10 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
 
       setState(() {
         _fieldError = ApiFormErrors.fieldsOf(failure)['mileage_km'];
-        _banner = ApiFormErrors.bannerOf(failure);
+        _banner = ApiFormErrors.bannerOf(
+          failure,
+          shownFields: const ['mileage_km'],
+        );
         _offline = ApiFormErrors.isOffline(failure);
       });
     }
@@ -164,95 +179,104 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.s24,
-        right: AppSpacing.s24,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Atualizar quilometragem', style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s16),
-            AppKmField(
-              controller: _mileage,
-              autofocus: true,
-              enabled: !_submitting,
-              textStyle: theme.textTheme.headlineMedium,
-              textInputAction: _showNotes
-                  ? TextInputAction.next
-                  : TextInputAction.done,
-              onSubmitted: (_) => _submitting || _showNotes ? null : _submit(),
-              errorText: _fieldError,
-              helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppDateField(
-              value: _occurredOn,
-              onPick: _pickDate,
-              enabled: !_submitting,
-            ),
-            if (_showNotes) ...[
-              const SizedBox(height: AppSpacing.s8),
-              TextField(
-                controller: _notes,
+    return AppDiscardGuard(
+      listenable: Listenable.merge([_mileage, _notes]),
+      isDirty: () => _isDirty,
+      busy: _submitting,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.s24,
+          right: AppSpacing.s24,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Atualizar quilometragem',
+                style: theme.textTheme.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.s16),
+              AppKmField(
+                controller: _mileage,
+                autofocus: true,
                 enabled: !_submitting,
-                maxLength: 500,
-                maxLines: 2,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _submitting ? null : _submit(),
-                decoration: const InputDecoration(
-                  labelText: 'Observação',
-                  counterText: '',
+                textStyle: theme.textTheme.headlineMedium,
+                textInputAction: _showNotes
+                    ? TextInputAction.next
+                    : TextInputAction.done,
+                onSubmitted: (_) =>
+                    _submitting || _showNotes ? null : _submit(),
+                errorText: _fieldError,
+                helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
+              ),
+              const SizedBox(height: AppSpacing.s12),
+              AppDateField(
+                value: _occurredOn,
+                onPick: _pickDate,
+                enabled: !_submitting,
+              ),
+              if (_showNotes) ...[
+                const SizedBox(height: AppSpacing.s8),
+                TextField(
+                  controller: _notes,
+                  enabled: !_submitting,
+                  maxLength: 500,
+                  maxLines: 2,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _submitting ? null : _submit(),
+                  decoration: const InputDecoration(
+                    labelText: 'Observação',
+                    counterText: '',
+                  ),
+                ),
+              ] else
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _submitting
+                        ? null
+                        : () => setState(() => _showNotes = true),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Adicionar observação'),
+                  ),
+                ),
+              if (_banner != null) ...[
+                const SizedBox(height: AppSpacing.s8),
+                Text(
+                  _banner!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.s16),
+              SizedBox(
+                width: double.infinity,
+                child: AppButton(
+                  label: _offline ? 'Tentar de novo' : 'Salvar',
+                  loading: _submitting,
+                  onPressed: _submit,
                 ),
               ),
-            ] else
               Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton.icon(
+                child: AppButton(
+                  label: 'Ver histórico',
+                  variant: AppButtonVariant.tertiary,
                   onPressed: _submitting
                       ? null
-                      : () => setState(() => _showNotes = true),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Adicionar observação'),
-                ),
-              ),
-            if (_banner != null) ...[
-              const SizedBox(height: AppSpacing.s8),
-              Text(
-                _banner!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.error,
+                      : () {
+                          final router = GoRouter.of(context);
+                          Navigator.of(context).pop();
+                          router.push(AppRoutes.odometer);
+                        },
                 ),
               ),
             ],
-            const SizedBox(height: AppSpacing.s16),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                label: _offline ? 'Tentar de novo' : 'Salvar',
-                loading: _submitting,
-                onPressed: _submit,
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppButton(
-                label: 'Ver histórico',
-                variant: AppButtonVariant.tertiary,
-                onPressed: _submitting
-                    ? null
-                    : () {
-                        final router = GoRouter.of(context);
-                        Navigator.of(context).pop();
-                        router.push(AppRoutes.odometer);
-                      },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

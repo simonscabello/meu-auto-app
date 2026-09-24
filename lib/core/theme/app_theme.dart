@@ -56,6 +56,11 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerHighest,
+        // A helper line is the field explaining itself. Material's default of
+        // one line cut "É daqui que o Meu Auto conta os próximos cuidados" to
+        // "...os próximos cuidado…" on a 390dp phone, which is worse than no
+        // explanation at all.
+        helperMaxLines: 3,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.s16,
           vertical: AppSpacing.s12,

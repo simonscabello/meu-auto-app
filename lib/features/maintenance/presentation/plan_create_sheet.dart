@@ -37,6 +37,8 @@ class PlanCreateSheet extends ConsumerStatefulWidget {
 class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
   final _query = TextEditingController();
   MaintenanceItem? _selected;
+  String? _createId;
+  String? _createIdItem;
   bool _submitting = false;
   bool _offline = false;
   String? _banner;
@@ -57,10 +59,19 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
       _offline = false;
     });
 
+    // One id per item chosen: a retry of the same choice replays the same
+    // request, and picking another item is another request.
+    final repository = ref.read(maintenancePlanRepositoryProvider);
+    if (_createId == null || _createIdItem != item.id) {
+      _createId = repository.nextId();
+      _createIdItem = item.id;
+    }
     try {
-      await ref
-          .read(maintenancePlanRepositoryProvider)
-          .create(vehicleId: widget.vehicleId, maintenanceItemId: item.id);
+      await repository.create(
+        vehicleId: widget.vehicleId,
+        maintenanceItemId: item.id,
+        id: _createId,
+      );
       invalidateAfterPlanWrite(ref, widget.vehicleId);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -86,7 +97,7 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
       maintenancePlansWithHiddenProvider(widget.vehicleId),
     );
     final height = MediaQuery.sizeOf(context).height * 0.85;
-    final listed = plans.value;
+    final listed = plans.valueOrNull;
     final taken = <String>{
       if (listed != null)
         for (final plan in listed) plan.maintenanceItemId,

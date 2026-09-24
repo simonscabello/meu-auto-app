@@ -36,10 +36,10 @@ class SplashScreen extends ConsumerWidget {
       );
     }
 
-    final status = auth.value;
+    final status = auth.valueOrNull;
     if (status is AuthLoggedIn) {
       final vehicles = ref.watch(vehiclesProvider);
-      if (vehicles.hasError && !(vehicles.value?.available ?? false)) {
+      if (vehicles.hasError && !(vehicles.valueOrNull?.available ?? false)) {
         return AppScaffold(
           body: Center(
             child: Padding(

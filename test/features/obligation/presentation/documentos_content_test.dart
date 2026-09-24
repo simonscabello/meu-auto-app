@@ -62,6 +62,26 @@ void main() {
     await tester.pump();
     expect(opened, 1);
   });
+
+  testWidgets('the standalone screen can omit the repeated heading', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: DocumentosContent(
+            obligations: [],
+            seguros: [],
+            showHeading: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Documentos e prazos'), findsNothing);
+    expect(find.text('IPVA'), findsOneWidget);
+    expect(find.text('Seguro'), findsOneWidget);
+  });
 }
 
 final _ipva = Obligation(

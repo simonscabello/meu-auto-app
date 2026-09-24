@@ -24,29 +24,30 @@ void main() {
     expect(find.textContaining('Preço por litro'), findsNothing);
   });
 
-  testWidgets('insufficient_data keeps amount and litres and uses the status phrase', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      last: _last(
-        consumption: const Consumption(
-          unit: 'km_per_liter',
-          status: ConsumptionStatus.insufficientData,
+  testWidgets(
+    'insufficient_data keeps amount and litres and uses the status phrase',
+    (tester) async {
+      await _pump(
+        tester,
+        last: _last(
+          consumption: const Consumption(
+            unit: 'km_per_liter',
+            status: ConsumptionStatus.insufficientData,
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Último abastecimento'), findsOneWidget);
-    expect(find.text(r'R$ 238,40'), findsOneWidget);
-    expect(find.text('34,7 L'), findsOneWidget);
-    expect(find.byType(AppMetric), findsNWidgets(2));
-    expect(
-      find.text('Consumo disponível a partir do próximo tanque cheio.'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('km/L'), findsNothing);
-  });
+      expect(find.text('Último abastecimento'), findsOneWidget);
+      expect(find.text(r'R$ 238,40'), findsOneWidget);
+      expect(find.text('34,7 L'), findsOneWidget);
+      expect(find.byType(AppMetric), findsNWidgets(2));
+      expect(
+        find.text('Consumo disponível a partir do próximo tanque cheio.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('km/L'), findsNothing);
+    },
+  );
 
   testWidgets('no fill is a discreet invite, not the list empty state', (
     tester,
@@ -60,7 +61,9 @@ void main() {
     expect(find.text(abastecimentoRegisterLabel), findsNothing);
   });
 
-  testWidgets('an unsupported vehicle hides the block entirely', (tester) async {
+  testWidgets('an unsupported vehicle hides the block entirely', (
+    tester,
+  ) async {
     await _pump(tester, supported: false, last: _last());
 
     expect(find.text('Último abastecimento'), findsNothing);

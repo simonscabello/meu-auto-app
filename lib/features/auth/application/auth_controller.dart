@@ -89,6 +89,19 @@ class AuthController extends AsyncNotifier<AuthStatus> {
     state = AsyncData(AuthLoggedIn(user));
   }
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final session = await ref
+        .read(authRepositoryProvider)
+        .changePassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+    await _becomeLoggedIn(session);
+  }
+
   Future<void> deleteAccount({required String password}) async {
     await ref.read(authRepositoryProvider).deleteMe(password: password);
   }

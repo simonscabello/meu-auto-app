@@ -8,7 +8,9 @@ import 'package:meu_auto/features/abastecimento/application/abastecimento_provid
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_detail_screen.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_profile_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/maintenance/presentation/cuidados_screen.dart';
 import 'package:meu_auto/features/obligation/application/obligation_provider.dart';
 import 'package:meu_auto/features/obligation/domain/obligation.dart';
@@ -125,9 +127,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          seguroProvider('s1').overrideWith((ref) => pending.future),
-        ],
+        overrides: [seguroProvider('s1').overrideWith((ref) => pending.future)],
         child: const MaterialApp(home: SeguroDetailScreen(seguroId: 's1')),
       ),
     );
@@ -168,6 +168,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // The tab also reads the profile for its open question; left pending here.
+          maintenanceProfileProvider(
+            'v1',
+          ).overrideWith((ref) => Completer<MaintenanceProfile>().future),
           maintenancePlansProvider('v1').overrideWith((ref) => pending.future),
         ],
         child: const MaterialApp(
@@ -187,6 +191,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // The tab also reads the profile for its open question; left pending here.
+          maintenanceProfileProvider(
+            'v1',
+          ).overrideWith((ref) => Completer<MaintenanceProfile>().future),
           maintenancePlansProvider('v1').overrideWith((ref) async {
             throw StateError('internal 503');
           }),
@@ -210,6 +218,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // The tab also reads the profile for its open question; left pending here.
+          maintenanceProfileProvider(
+            'v1',
+          ).overrideWith((ref) => Completer<MaintenanceProfile>().future),
           maintenancePlansProvider('v1').overrideWith((ref) async => []),
           obligationsProvider('v1').overrideWith((ref) async => []),
           segurosProvider('v1').overrideWith((ref) async => []),

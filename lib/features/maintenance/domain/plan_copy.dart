@@ -53,13 +53,53 @@ String planStatusPhrase(MaintenancePlan plan) {
   }
 
   if (plan.status == MaintenanceStatus.semBaseline) {
+    // The group these rows sit in already says the date is missing, so the row
+    // says which answer was given — or, when none was, how often the item is
+    // done. Eleven rows repeating "Informe a última vez para começarmos a
+    // contar" read as one sentence printed eleven times.
     return switch (plan.historyStatus) {
-      MaintenanceHistoryStatus.unknown => 'Você não lembra — tudo bem',
+      MaintenanceHistoryStatus.unknown => 'Você não lembra quando foi',
       MaintenanceHistoryStatus.never => 'Nunca foi feito',
-      _ => maintenanceStatusPhrase(plan.status.wire),
+      _ => _capitalized(
+        intervalPhrase(
+              km: plan.intervalKm,
+              months: plan.intervalMonths,
+              days: plan.intervalDays,
+            ) ??
+            'informe quando foi feito',
+      ),
     };
   }
 
+  final phrase = _duePhrase(plan);
+  // "Nunca foi feito" counts from the car being new. Said on the row, because
+  // "passou 80.000 km" on a part nobody registered reads like a mistake unless
+  // the line explains where it counts from.
+  if (plan.countsFromNew) {
+    return phrase.isEmpty ? 'Nunca feito' : 'Nunca feito · $phrase';
+  }
+  return phrase;
+}
+
+/// The line beside the status chip on the plan detail.
+///
+/// The chip already names the state, so an item on track says how far off the
+/// next service is — it used to read "Em dia" beside a chip reading "Em dia".
+/// Without a baseline it is empty: the facts under it say what is missing.
+String planDetailHeadline(MaintenancePlan plan) {
+  if (plan.status == MaintenanceStatus.semBaseline) return '';
+  if (plan.status != MaintenanceStatus.emDia ||
+      plan.itemKind == MaintenanceItemKind.care) {
+    return planStatusPhrase(plan);
+  }
+  final summary = dueSummary(
+    remainingKm: plan.remainingKm,
+    remainingDays: plan.remainingDays,
+  );
+  return [if (plan.countsFromNew) 'Nunca feito', ?summary].join(' · ');
+}
+
+String _duePhrase(MaintenancePlan plan) {
   if (plan.strategy == MaintenanceStrategy.conditionBased) {
     switch (plan.status) {
       case MaintenanceStatus.vencido:
@@ -195,4 +235,9 @@ String _joinOu(List<String> parts) {
   if (parts.length == 2) return '${parts[0]} ou ${parts[1]}';
   final leading = parts.sublist(0, parts.length - 1).join(', ');
   return '$leading ou ${parts.last}';
+}
+
+String _capitalized(String text) {
+  if (text.isEmpty) return text;
+  return text[0].toUpperCase() + text.substring(1);
 }

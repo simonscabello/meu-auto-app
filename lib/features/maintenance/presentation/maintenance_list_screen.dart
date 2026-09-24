@@ -13,10 +13,10 @@ import 'package:meu_auto/features/maintenance/application/maintenance_record_pro
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_icon_button.dart';
-import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -135,17 +135,12 @@ class _RecordList extends StatelessWidget {
             itemBuilder: (context, index) {
               final record = month.records[index];
               return Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.s16,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (index > 0) const AppRowDivider(),
-                    _RecordTile(
-                      record: record,
-                      onTap: () => onOpen(record),
-                    ),
+                    _RecordTile(record: record, onTap: () => onOpen(record)),
                   ],
                 ),
               );

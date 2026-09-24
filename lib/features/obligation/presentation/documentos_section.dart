@@ -9,15 +9,73 @@ import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/domain/obligation_copy.dart';
 import 'package:meu_auto/features/obligation/domain/seguro.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_form_sheet.dart';
+import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
+class DocumentosScreen extends ConsumerWidget {
+  const DocumentosScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedVehicleProvider);
+    final vehicle = selected.valueOrNull;
+
+    return AppScaffold(
+      titleWidget: const VehicleContextTitle(title: 'Documentos'),
+      actions: const [ProfileButton()],
+      onRefresh: vehicle == null ? null : () => _refresh(ref, vehicle.id),
+      body: selected.when(
+        loading: () => const _DocumentosSkeleton(),
+        error: (error, _) => AppErrorState.fromError(
+          error: error,
+          onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+        ),
+        data: (current) => current == null
+            ? const SizedBox.shrink()
+            : ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.s16,
+                  AppSpacing.s8,
+                  AppSpacing.s16,
+                  AppSpacing.s32,
+                ),
+                children: [
+                  DocumentosSection(vehicleId: current.id, showHeading: false),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Future<void> _refresh(WidgetRef ref, String vehicleId) async {
+    ref.invalidate(obligationsProvider(vehicleId));
+    ref.invalidate(segurosProvider(vehicleId));
+    try {
+      await Future.wait([
+        ref.read(obligationsProvider(vehicleId).future),
+        ref.read(segurosProvider(vehicleId).future),
+      ]);
+    } on Object {
+      // The providers keep the failure and the section renders it.
+    }
+  }
+}
+
 class DocumentosSection extends ConsumerWidget {
-  const DocumentosSection({super.key, required this.vehicleId});
+  const DocumentosSection({
+    super.key,
+    required this.vehicleId,
+    this.showHeading = true,
+  });
 
   final String vehicleId;
+  final bool showHeading;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,8 +113,9 @@ class DocumentosSection extends ConsumerWidget {
     }
 
     return DocumentosContent(
-      obligations: obligations.value ?? const [],
-      seguros: seguros.value ?? const [],
+      obligations: obligations.valueOrNull ?? const [],
+      seguros: seguros.valueOrNull ?? const [],
+      showHeading: showHeading,
       onObligationTap: (obligation) =>
           context.push(AppRoutes.obligation(obligation.id)),
       onRegisterIpva: () => ObligationFormSheet.show(
@@ -74,14 +133,12 @@ class DocumentosSection extends ConsumerWidget {
     );
   }
 }
-/// IPVA, licenciamento and seguro, at the foot of Cuidados.
+
+/// IPVA, licenciamento and seguro in the dedicated Documents destination.
 ///
-/// Same shape as the plans above it — a quiet label, then its rows inside one
-/// surface — because it is the same kind of question: what is coming, and
-/// what have I not done yet. It used to be three blocks of cards, each ending
-/// in its own filled button, so a car with no documents registered showed
-/// three primary CTAs stacked and the screen had four things claiming to be
-/// the main action.
+/// It used to sit below every maintenance plan in Cuidados. Giving these
+/// records their own destination keeps legal deadlines and insurance easy to
+/// reach without making the care list carry two different jobs.
 ///
 /// The way to add one is the last row of its own group, which reads as "and
 /// one more here" and cannot overflow the way a header button does when the
@@ -96,6 +153,7 @@ class DocumentosContent extends StatelessWidget {
     super.key,
     required this.obligations,
     required this.seguros,
+    this.showHeading = true,
     this.onObligationTap,
     this.onRegisterIpva,
     this.onRegisterLicenciamento,
@@ -105,6 +163,7 @@ class DocumentosContent extends StatelessWidget {
 
   final List<Obligation> obligations;
   final List<Seguro> seguros;
+  final bool showHeading;
   final ValueChanged<Obligation>? onObligationTap;
   final VoidCallback? onRegisterIpva;
   final VoidCallback? onRegisterLicenciamento;
@@ -123,16 +182,17 @@ class DocumentosContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.s12),
-          child: Semantics(
-            header: true,
-            child: Text(
-              'Documentos e prazos',
-              style: theme.textTheme.titleMedium,
+        if (showHeading)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.s12),
+            child: Semantics(
+              header: true,
+              child: Text(
+                'Documentos e prazos',
+                style: theme.textTheme.titleMedium,
+              ),
             ),
           ),
-        ),
         _KindGroup(
           title: 'IPVA',
           emptyTitle: 'Nenhum IPVA registrado',
@@ -185,6 +245,35 @@ class DocumentosContent extends StatelessWidget {
               ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+class _DocumentosSkeleton extends StatelessWidget {
+  const _DocumentosSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s32,
+      ),
+      children: const [
+        AppSkeleton(width: 80, height: 14),
+        SizedBox(height: AppSpacing.s16),
+        AppSkeletonList(count: 2, itemHeight: 44),
+        SizedBox(height: AppSpacing.s24),
+        AppSkeleton(width: 130, height: 14),
+        SizedBox(height: AppSpacing.s16),
+        AppSkeletonList(count: 2, itemHeight: 44),
+        SizedBox(height: AppSpacing.s24),
+        AppSkeleton(width: 90, height: 14),
+        SizedBox(height: AppSpacing.s16),
+        AppSkeletonList(count: 2, itemHeight: 44),
       ],
     );
   }

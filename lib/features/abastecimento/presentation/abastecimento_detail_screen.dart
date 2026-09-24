@@ -38,8 +38,7 @@ class AbastecimentoDetailScreen extends ConsumerWidget {
         title: 'Abastecimento',
         body: AppErrorState.fromError(
           error: error,
-          onRetry: () =>
-              ref.invalidate(abastecimentoProvider(abastecimentoId)),
+          onRetry: () => ref.invalidate(abastecimentoProvider(abastecimentoId)),
         ),
       ),
       data: (current) => AppScaffold(
@@ -55,7 +54,7 @@ class AbastecimentoDetailScreen extends ConsumerWidget {
 }
 
 void _edit(BuildContext context, WidgetRef ref, Abastecimento fill) {
-  final vehicle = ref.read(selectedVehicleProvider).value;
+  final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
   AbastecimentoFormSheet.show(
     context,
     vehicleId: fill.vehicleId,
@@ -142,10 +141,7 @@ class AbastecimentoDetailContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.s16),
         _Fact(label: 'Combustível', value: abastecimentoFuelLabel(fill.fuel)),
         const SizedBox(height: AppSpacing.s16),
-        _Fact(
-          label: 'Tanque cheio',
-          value: fill.fullTank ? 'Sim' : 'Não',
-        ),
+        _Fact(label: 'Tanque cheio', value: fill.fullTank ? 'Sim' : 'Não'),
         if (station != null && station.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.s16),
           _Fact(label: 'Posto', value: station),

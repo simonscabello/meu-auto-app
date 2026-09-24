@@ -15,10 +15,10 @@ import 'package:meu_auto/features/abastecimento/domain/volume.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -59,7 +59,7 @@ class _AbastecimentoListScreenState
   }
 
   void _openForm() {
-    final vehicle = ref.read(selectedVehicleProvider).value;
+    final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
     if (vehicle == null) return;
     AbastecimentoFormSheet.show(
       context,
@@ -72,7 +72,7 @@ class _AbastecimentoListScreenState
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(abastecimentoHistoryProvider(widget.vehicleId));
-    final vehicle = ref.watch(selectedVehicleProvider).value;
+    final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
     final canRegister = vehicle?.refueling.supported ?? false;
 
     return AppScaffold(

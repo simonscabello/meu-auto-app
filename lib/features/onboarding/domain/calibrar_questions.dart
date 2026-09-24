@@ -65,6 +65,7 @@ MaintenanceRecordDraft declaredBaselineDraft({
   required CivilDate occurredOn,
   required int mileageKm,
   required MaintenancePlan plan,
+  bool correction = false,
 }) {
   return MaintenanceRecordDraft(
     id: id,
@@ -72,5 +73,6 @@ MaintenanceRecordDraft declaredBaselineDraft({
     mileageKm: mileageKm,
     kind: MaintenanceRecordKind.declared,
     items: [MaintenanceRecordLineDraft(item: plan.toCatalogueItem())],
+    correction: correction,
   );
 }

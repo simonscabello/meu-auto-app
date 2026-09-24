@@ -21,7 +21,8 @@ class MeuAutoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final themeMode = ref.watch(themeModeProvider).value ?? ThemeMode.system;
+    final themeMode =
+        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
     return MaterialApp.router(
       title: 'Meu Auto',
       theme: AppTheme.light,

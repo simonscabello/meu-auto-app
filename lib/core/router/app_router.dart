@@ -15,22 +15,25 @@ import 'package:meu_auto/features/auth/presentation/password_reset_request_scree
 import 'package:meu_auto/features/auth/presentation/register_screen.dart';
 import 'package:meu_auto/features/auth/presentation/splash_screen.dart';
 import 'package:meu_auto/features/costs/presentation/costs_screen.dart';
+import 'package:meu_auto/features/dashboard/presentation/alerts_screen.dart';
 import 'package:meu_auto/features/home/presentation/home_screen.dart';
-import 'package:meu_auto/features/maintenance/presentation/cuidados_screen.dart';
-import 'package:meu_auto/features/maintenance/presentation/plan_detail_screen.dart';
-import 'package:meu_auto/features/maintenance/presentation/vehicle_profile_screen.dart';
-import 'package:meu_auto/features/profile/presentation/delete_account_screen.dart';
-import 'package:meu_auto/features/profile/presentation/profile_screen.dart';
-import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
+import 'package:meu_auto/features/maintenance/presentation/cuidados_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_detail_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_form_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_list_screen.dart';
-import 'package:meu_auto/features/odometer/presentation/odometer_history_screen.dart';
-import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
+import 'package:meu_auto/features/maintenance/presentation/plan_detail_screen.dart';
+import 'package:meu_auto/features/maintenance/presentation/vehicle_profile_screen.dart';
+import 'package:meu_auto/features/obligation/presentation/documentos_section.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_detail_screen.dart';
 import 'package:meu_auto/features/obligation/presentation/seguro_detail_screen.dart';
 import 'package:meu_auto/features/obligation/presentation/seguro_form_screen.dart';
+import 'package:meu_auto/features/odometer/presentation/odometer_history_screen.dart';
+import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
+import 'package:meu_auto/features/profile/presentation/change_password_screen.dart';
+import 'package:meu_auto/features/profile/presentation/delete_account_screen.dart';
+import 'package:meu_auto/features/profile/presentation/profile_screen.dart';
+import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_detail_screen.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_form_screen.dart';
@@ -55,7 +58,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return deepLink;
       }
       final vehicles = ref.read(vehiclesProvider);
-      final data = vehicles.value;
+      final data = vehicles.valueOrNull;
       bool? hasVehicles;
       if (data != null && data.available) {
         hasVehicles = data.vehicles.isNotEmpty;
@@ -94,12 +97,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const DeleteAccountScreen(),
       ),
       GoRoute(
+        path: AppRoutes.changePassword,
+        builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.alerts,
+        builder: (context, state) {
+          final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
+          if (vehicle == null) {
+            return const SizedBox.shrink();
+          }
+          return AlertsScreen(vehicleId: vehicle.id);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.odometer,
         builder: (context, state) {
           // Scoped to the selected vehicle rather than taking an id in the
           // path: every screen inside the shell is about the current car, and
           // a second source of truth for "which vehicle" is a bug waiting.
-          final vehicle = ref.read(selectedVehicleProvider).value;
+          final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
           if (vehicle == null) {
             return const SizedBox.shrink();
           }
@@ -109,7 +130,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.costs,
         builder: (context, state) {
-          final vehicle = ref.read(selectedVehicleProvider).value;
+          final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
           if (vehicle == null) {
             return const SizedBox.shrink();
           }
@@ -119,7 +140,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.abastecimentos,
         builder: (context, state) {
-          final vehicle = ref.read(selectedVehicleProvider).value;
+          final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
           if (vehicle == null) {
             return const SizedBox.shrink();
           }
@@ -141,7 +162,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.seguroNew,
         builder: (context, state) {
-          final vehicle = ref.read(selectedVehicleProvider).value;
+          final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
           if (vehicle == null) {
             return const SizedBox.shrink();
           }
@@ -172,7 +193,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.maintenance,
         builder: (context, state) {
-          final vehicle = ref.read(selectedVehicleProvider).value;
+          final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
           if (vehicle == null) {
             return const SizedBox.shrink();
           }
@@ -182,7 +203,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'nova',
             builder: (context, state) {
-              final vehicle = ref.read(selectedVehicleProvider).value;
+              final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
               if (vehicle == null) {
                 return const SizedBox.shrink();
               }
@@ -209,7 +230,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/calibrar/:vehicleId',
         builder: (context, state) {
           final vehicleId = state.pathParameters['vehicleId']!;
-          final vehicles = ref.read(vehiclesProvider).value?.vehicles ?? [];
+          final vehicles =
+              ref.read(vehiclesProvider).valueOrNull?.vehicles ?? [];
           var mileageKm = 0;
           for (final vehicle in vehicles) {
             if (vehicle.id != vehicleId) continue;
@@ -270,16 +292,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.history,
-                builder: (context, state) => const TimelineScreen(),
+                path: AppRoutes.documents,
+                builder: (context, state) => const DocumentosScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.profile,
-                builder: (context, state) => const ProfileScreen(),
+                path: AppRoutes.history,
+                builder: (context, state) => const TimelineScreen(),
               ),
             ],
           ),
@@ -290,7 +312,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 });
 
 AuthStatus authStatusOf(AsyncValue<AuthStatus> value) {
-  final current = value.value;
+  final current = value.valueOrNull;
   if (current != null) {
     return current;
   }

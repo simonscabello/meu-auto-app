@@ -29,8 +29,22 @@ abstract final class ApiFormErrors {
 
   /// The message to show above the form, or null when the failure was already
   /// spent on the fields.
-  static String? bannerOf(ApiFailure failure) {
+  ///
+  /// A validation failure is only "spent" if the form can show it. Pass
+  /// [shownFields] — the keys the form renders an error under — and any other
+  /// field's message comes back here instead; a failure with no field at all
+  /// (a body the server could not read) always does. Returning null for every
+  /// 422 used to leave some forms saying nothing: the save button stopped
+  /// spinning and the reason was nowhere on screen.
+  static String? bannerOf(ApiFailure failure, {Iterable<String>? shownFields}) {
     if (failure.code == ApiErrorCode.validationFailed) {
+      final fields = failure.fields;
+      if (fields.isEmpty) return failure.message;
+      if (shownFields == null) return null;
+      final shown = shownFields.toSet();
+      for (final entry in fields.entries) {
+        if (!shown.contains(entry.key)) return entry.value;
+      }
       return null;
     }
     if (failure.code == ApiErrorCode.rateLimited) {

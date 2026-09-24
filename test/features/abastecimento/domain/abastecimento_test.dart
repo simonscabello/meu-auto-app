@@ -61,14 +61,20 @@ void main() {
 
   group('AbastecimentoFuel', () {
     test('known fuels parse from the wire', () {
-      expect(AbastecimentoFuel.fromWire('gasolina'), AbastecimentoFuel.gasolina);
+      expect(
+        AbastecimentoFuel.fromWire('gasolina'),
+        AbastecimentoFuel.gasolina,
+      );
       expect(AbastecimentoFuel.fromWire('etanol'), AbastecimentoFuel.etanol);
       expect(AbastecimentoFuel.fromWire('diesel'), AbastecimentoFuel.diesel);
       expect(AbastecimentoFuel.fromWire('gnv'), AbastecimentoFuel.gnv);
     });
 
     test('unknown fuel falls back without throwing', () {
-      expect(AbastecimentoFuel.fromWire('hidrogenio'), AbastecimentoFuel.desconhecido);
+      expect(
+        AbastecimentoFuel.fromWire('hidrogenio'),
+        AbastecimentoFuel.desconhecido,
+      );
       expect(AbastecimentoFuel.fromWire(null), AbastecimentoFuel.desconhecido);
     });
   });
@@ -206,9 +212,7 @@ void main() {
   group('defaultAbastecimentoFuel', () {
     test('a single offered fuel is the default', () {
       expect(
-        defaultAbastecimentoFuel(
-          offered: const [AbastecimentoFuel.diesel],
-        ),
+        defaultAbastecimentoFuel(offered: const [AbastecimentoFuel.diesel]),
         AbastecimentoFuel.diesel,
       );
     });
@@ -249,11 +253,7 @@ final _completeJson = {
   'full_tank': true,
   'station_name': 'Shell Centro',
   'notes': 'Completou',
-  'consumption': {
-    'value': 17.82,
-    'unit': 'km_per_liter',
-    'status': 'ok',
-  },
+  'consumption': {'value': 17.82, 'unit': 'km_per_liter', 'status': 'ok'},
   'created_at': '2026-08-10T15:00:00Z',
   'updated_at': '2026-08-10T15:00:00Z',
 };

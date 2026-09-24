@@ -4,6 +4,7 @@ import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/maintenance/presentation/cuidados_screen.dart';
 
 void main() {
@@ -50,18 +51,19 @@ void main() {
     expect(find.text('Vencem em breve'), findsNothing);
     expect(find.text('Em dia'), findsNothing);
     expect(find.text('Só histórico'), findsNothing);
-    expect(find.text('Falta informar'), findsOneWidget);
+    expect(find.textContaining('Sem data da última vez'), findsOneWidget);
     expect(find.text('Cuidados do dia a dia'), findsOneWidget);
     expect(find.text('Troca de óleo do motor'), findsOneWidget);
     expect(find.text('Lavar o carro'), findsOneWidget);
+    // The group says the date is missing; the row does not repeat it.
     expect(
       find.text('Informe a última vez para começarmos a contar'),
-      findsOneWidget,
+      findsNothing,
     );
     expect(find.text('Está na hora de verificar.'), findsOneWidget);
   });
 
-  testWidgets('the Falta informar group starts the calibrar action', (
+  testWidgets('the group of items with no date starts the calibrar action', (
     tester,
   ) async {
     var group = 0;
@@ -197,9 +199,11 @@ void main() {
     }
   });
 
-  // The two "no baseline" states are not the same thing on screen. One still
-  // asks; the other has already been answered and is put away.
-  testWidgets('an answered item moves out of the group that still asks', (
+  // Not knowing is the same problem whether or not the owner was asked, so
+  // both sit in one open group. The row says which answer was given. Folding
+  // the "não sei" items away is what hid an unknown oil change while Início
+  // said everything was fine.
+  testWidgets('an item answered "não sei" stays visible, and says so', (
     tester,
   ) async {
     await _pump(tester, [
@@ -216,11 +220,11 @@ void main() {
       ),
     ]);
 
-    expect(find.text('Falta informar'), findsOneWidget);
-    expect(find.text('Ainda sem registro'), findsOneWidget);
+    expect(find.textContaining('Sem data da última vez'), findsOneWidget);
+    expect(find.text('Ainda sem registro'), findsNothing);
     expect(find.text('Fluido de freio'), findsOneWidget);
-    // Collapsed, so the answered one is out of the way rather than gone.
-    expect(find.text('Velas de ignição'), findsNothing);
+    expect(find.text('Velas de ignição'), findsOneWidget);
+    expect(find.text('Você não lembra quando foi'), findsOneWidget);
   });
 
   testWidgets('an item the vehicle does not have is not rendered at all', (
@@ -353,29 +357,33 @@ void main() {
         justRecordedIds: {'plan-calibrar_pneus'},
       );
 
-      expect(find.text('Registrado hoje · Próxima verificação em 15 dias'), findsOneWidget);
+      expect(
+        find.text('Registrado hoje · Próxima verificação em 15 dias'),
+        findsOneWidget,
+      );
       expect(find.text('Feito'), findsNothing);
     });
 
-    testWidgets('just recorded without remaining days shows only the first line', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        [
-          _plan(
-            name: 'Calibrar os pneus',
-            slug: 'calibrar_pneus',
-            kind: MaintenanceItemKind.care,
-            status: MaintenanceStatus.emDia,
-          ),
-        ],
-        justRecordedIds: {'plan-calibrar_pneus'},
-      );
+    testWidgets(
+      'just recorded without remaining days shows only the first line',
+      (tester) async {
+        await _pump(
+          tester,
+          [
+            _plan(
+              name: 'Calibrar os pneus',
+              slug: 'calibrar_pneus',
+              kind: MaintenanceItemKind.care,
+              status: MaintenanceStatus.emDia,
+            ),
+          ],
+          justRecordedIds: {'plan-calibrar_pneus'},
+        );
 
-      expect(find.text('Registrado hoje'), findsOneWidget);
-      expect(find.textContaining('Próxima verificação'), findsNothing);
-    });
+        expect(find.text('Registrado hoje'), findsOneWidget);
+        expect(find.textContaining('Próxima verificação'), findsNothing);
+      },
+    );
 
     testWidgets('tapping Feito does not open the card', (tester) async {
       var opened = 0;
@@ -423,8 +431,8 @@ void main() {
         submittingIds: {'plan-calibrar_pneus'},
       );
 
-      final button = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, 'Feito'),
+      final button = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Feito'),
       );
       expect(button.onPressed, isNull);
     });
@@ -448,6 +456,70 @@ void main() {
       find.text('Nenhum cuidado precisa da sua atenção agora.'),
       findsOneWidget,
     );
+  });
+
+  // The open question about how the car is built opens the screen. It used to
+  // live only on "O que o seu carro tem", two taps and a scroll away.
+  testWidgets('an open profile question is asked at the top', (tester) async {
+    final answers = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: CuidadosContent(
+            plans: [
+              _plan(
+                name: 'Troca de óleo do motor',
+                slug: 'troca_oleo',
+                status: MaintenanceStatus.emDia,
+                remainingKm: 8000,
+              ),
+            ],
+            openQuestion: const MaintenanceProfileQuestion(
+              id: 'timing_drive',
+              prompt: 'Seu carro usa correia dentada ou corrente?',
+              help: 'Está no manual.',
+              options: [
+                MaintenanceProfileOption(
+                  value: 'belt',
+                  label: 'Correia dentada',
+                ),
+                MaintenanceProfileOption(
+                  value: 'chain',
+                  label: 'Corrente de comando',
+                ),
+                MaintenanceProfileOption(value: 'unknown', label: 'Não sei'),
+              ],
+            ),
+            onAnswer: (question, answer) => answers.add('$question=$answer'),
+          ),
+        ),
+      ),
+    );
+
+    final question = find.text('Seu carro usa correia dentada ou corrente?');
+    expect(question, findsOneWidget);
+    expect(
+      tester.getTopLeft(question).dy,
+      // The plan itself is folded under "Em dia"; its header is what follows.
+      lessThan(tester.getTopLeft(find.text('Em dia')).dy),
+    );
+
+    await tester.tap(find.text('Não sei'));
+    expect(answers, ['timing_drive=unknown']);
+  });
+
+  // Histórico is a tab now; the maintenance list no longer ends in a door to it.
+  testWidgets('the list no longer carries a history row', (tester) async {
+    await _pump(tester, [
+      _plan(
+        name: 'Troca de óleo do motor',
+        slug: 'troca_oleo',
+        status: MaintenanceStatus.emDia,
+        remainingKm: 8000,
+      ),
+    ]);
+    expect(find.text('Histórico do veículo'), findsNothing);
   });
 }
 

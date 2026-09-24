@@ -32,7 +32,7 @@ class VehicleSwitcherSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final list = ref.watch(vehiclesProvider);
-    final selected = ref.watch(selectedVehicleProvider).value;
+    final selected = ref.watch(selectedVehicleProvider).valueOrNull;
 
     return SafeArea(
       child: list.when(
@@ -175,9 +175,7 @@ class _VehicleRow extends StatelessWidget {
 
     return AppListRowShell(
       onTap: onTap,
-      semanticLabel: selected
-          ? '$name, veículo em uso'
-          : 'Usar $name',
+      semanticLabel: selected ? '$name, veículo em uso' : 'Usar $name',
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

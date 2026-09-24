@@ -49,7 +49,7 @@ final vehiclesProvider =
 class VehiclesController extends AsyncNotifier<VehicleListState> {
   @override
   Future<VehicleListState> build() async {
-    final status = ref.watch(authControllerProvider).value;
+    final status = ref.watch(authControllerProvider).valueOrNull;
     if (status is! AuthLoggedIn) {
       return const VehicleListState.unavailable();
     }
@@ -58,15 +58,22 @@ class VehiclesController extends AsyncNotifier<VehicleListState> {
   }
 
   Future<void> reload() async {
-    final status = ref.read(authControllerProvider).value;
+    final status = ref.read(authControllerProvider).valueOrNull;
     if (status is! AuthLoggedIn) {
       state = const AsyncData(VehicleListState.unavailable());
       return;
     }
-    state = await AsyncValue.guard(() async {
+    final result = await AsyncValue.guard(() async {
       final vehicles = await ref.read(vehicleRepositoryProvider).list();
       return VehicleListState.loaded(vehicles);
     });
+    // A reload that fails keeps the list it already had. Every tab is built on this
+    // list, and replacing it with a bare error turned a pull-to-refresh without signal —
+    // or the quiet reload after saving a fill — into Início, Cuidados and Documentos all
+    // failing at once. The error is still carried, for whoever asked for the reload.
+    state = result.hasError && state.hasValue
+        ? result.copyWithPrevious(state)
+        : result;
   }
 
   Future<Vehicle> create({
@@ -106,7 +113,7 @@ class VehiclesController extends AsyncNotifier<VehicleListState> {
           currentMileageKm: currentMileageKm,
         );
     await ref.read(selectedVehicleIdProvider.notifier).select(created.id);
-    final current = state.value?.vehicles ?? [];
+    final current = state.valueOrNull?.vehicles ?? [];
     state = AsyncData(
       VehicleListState.loaded([
         for (final vehicle in current)
@@ -151,7 +158,7 @@ class VehiclesController extends AsyncNotifier<VehicleListState> {
           catalogModelYearId: catalogModelYearId,
           fipeCode: fipeCode,
         );
-    final current = state.value?.vehicles ?? [];
+    final current = state.valueOrNull?.vehicles ?? [];
     state = AsyncData(
       VehicleListState.loaded([
         for (final vehicle in current)
@@ -168,7 +175,7 @@ class VehiclesController extends AsyncNotifier<VehicleListState> {
   /// the odometer write does, and maintenance records will — precisely so the
   /// client does not have to ask for it again.
   void applyUpdated(Vehicle vehicle) {
-    final current = state.value;
+    final current = state.valueOrNull;
     if (current == null || !current.available) {
       return;
     }
@@ -183,7 +190,7 @@ class VehiclesController extends AsyncNotifier<VehicleListState> {
   Future<void> delete(String id) async {
     await ref.read(vehicleRepositoryProvider).delete(id);
     final remaining = <Vehicle>[
-      for (final vehicle in state.value?.vehicles ?? const <Vehicle>[])
+      for (final vehicle in state.valueOrNull?.vehicles ?? const <Vehicle>[])
         if (vehicle.id != id) vehicle,
     ];
     state = AsyncData(VehicleListState.loaded(remaining));
@@ -196,32 +203,40 @@ class VehiclesController extends AsyncNotifier<VehicleListState> {
   }
 }
 
+/// The vehicle every tab is about.
+///
+/// Built from whatever list is known, including one a failed reload kept: a
+/// vehicle that was on screen a second ago does not stop existing because the
+/// network did. Only when there has never been a list does this report the
+/// error — the first load, which the splash screen handles.
 final selectedVehicleProvider = Provider<AsyncValue<Vehicle?>>((ref) {
   final listAsync = ref.watch(vehiclesProvider);
   final storedAsync = ref.watch(selectedVehicleIdProvider);
-  return listAsync.when(
-    loading: () => const AsyncLoading(),
-    error: (error, stack) => AsyncError(error, stack),
-    data: (list) {
-      if (!list.available) {
-        return const AsyncLoading();
-      }
-      if (storedAsync.isLoading && !storedAsync.hasValue) {
-        return const AsyncLoading();
-      }
-      final id = resolveSelectedVehicleId(
-        vehicleIds: list.vehicles.map((vehicle) => vehicle.id),
-        storedId: storedAsync.value,
-      );
-      if (id == null) {
-        return const AsyncData(null);
-      }
-      for (final vehicle in list.vehicles) {
-        if (vehicle.id == id) {
-          return AsyncData(vehicle);
-        }
-      }
-      return const AsyncData(null);
-    },
+
+  final list = listAsync.valueOrNull;
+  if (list == null) {
+    if (listAsync.hasError) {
+      return AsyncError(listAsync.error!, listAsync.stackTrace!);
+    }
+    return const AsyncLoading();
+  }
+  if (!list.available) {
+    return const AsyncLoading();
+  }
+  if (storedAsync.isLoading && !storedAsync.hasValue) {
+    return const AsyncLoading();
+  }
+  final id = resolveSelectedVehicleId(
+    vehicleIds: list.vehicles.map((vehicle) => vehicle.id),
+    storedId: storedAsync.valueOrNull,
   );
+  if (id == null) {
+    return const AsyncData(null);
+  }
+  for (final vehicle in list.vehicles) {
+    if (vehicle.id == id) {
+      return AsyncData(vehicle);
+    }
+  }
+  return const AsyncData(null);
 });

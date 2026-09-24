@@ -95,8 +95,8 @@ const _vehicleId = '22222222-2222-7222-8222-222222222222';
 Map<String, dynamic> _planJson() {
   return jsonDecode(
         File('test/fixtures/maintenance_plans_list.json').readAsStringSync(),
-      )['data']
-      .first as Map<String, dynamic>;
+      )['data'].first
+      as Map<String, dynamic>;
 }
 
 ResponseBody _json(int status, Object body) {

@@ -29,6 +29,9 @@ Authorization: Bearer <access_token>
 6. **Reset de senha**
    - `POST /v1/auth/password-reset/request` com `email` → **202** sempre, exista ou não a conta. Corpo: `{ "message": "Se este e-mail estiver cadastrado, enviaremos um link de redefinição." }`. O link vale **1 hora** e só pode ser usado uma vez.
    - `POST /v1/auth/password-reset/confirm` com `token` e `password` → **204**. Link inválido/expirado/já usado: **401**. Redefinir **encerra todas as sessões** da conta.
+7. **Troca de senha autenticada** — `POST /v1/me/password` com `current_password` e
+   `new_password` → **200** e uma nova `Session`. Revoga os refresh tokens anteriores e
+   mantém conectado somente o aparelho que fez a troca.
 
 ### `Session`
 
@@ -57,7 +60,7 @@ Cada refresh **revoga** o token apresentado e emite outro. O app precisa persist
 
 Reúso (token **já rotacionado** apresentado de novo) é tratado como captura: o servidor **encerra todas as sessões da conta**. A resposta é **401** `unauthorized` (“Sessão inválida ou expirada. Entre novamente.”). O dono precisa entrar de novo em todos os aparelhos.
 
-Isso **não** dispara em token morto por logout, reset de senha ou revogação em massa (SPEC.md D-15). Replay de um logout que estourou o tempo numa conexão ruim só recebe 401 daquela sessão; as outras continuam.
+Isso **não** dispara em token morto por logout, reset/troca de senha ou revogação em massa (SPEC.md D-15). Replay de um logout que estourou o tempo numa conexão ruim só recebe 401 daquela sessão; as outras continuam.
 
 ### Rate limit
 
@@ -188,9 +191,12 @@ Auth: `pública` ou `Bearer`. Request/response são nomes de schema do OpenAPI, 
 | --- | --- | --- | --- | --- | --- | --- |
 | GET | `/v1/me` | Bearer | nenhum | `User` | `unauthorized` | não |
 | PATCH | `/v1/me` | Bearer | `UpdateMeRequest` | `User` | `unauthorized`, `validation_failed` | não |
+| POST | `/v1/me/password` | Bearer | `ChangePasswordRequest` | `Session` (200) | `unauthorized`, `validation_failed` | não |
 | DELETE | `/v1/me` | Bearer | `DeleteMeRequest` | `NoContent` (204) | `unauthorized`, `validation_failed` | não |
 
-`PATCH /v1/me` só altera `name`. Troca de e-mail não existe. `DELETE /v1/me` é irreversível (conta + veículos + histórico) e exige a senha atual.
+`PATCH /v1/me` só altera `name`. Troca de e-mail não existe. A troca de senha exige a
+senha atual, encerra os refresh tokens anteriores e devolve a sessão substituta.
+`DELETE /v1/me` é irreversível (conta + veículos + histórico) e exige a senha atual.
 
 ### Veículos
 
@@ -203,7 +209,10 @@ Auth: `pública` ou `Bearer`. Request/response são nomes de schema do OpenAPI, 
 | DELETE | `/v1/vehicles/{vehicleId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
 | GET | `/v1/vehicles/{vehicleId}/odometer` | Bearer | nenhum (`limit`, `cursor`) | `OdometerPage` | `unauthorized`, `not_found`, `validation_failed` | **sim** |
 | POST | `/v1/vehicles/{vehicleId}/odometer` | Bearer | `CreateOdometerReadingRequest` | `CreateOdometerReadingResponse` (201) | `unauthorized`, `not_found`, `conflict`, `validation_failed`, `odometer_rollback` | não |
-| DELETE | `/v1/odometer/{readingId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
+| DELETE | `/v1/odometer/{readingId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found`, `conflict` | não |
+
+Somente leituras `manual` e `correction` podem ser excluídas diretamente. Uma leitura
+gerada por manutenção ou abastecimento deve ser alterada pelo registro de origem.
 
 ### Catálogo de veículos
 
@@ -236,6 +245,7 @@ No `POST`/`PATCH` de veículo o app envia **só** `catalog_model_year_id`. A mar
 | POST | `/v1/maintenance-items` | Bearer | `CreateMaintenanceItemRequest` | `MaintenanceItem` (201) | `unauthorized`, `conflict`, `validation_failed` | não |
 | GET | `/v1/vehicles/{vehicleId}/maintenance-plans` | Bearer | nenhum (`include_not_applicable`) | `MaintenancePlanList` | `unauthorized`, `not_found` | não |
 | POST | `/v1/vehicles/{vehicleId}/maintenance-plans` | Bearer | `CreateMaintenancePlanRequest` | `MaintenancePlanSummary` (201) | `unauthorized`, `not_found`, `conflict`, `validation_failed` | não |
+| GET | `/v1/maintenance-plans/{planId}` | Bearer | nenhum | `MaintenancePlan` | `unauthorized`, `not_found` | não |
 | PATCH | `/v1/maintenance-plans/{planId}` | Bearer | `UpdateMaintenancePlanRequest` | `MaintenancePlanSummary` | `unauthorized`, `not_found`, `validation_failed` | não |
 | DELETE | `/v1/maintenance-plans/{planId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
 | GET | `/v1/vehicles/{vehicleId}/maintenance-profile` | Bearer | nenhum | `MaintenanceProfile` | `unauthorized`, `not_found` | não |
@@ -245,6 +255,7 @@ No `POST`/`PATCH` de veículo o app envia **só** `catalog_model_year_id`. A mar
 | GET | `/v1/maintenance-records/{recordId}` | Bearer | nenhum | `MaintenanceRecord` | `unauthorized`, `not_found` | não |
 | PATCH | `/v1/maintenance-records/{recordId}` | Bearer | `UpdateMaintenanceRecordRequest` | `MaintenanceRecord` | `unauthorized`, `not_found`, `validation_failed` | não |
 | DELETE | `/v1/maintenance-records/{recordId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
+| POST | `/v1/maintenance-records/{recordId}/items` | Bearer | `AppendMaintenanceRecordItemsRequest` | `MaintenanceRecord` (200) | `unauthorized`, `not_found`, `conflict`, `validation_failed` | não |
 
 Lista de planos já vem com vencimento calculado, ordenada por urgência: `vencido`, `vence_em_breve`, `sem_baseline`, `em_dia`, `sem_periodicidade`. Criar/atualizar plano devolve `MaintenancePlanSummary` (**sem** `status`/`due_*`). Qualquer edição promove `origin` para `user`. `DELETE` do plano **desativa**. `DELETE` do registro é **lógico** (retratação): a leitura de odômetro some e o relógio volta ao registro anterior. `PATCH` do registro **não altera as linhas de item**.
 
@@ -254,14 +265,26 @@ Lista de planos já vem com vencimento calculado, ordenada por urgência: `venci
 | --- | --- | --- | --- | --- | --- | --- |
 | GET | `/v1/vehicles/{vehicleId}/obligations` | Bearer | nenhum (`kind`) | `ObligationList` | `unauthorized`, `not_found`, `validation_failed` | não |
 | POST | `/v1/vehicles/{vehicleId}/obligations` | Bearer | `CreateObligationRequest` | `Obligation` (201) | `unauthorized`, `not_found`, `conflict`, `validation_failed` | não |
+| GET | `/v1/obligations/{obligationId}` | Bearer | nenhum | `Obligation` | `unauthorized`, `not_found` | não |
 | PATCH | `/v1/obligations/{obligationId}` | Bearer | `UpdateObligationRequest` | `Obligation` | `unauthorized`, `not_found`, `validation_failed` | não |
 | DELETE | `/v1/obligations/{obligationId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
 | GET | `/v1/vehicles/{vehicleId}/seguros` | Bearer | nenhum | `SeguroList` | `unauthorized`, `not_found` | não |
 | POST | `/v1/vehicles/{vehicleId}/seguros` | Bearer | `CreateSeguroRequest` | `Seguro` (201) | `unauthorized`, `not_found`, `conflict`, `validation_failed` | não |
+| GET | `/v1/seguros/{seguroId}` | Bearer | nenhum | `Seguro` | `unauthorized`, `not_found` | não |
 | PATCH | `/v1/seguros/{seguroId}` | Bearer | `UpdateSeguroRequest` | `Seguro` | `unauthorized`, `not_found`, `validation_failed` | não |
 | DELETE | `/v1/seguros/{seguroId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
 
 Um IPVA/licenciamento por tipo por ano de referência; segundo é **409**. Para desfazer pagamento: `clear_payment: true`, sem dados de pagamento junto.
+
+### Abastecimento
+
+| Método | Path | Auth | Request | Response | Erros | Paginado |
+| --- | --- | --- | --- | --- | --- | --- |
+| GET | `/v1/vehicles/{vehicleId}/abastecimentos` | Bearer | nenhum (`limit`, `cursor`) | `AbastecimentoPage` | `unauthorized`, `not_found`, `validation_failed` | **sim** |
+| POST | `/v1/vehicles/{vehicleId}/abastecimentos` | Bearer | `CreateAbastecimentoRequest` | `Abastecimento` (201) | `unauthorized`, `not_found`, `conflict`, `validation_failed`, `odometer_rollback` | não |
+| GET | `/v1/abastecimentos/{abastecimentoId}` | Bearer | nenhum | `Abastecimento` | `unauthorized`, `not_found` | não |
+| PATCH | `/v1/abastecimentos/{abastecimentoId}` | Bearer | `UpdateAbastecimentoRequest` | `Abastecimento` | `unauthorized`, `not_found`, `validation_failed`, `odometer_rollback` | não |
+| DELETE | `/v1/abastecimentos/{abastecimentoId}` | Bearer | nenhum | `NoContent` (204) | `unauthorized`, `not_found` | não |
 
 ### Telas (read models)
 
@@ -271,13 +294,13 @@ Um IPVA/licenciamento por tipo por ano de referência; segundo é **409**. Para 
 | GET | `/v1/vehicles/{vehicleId}/alerts` | Bearer | nenhum | `AlertList` | `unauthorized`, `not_found` | não |
 | GET | `/v1/vehicles/{vehicleId}/timeline` | Bearer | nenhum (`limit`, `cursor`) | `TimelinePage` | `unauthorized`, `not_found`, `validation_failed` | **sim** |
 
-Alertas: só `vencido` e `vence_em_breve`. Plano `sem_baseline` **não** entra em `/alerts` nem em `dashboard.alerts.items`; vai em `needs_baseline`. Timeline: manutenções, leituras de odômetro **sem** `source_maintenance_id` (manuais/correções), pagamentos de IPVA/licenciamento. **Seguro não aparece.** Leituras geradas por manutenção não duplicam a linha.
+Alertas: só `vencido` e `vence_em_breve`, ordenados pelo quanto cada um já consumiu do **próprio** intervalo (uma troca de óleo 41.000 km atrasada vem antes de uma calibragem que vence hoje). Garantia já expirada e apólice já renovada **não** são alerta. Plano `sem_baseline` **não** entra em `/alerts` nem em `dashboard.alerts.items`; é contado em `needs_baseline` (o que ainda dá para perguntar) e em `unknown_history` (tudo o que não tem data, inclusive o que o dono respondeu "não sei"). A lista completa (`/alerts`) é a tela "Precisa de atenção", atrás do "Ver todos" do Início. Timeline: manutenções, leituras de odômetro **sem** `source_maintenance_id` (manuais/correções), pagamentos de IPVA/licenciamento. **Seguro não aparece.** Leituras geradas por manutenção não duplicam a linha.
 
 ---
 
 ## 4. Modelos
 
-Schemas nomeados do OpenAPI (53). Campos derivados pelo servidor estão marcados. Envelopes anônimos vêm no fim.
+Schemas nomeados do OpenAPI (76). Campos derivados pelo servidor estão marcados. Envelopes anônimos vêm no fim.
 
 ### Auth e conta
 
@@ -292,6 +315,8 @@ Schemas nomeados do OpenAPI (53). Campos derivados pelo servidor estão marcados
 **`PasswordResetConfirm`** — obrigatórios: `token`, `password` (8–128).
 
 **`UpdateMeRequest`** — obrigatório: `name` (máx. 120).
+
+**`ChangePasswordRequest`** — obrigatórios: `current_password`, `new_password` (8–128).
 
 **`DeleteMeRequest`** — obrigatório: `password`.
 
@@ -502,7 +527,7 @@ Janela de alerta de prazo/seguro: **30 dias**.
 | `kind` | `AlertKind` | não | |
 | `severity` | `AlertSeverity` | não | Só `vencido` \| `vence_em_breve` |
 | `title` | `String` | não | |
-| `subtitle` | `String?` | sim | Garantia: `"Garantia"` |
+| `subtitle` | `String?` | sim | Garantia: `"Garantia"`. Seguro: a seguradora (o `title` é `"Seguro"`). Item nunca feito contado desde novo: `"Nunca feito desde novo"` |
 | `due_on` | `CivilDate?` | sim | **Derivado** |
 | `due_at_km` | `int?` | sim | **Derivado** |
 | `remaining_days` | `int?` | sim | **Derivado** |
@@ -512,13 +537,13 @@ Janela de alerta de prazo/seguro: **30 dias**.
 
 Navegação: `manutencao`/`cuidado` → `maintenance_plan`; `garantia` → `maintenance_record`; `ipva`/`licenciamento` → `obligation`; `seguro` → `seguro`.
 
-**`Dashboard`** — obrigatórios: `vehicle`, `odometer`, `alerts`, `costs` (objetos aninhados, sem schema próprio).
+**`Dashboard`** — obrigatórios: `vehicle`, `odometer`, `alerts`, `costs` (objetos aninhados, sem schema próprio). `upcoming` (`List<Alert>`, `severity: em_dia`): o que vem a seguir entre o que está em dia — manutenção em dia, IPVA/licenciamento `pendente`, apólice vigente —, no máximo três, sem os cuidados do dia a dia. Vazio num servidor antigo.
 
 `vehicle`: `id`, `brand`, `model`; opcionais `version`, `nickname`, `plate`. Não é o `Vehicle` completo.
 
 `odometer`: `current_km` (`int`); `recorded_on` (`CivilDate?`) — mesmo sentido de `Vehicle.current_mileage_at`, nome diferente.
 
-`alerts`: `overdue`, `due_soon`, `needs_baseline` (`int`); `items` (`List<Alert>`) — só os mais urgentes. `needs_baseline` **não** entra em `items`.
+`alerts`: `overdue`, `due_soon`, `needs_baseline`, `unknown_history` (`int`); `items` (`List<Alert>`) — só os mais urgentes. `unknown_history` é o que o veredito do Início lê: com nada vencido e itens sem data, a tela diz "Nada vencido até agora · N itens sem data da última vez", nunca "Tudo em dia". Num servidor sem o campo o app usa `needs_baseline`.
 
 `costs` (**não** é custo total de rodar):
 
@@ -540,8 +565,8 @@ Navegação: `manutencao`/`cuidado` → `maintenance_plan`; `garantia` → `main
 | `id` | `String` | não | Id do recurso de origem |
 | `occurred_on` | `CivilDate` | não | Em obrigação: data do **pagamento** |
 | `title` | `String?` | sim | Manutenção: nomes dos itens. `null` nos outros — a UI rotula por `kind` |
-| `subtitle` | `String?` | sim | Oficina / `source` da leitura / ano de referência |
-| `amount_cents` | `Money?` | sim | `null` em odômetro |
+| `subtitle` | `String?` | sim | Oficina / `"Correção"` numa leitura corrigida (`null` numa comum) / ano de referência |
+| `amount_cents` | `Money?` | sim | `null` em odômetro. Manutenção sem total: soma das linhas. Tributo pago sem valor pago: o valor devido |
 | `mileage_km` | `int?` | sim | `null` em tributo |
 
 **`TimelinePage`** — `data`, `next_cursor`.
@@ -826,7 +851,7 @@ A validação compara com os **vizinhos no tempo**:
 
 `leitura_anterior.km ≤ nova.km ≤ leitura_posterior.km`
 
-Lançar hoje uma km de três meses atrás é válido se couber entre os registros daquela data. Sem vizinho de um lado, aquele lado não restringe. Violação → `odometer_rollback`; o dono pode forçar com `correction`. Todo evento que informa km (manutenção hoje; abastecimento no MVP-2) gera leitura na mesma transação.
+Lançar hoje uma km de três meses atrás é válido se couber entre os registros daquela data. Sem vizinho de um lado, aquele lado não restringe. Violação → `odometer_rollback`; o dono pode forçar com `source: "correction"` — no odômetro, na manutenção e no abastecimento, na criação **e** na edição. O app reenvia **com** `correction` só depois que o dono tocou em "O valor está certo"; reenviar o mesmo corpo sem ele só traz o mesmo diálogo de volta. Editar um registro não o compara mais com a leitura que ele mesmo gerou. Todo evento que informa km (manutenção e abastecimento) gera leitura na mesma transação.
 
 ### Motor de vencimento (RN-02)
 
@@ -835,7 +860,7 @@ Nada de `status`/`due_*` é armazenado. O servidor calcula a cada leitura. O app
 Para cada plano ativo:
 
 - Sem `interval_km`, `interval_months` e `interval_days` → `sem_periodicidade`.
-- Com intervalo e sem último registro daquele item → `sem_baseline`.
+- Com intervalo e sem último registro daquele item → `sem_baseline`, **exceto** quando o dono respondeu "nunca foi feito" (`history_status: never`): aí o servidor conta desde que o carro era novo — 0 km e, sabendo o ano, 1º de janeiro do ano de fabricação — e o plano vem com `baseline: "since_new"`, `last_*` nulos. Um registro do serviço sempre vence essa suposição (`baseline: "record"`).
 - Senão: `due_km = last.km + interval_km`; `due_date = last.data + months` (fim de mês com clamp, não `AddDate` do Dart) `+ days`; `remaining = due − atual`. Status = o **pior** entre a dimensão km e a de tempo (OU). `remaining <= 0` → `vencido`; senão `remaining <= alert` → `vence_em_breve`; senão `em_dia`.
 
 `null` em `due_at_km` / `remaining_km` / `due_on` / `remaining_days` significa “essa dimensão não se aplica”, nunca zero.
@@ -854,11 +879,11 @@ Hábitos (`care`) usam o mesmo motor, em geral só com `interval_days`.
 
 ### Pagamento e “hoje” nos prazos (RN-06b)
 
-IPVA/licenciamento: **pagamento quita**, mesmo atrasado → `pago`. Os `remaining_days` continuam vindo (podem ser negativos) para a tela dizer “pago com 3 dias de atraso”.
+IPVA/licenciamento: **pagamento quita**, mesmo atrasado → `pago`. `remaining_days` conta de **hoje** até o vencimento — não é atraso de pagamento. O atraso é `paid_on − due_on`, as duas datas guardadas; usar `remaining_days` fazia um IPVA pago no dia virar "pago com 60 dias de atraso" dois meses depois.
 
 **Vencendo hoje** (`remaining_days == 0`) é `vence_em_breve`, **não** `vencido` — ainda há horas para pagar.
 
-Seguro: `vencido` = sem cobertura. `futuro` = renovação já contratada que ainda não vigora.
+Seguro: `vencido` = sem cobertura. `futuro` = renovação já contratada que ainda não vigora. `renewed: true` = outra apólice assumiu depois desta; a tela diz "Renovado", não "sem cobertura".
 
 ### Planos no cadastro (RN-09)
 
@@ -896,7 +921,6 @@ Não inventar tela, endpoint ou cálculo local para isto.
 
 **Não existe na API v1:**
 
-- Troca de senha autenticada (só o fluxo de reset por e-mail)
 - Listagem paginada de veículos
 - Seguro na timeline
 - `sem_baseline` como alerta
@@ -958,11 +982,12 @@ Registradas também em `docs/DECISOES-EM-ABERTO.md`. Enquanto não houver decis�
 
 | | OpenAPI | Este mapa |
 | --- | --- | --- |
-| Paths (`paths:` em `openapi.yaml`) | **25** | 25 (tabelas da seção 3) |
-| Operações (método + path) | **41** | 41 linhas |
-| Schemas nomeados | **53** | seção 4 + enums na 5 |
-| Arquivos Dart criados | — | nenhum |
+| Paths (`paths:` em `openapi.yaml`) | **35** | 35 (tabelas da seção 3) |
+| Operações (método + path) | **57** | 57 linhas |
+| Schemas nomeados | **76** | seção 4 + enums na 5 |
+| Arquivos Dart criados | — | client escrito à mão em `lib/features/*/data` |
 
-Quebra das 41 operações: operação 2, auth 6, conta 3, veículos 8, manutenção 11, prazos 8, telas 3.
+Quebra das 57 operações: operação 2, auth 6, conta 4, veículos/odômetro 8,
+catálogo 4, manutenção 15, prazos 10, abastecimento 5 e telas 3.
 
 Enums da seção 5 conferidos contra `components/schemas` em `api/openapi.yaml` (26-08-2026).

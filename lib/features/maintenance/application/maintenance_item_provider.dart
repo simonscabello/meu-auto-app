@@ -1,13 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_client.dart';
-import 'package:meu_auto/features/costs/application/costs_provider.dart';
-import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
-import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/data/maintenance_item_repository.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
-import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
-import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 
 final maintenanceItemRepositoryProvider = Provider<MaintenanceItemRepository>((
   ref,
@@ -23,16 +19,11 @@ final maintenanceItemsProvider = FutureProvider<List<MaintenanceItem>>((ref) {
   return ref.watch(maintenanceItemRepositoryProvider).list(vehicleType: 'car');
 });
 
-/// What a successful record write has to refresh.
-///
-/// The dashboard and the plans list both carry due dates the server
-/// recomputes; the odometer history is here because the record produced a
-/// reading.
+/// What a successful record write has to refresh: everything derived from
+/// the vehicle's history (a record resets clocks and may move the odometer),
+/// plus the record lists and any record detail that is open.
 void invalidateAfterMaintenanceWrite(WidgetRef ref, String vehicleId) {
-  ref.invalidate(dashboardProvider(vehicleId));
-  ref.invalidate(maintenancePlansProvider(vehicleId));
+  invalidateVehicleDerived(ref, vehicleId);
   ref.invalidate(maintenanceRecordsProvider(vehicleId));
-  ref.invalidate(odometerHistoryProvider(vehicleId));
-  ref.invalidate(timelineProvider(vehicleId));
-  ref.invalidate(costsDashboardProvider);
+  ref.invalidate(maintenanceRecordProvider);
 }

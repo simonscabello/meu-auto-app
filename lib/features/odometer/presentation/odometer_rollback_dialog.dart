@@ -15,9 +15,10 @@ import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 /// dialog instead of writing a second one.
 ///
 /// Set [allowOverride] to false where the endpoint has no way to force the
-/// value through. `POST /odometer` accepts `source: "correction"`;
-/// `PATCH /maintenance-records/{id}` accepts no such field, so offering the
-/// button there would be a dead end dressed as a choice.
+/// value through. Every write that can answer this today — the odometer, a
+/// maintenance record and a fill, created or edited — accepts
+/// `source: "correction"`, and each caller must resend WITH it: resending the
+/// same body without it only brings the same dialog back.
 ///
 /// Returns true when the owner chose to record the value anyway. Dismissing
 /// counts as going back to fix it.

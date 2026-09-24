@@ -13,6 +13,11 @@ final class ObligationRepository {
   final ApiClient api;
   final String Function() _newId;
 
+  /// A fresh client id for a create. A form takes one when it first submits
+  /// and keeps it for every retry, so "Tentar de novo" after a timeout replays
+  /// the same request instead of creating a second row.
+  String nextId() => _newId();
+
   Future<List<Obligation>> listObligations(
     String vehicleId, {
     ObligationKind? kind,

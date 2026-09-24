@@ -35,6 +35,18 @@ void main() {
     expect(edits, 1);
   });
 
+  testWidgets('password change is available from account settings', (
+    tester,
+  ) async {
+    var changes = 0;
+    await _pump(tester, onChangePassword: () => changes++);
+
+    await tester.tap(find.text('Alterar senha'));
+    await tester.pump();
+
+    expect(changes, 1);
+  });
+
   testWidgets('the settings are grouped, with the exits kept apart', (
     tester,
   ) async {
@@ -49,15 +61,9 @@ void main() {
     );
   });
 
-  testWidgets('the theme is one tap, and says which one is on', (
-    tester,
-  ) async {
+  testWidgets('the theme is one tap, and says which one is on', (tester) async {
     final chosen = <ThemeMode>[];
-    await _pump(
-      tester,
-      themeMode: ThemeMode.dark,
-      onThemeMode: chosen.add,
-    );
+    await _pump(tester, themeMode: ThemeMode.dark, onThemeMode: chosen.add);
 
     expect(find.text('Claro'), findsOneWidget);
     expect(find.text('Escuro'), findsOneWidget);
@@ -73,6 +79,7 @@ Future<void> _pump(
   WidgetTester tester, {
   ThemeMode themeMode = ThemeMode.system,
   VoidCallback? onEditName,
+  VoidCallback? onChangePassword,
   ValueChanged<ThemeMode>? onThemeMode,
 }) async {
   await tester.pumpWidget(
@@ -90,6 +97,7 @@ Future<void> _pump(
           onEditName: onEditName ?? () {},
           onThemeMode: onThemeMode ?? (_) {},
           onVehicles: () {},
+          onChangePassword: onChangePassword ?? () {},
           onLogout: () {},
           onDeleteAccount: () {},
         ),

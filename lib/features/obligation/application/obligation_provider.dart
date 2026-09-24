@@ -42,6 +42,7 @@ void invalidateAfterObligationWrite(WidgetRef ref, String vehicleId) {
   ref.invalidate(obligationsProvider(vehicleId));
   ref.invalidate(obligationProvider);
   ref.invalidate(dashboardProvider(vehicleId));
+  ref.invalidate(alertsProvider(vehicleId));
   ref.invalidate(timelineProvider(vehicleId));
   ref.invalidate(costsDashboardProvider);
 }
@@ -50,6 +51,7 @@ void invalidateAfterSeguroWrite(WidgetRef ref, String vehicleId) {
   ref.invalidate(segurosProvider(vehicleId));
   ref.invalidate(seguroProvider);
   ref.invalidate(dashboardProvider(vehicleId));
+  ref.invalidate(alertsProvider(vehicleId));
   ref.invalidate(timelineProvider(vehicleId));
   ref.invalidate(costsDashboardProvider);
 }

@@ -172,9 +172,7 @@ void main() {
       // it. An empty Column would still take a gap out of the title's width,
       // which is the whole reason a row with nothing on the right has to be
       // a different widget tree rather than the same one with blanks in it.
-      final tile = tester.widget<AppTimelineTile>(
-        find.byType(AppTimelineTile),
-      );
+      final tile = tester.widget<AppTimelineTile>(find.byType(AppTimelineTile));
       expect(tile.trailing, isNull);
     });
 
@@ -236,6 +234,32 @@ void main() {
       expect(find.text('Troca de óleo do motor'), findsOneWidget);
       expect(find.text('Não foi possível carregar mais.'), findsOneWidget);
       expect(find.text('Tentar de novo'), findsOneWidget);
+    });
+
+    testWidgets('dark dates stay inside their day instead of a pinned band', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: TimelineContent(
+              state: PagedState(
+                items: [
+                  _entry(occurredOn: const CivilDate(2026, 8, 28)),
+                  _entry(id: 'older', occurredOn: const CivilDate(2026, 2, 27)),
+                ],
+                hasMore: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('28 AGO 2026 · sex'), findsOneWidget);
+      expect(find.text('27 FEV 2026 · sex'), findsOneWidget);
+      expect(find.byType(SliverPersistentHeader), findsNothing);
     });
   });
 }

@@ -45,12 +45,15 @@ void main() {
   });
 
   group('careNextCheckPhrase', () {
-    test('spells remaining_days from the server, and stays quiet without it', () {
-      expect(careNextCheckPhrase(15), 'Próxima verificação em 15 dias');
-      expect(careNextCheckPhrase(1), 'Próxima verificação em 1 dia');
-      expect(careNextCheckPhrase(null), isNull);
-      expect(careNextCheckPhrase(0), isNull);
-    });
+    test(
+      'spells remaining_days from the server, and stays quiet without it',
+      () {
+        expect(careNextCheckPhrase(15), 'Próxima verificação em 15 dias');
+        expect(careNextCheckPhrase(1), 'Próxima verificação em 1 dia');
+        expect(careNextCheckPhrase(null), isNull);
+        expect(careNextCheckPhrase(0), isNull);
+      },
+    );
   });
 
   group('lastDonePhrase', () {

@@ -79,10 +79,11 @@ Explicitly undecided — record, do not invent:
 
 - Whether motorcycles and other vehicle types are supported alongside cars.
 - Whether multas (fines) are tracked in-app.
-- Authentication method (email/password, social, phone).
+- Authentication is e-mail/password in v1, including authenticated password change and
+  recovery by e-mail. Social login and phone authentication are future options.
 - Notification delivery (push, email, in-app only) and how far in advance reminders fire.
 - Monetization — free, paid, or freemium — and any account limits.
-- Whether fuel logging computes consumption/efficiency, or only cost.
+- Fuel logging computes consumption between full-tank records and contributes to cost.
 - Whether IPVA/licenciamento calendars are seeded from official data or entered by the owner.
 
 ## Brand Commitments

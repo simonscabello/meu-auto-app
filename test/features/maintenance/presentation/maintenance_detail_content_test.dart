@@ -175,18 +175,12 @@ void main() {
       tester,
     ) async {
       var taps = 0;
-      await _pump(
-        tester,
-        _record(),
-        onAddItem: () => taps++,
-        addingItem: true,
-      );
+      await _pump(tester, _record(), onAddItem: () => taps++, addingItem: true);
 
       await tester.tap(find.text('Adicionar item que faltou'));
       expect(taps, 0);
     });
   });
-
 }
 
 Future<void> _pump(

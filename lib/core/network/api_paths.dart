@@ -23,6 +23,7 @@ abstract final class ApiPaths {
   static bool isAuthPath(String path) => path.contains('/auth/');
 
   static const me = '/me';
+  static const changePassword = '/me/password';
 
   static const vehicles = '/vehicles';
 
@@ -85,6 +86,8 @@ abstract final class ApiPaths {
   static String abastecimento(String id) => '/abastecimentos/$id';
 
   static String vehicleDashboard(String id) => '/vehicles/$id/dashboard';
+
+  static String vehicleAlerts(String id) => '/vehicles/$id/alerts';
 
   static String vehicleTimeline(String id) => '/vehicles/$id/timeline';
 }

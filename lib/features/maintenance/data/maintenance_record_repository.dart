@@ -50,6 +50,9 @@ final class MaintenanceRecordRepository {
   /// Moving the date or the mileage moves the odometer reading this record
   /// produced, so this call goes through the same consistency check as the
   /// odometer endpoint and can answer `odometer_rollback`.
+  ///
+  /// [correction] is the owner confirming a value that rule questioned; it is
+  /// sent as `source: correction` and only after they said so.
   Future<MaintenanceRecord> update(
     String recordId, {
     CivilDate? occurredOn,
@@ -57,6 +60,7 @@ final class MaintenanceRecordRepository {
     String? workshopName,
     Money? totalCost,
     String? notes,
+    bool correction = false,
   }) async {
     final body = await api.patch(
       ApiPaths.maintenanceRecord(recordId),
@@ -66,6 +70,7 @@ final class MaintenanceRecordRepository {
         'workshop_name': ?workshopName,
         'total_cost_cents': ?totalCost?.cents,
         'notes': ?notes,
+        if (correction) 'source': 'correction',
       },
     );
     return MaintenanceRecord.fromJson(body);
@@ -86,7 +91,9 @@ final class MaintenanceRecordRepository {
   ) async {
     final body = await api.post(
       ApiPaths.maintenanceRecordItems(recordId),
-      body: {'items': [for (final line in lines) line.toJson()]},
+      body: {
+        'items': [for (final line in lines) line.toJson()],
+      },
     );
     return MaintenanceRecord.fromJson(body);
   }

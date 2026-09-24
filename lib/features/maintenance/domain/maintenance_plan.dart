@@ -99,6 +99,27 @@ enum MaintenanceHistoryStatus {
   };
 }
 
+/// What a plan's due point is measured from.
+///
+/// [sinceNew] is the owner saying the item was never done: the server counts
+/// it from the car being new (0 km and, when the year is known, the start of
+/// the year it was built). Nothing was performed, so there is no "última vez"
+/// to show — only the due point and how far it is.
+enum MaintenanceBaseline {
+  record,
+  sinceNew,
+
+  /// No baseline at all, an older server that does not send the field, or a
+  /// value this build does not know.
+  none;
+
+  static MaintenanceBaseline fromWire(String? raw) => switch (raw) {
+    'record' => record,
+    'since_new' => sinceNew,
+    _ => none,
+  };
+}
+
 /// The plan as returned by create and update: the rule, without computed due.
 final class MaintenancePlanSummary {
   const MaintenancePlanSummary({
@@ -173,6 +194,7 @@ final class MaintenancePlan {
     this.remainingDays,
     this.lastOccurredOn,
     this.lastMileageKm,
+    this.baseline = MaintenanceBaseline.none,
   });
 
   final String id;
@@ -207,6 +229,10 @@ final class MaintenancePlan {
   final int? remainingDays;
   final CivilDate? lastOccurredOn;
   final int? lastMileageKm;
+  final MaintenanceBaseline baseline;
+
+  /// Counted from the car being new because the owner said it was never done.
+  bool get countsFromNew => baseline == MaintenanceBaseline.sinceNew;
 
   /// Enough of the catalogue row to open the record form with this item chosen.
   MaintenanceItem toCatalogueItem() {
@@ -248,6 +274,7 @@ final class MaintenancePlan {
       remainingDays: json['remaining_days'] as int?,
       lastOccurredOn: CivilDate.tryParse(json['last_occurred_on'] as String?),
       lastMileageKm: json['last_mileage_km'] as int?,
+      baseline: MaintenanceBaseline.fromWire(json['baseline'] as String?),
     );
   }
 }

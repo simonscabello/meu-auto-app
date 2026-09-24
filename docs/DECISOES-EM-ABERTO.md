@@ -2,12 +2,13 @@
 
 Este arquivo registra incompatibilidades entre o que o app precisa e o que a API oferece, para que o trabalho continue sem parar: anote o gap, siga com a alternativa menos custosa e deixe a decisão explícita para resolver depois.
 
-Consolidado no fechamento do MVP (2026-08-26) e de novo na Fase 11 (2026-08-27). Quatro seções:
+Consolidado no fechamento do MVP (2026-08-26), na Fase 11 (2026-08-27) e na
+Prioridade 1 (2026-08-28). Quatro seções:
 
 1. **[Para o repositório do backend](#para-o-repositório-do-backend)** — o que foi levado para o outro repositório. Os resolvidos na Fase 11 estão riscados.
-2. **[Bloqueando o app](#bloqueando-o-app)** — o que impede um item de fechar aqui, e quem decide. Troca de senha autenticada e as migrações de Riverpod/go_router continuam abertas; ícone, splash e telas de prazo fecharam.
+2. **[Bloqueando o app](#bloqueando-o-app)** — o que impede um item de fechar aqui, e quem decide. Só as migrações de Riverpod/go_router continuam adiadas; troca de senha, ícone, splash e telas de prazo fecharam.
 3. **[Confronto com o contrato](#confronto-com-o-contrato--fechamento-do-mvp)** — endpoint por endpoint: o que o app consome, o que não consome e por quê.
-4. **[Contrato × app](#contrato--app)** — o histórico de gaps encontrados e a alternativa adotada em cada um. `DELETE /odometer` sem filtro de origem continua aberto.
+4. **[Contrato × app](#contrato--app)** — o histórico de gaps encontrados e a alternativa adotada em cada um. A proteção de origem do odômetro foi fechada no servidor.
 
 ---
 
@@ -60,11 +61,11 @@ Não inventar variação. Se um PNG parecer errado, parar e relatar; não reproc
 
 As telas estão em `lib/features/obligation/`. Cuidados tem a seção "Documentos e prazos"; `/obrigacoes/:id` e `/seguros/:id` abrem o detalhe; o Quick Add oferece registrar os três.
 
-### Troca de senha para quem está logado
+### ~~Troca de senha para quem está logado~~ — RESOLVIDO
 
-Não existe `POST /v1/me/password` nem equivalente. Quem está logado e quer trocar a senha precisa usar o fluxo de recuperação por e-mail. O app não oferece a ação no Perfil, porque não há o que chamar.
-
-**O que decidir:** se vale um endpoint (senha atual + senha nova, autenticado, encerrando as outras sessões) antes de publicar.
+`POST /v1/me/password` exige a senha atual, revoga os refresh tokens anteriores e devolve
+uma sessão nova. O aparelho atual continua conectado; os demais precisam entrar novamente.
+O app expõe o fluxo em `Perfil > Alterar senha`.
 
 ### Migrações adiadas de propósito
 
@@ -80,20 +81,20 @@ Não existe `POST /v1/me/password` nem equivalente. Quem está logado e quer tro
 
 ## Confronto com o contrato — fechamento do MVP
 
-`openapi.yaml` declara **55 operações**. Percorridas contra o que os repositórios em `lib/features/*/data/` realmente chamam:
+`openapi.yaml` declara **57 operações**. Percorridas contra o que os repositórios em `lib/features/*/data/` realmente chamam:
 
 | Grupo | No contrato | Consumidas | Não consumidas |
 | --- | --- | --- | --- |
 | Operação (`/healthz`, `/readyz`) | 2 | 0 | 2 — probes de ops, não do app |
 | Auth | 6 | 6 | — |
-| Conta | 3 | 3 | — |
+| Conta | 4 | 4 | — |
 | Veículos + odômetro | 8 | 8 | — |
 | Catálogo de veículos | 4 | 4 | — |
-| Manutenção | 14 | 14 | — |
+| Manutenção | 15 | 15 | — |
 | Prazos (obligations, seguros) | 10 | 10 | — |
 | Abastecimento | 5 | 5 | — |
 | Telas (read models) | 3 | 2 | 1 — `GET /alerts` |
-| **Total** | **55** | **52** | **3** |
+| **Total** | **57** | **54** | **3** |
 
 **Nenhuma rota inexistente é chamada.** `test/contract/openapi_paths_test.dart` prova isso a cada `flutter test`: lê o `openapi.yaml` do repositório irmão e falha se `ApiPaths` referenciar um path que não está lá. O teste roda de verdade (não é pulado) quando `../meu-auto-backend` está clonado — que é o caso. Fase 11: `+1` no reporter, não skipped.
 
@@ -126,17 +127,16 @@ Varredura em `lib/features` por soma de meses, comparação com "hoje", cálculo
 | 2026-08-26 | Riverpod 2.6.1 × 3.4.2 | A 3.x está disponível e muda a API de `AsyncNotifier` e de providers. Hoje existem 4 providers; no fim do MVP serão ~40, então este seria o momento barato de migrar. | **Decisão tomada na Auditoria 1: ficar na 2.x até o MVP fechar.** Trocar a biblioteca de estado no meio de 14 prompts de feature troca um custo conhecido por um risco desconhecido. Reabrir como tarefa dedicada depois do Prompt 22. |
 | 2026-08-26 | go_router 17.5.0 × 18.0.0 | Major novo disponível e resolvível. | Mesma decisão e mesmo motivo do Riverpod: adiado para depois do MVP. Não é dívida esquecida, é sequenciamento. |
 | 2026-08-26 | `odometer_rollback` tem duas formas, o OpenAPI documenta uma | `CheckOdometerConsistency` rejeita tanto contra o vizinho ANTERIOR (`previous_mileage_km`, `previous_occurred_on`) quanto contra o POSTERIOR (`next_mileage_km`, `next_occurred_on`). O `openapi.yaml` só traz o exemplo do anterior. | O app trata as duas e escreve frases diferentes para cada uma. Vale acrescentar o segundo exemplo ao contrato — quem gerar client a partir dele hoje não descobre a outra forma. |
-| 2026-08-26 | Apagar leitura de odômetro não é restrito por origem | `DELETE /v1/odometer/{id}` é `DELETE ... WHERE id = $1`, sem filtrar `source`. Dá para apagar uma leitura gerada por manutenção, deixando o registro de serviço sem a quilometragem que o sustenta. | **O app guarda isso do lado dele** (só oferece apagar em `manual` e `correction`; nas demais mostra cadeado e explica). Candidato a `422` no servidor — hoje a regra existe só no cliente, e outro cliente não a respeitaria. |
+| 2026-08-26 | ~~Apagar leitura de odômetro não é restrito por origem~~ | **Resolvido em 28/08.** O serviço só permite exclusão direta de `manual` e `correction`. Leituras ligadas a manutenção ou abastecimento respondem `409 conflict` com orientação para alterar o registro de origem. | A guarda do app continua como prevenção de gesto; o servidor é a autoridade. Coberto por integração para as duas origens. |
 | 2026-08-26 | O `hint` do rollback é instrução de cliente, não texto de usuário | `details.hint` diz literalmente `reenvie com source "correction"`. | Não exibir. O app escreve a própria frase e oferece o override como botão. Coberto por teste. |
 | 2026-08-26 | ~~Editar manutenção não tem como forçar um `odometer_rollback`~~ | **Resolvido.** `UpdateMaintenanceRecordRequest.source` aceita `manual` \| `correction`. Ausente = `manual`. | — |
 | 2026-08-26 | O item de manutenção não traz estado da garantia | `MaintenanceRecordItem` devolve `warranty_until` e `warranty_until_km` derivados, mas nenhum status. Dizer "ativa" ou "vencida" na tela exigiria comparar com hoje — e essa regra é do servidor, que já a responde em `/alerts` com `kind: garantia`. | A tela mostra só o fato ("Garantia até 20/08/2028 ou até 138.200 km"). Se quisermos o estado, o certo é a API devolvê-lo no item, não o app recalcular e passar a discordar da lista de alertas. |
 | 2026-08-26 | ~~Criar manutenção não tem como forçar um `odometer_rollback`~~ | **Resolvido.** `CreateMaintenanceRecordRequest.source` aceita `manual` \| `correction`. Ausente = `manual`. | — |
 | 2026-08-26 | Erro de item no POST não vem indexado | O Prompt 14 espera `items.0.warranty_months`. O servidor hoje grava tudo em `details.fields.items`. | O app liga as duas formas: chave indexada no cartão da linha; `items` no bloco "O que foi feito". |
-| 2026-08-26 | Troca de senha autenticada | Não existe `POST /v1/me/password` (nem equivalente). Quem está logado e quer trocar a senha usa o fluxo de recuperação. | Candidato a endpoint futuro: senha atual + senha nova, autenticado, encerrando as outras sessões. Até lá o app não oferece a ação no Perfil. |
+| 2026-08-26 | ~~Troca de senha autenticada~~ | **Resolvido em 28/08.** `POST /v1/me/password` troca a credencial, revoga as sessões anteriores e devolve a sessão substituta. | O app salva os novos tokens e mantém somente o aparelho atual conectado. |
 | 2026-08-26 | Deep link de reset em warm start | O esquema `meuauto` já está no Manifest (`singleTop`) e no Info.plist. O Flutter encaminha o URI via `pushRouteInformation` no `onNewIntent`. | Não adicionar `app_links` até constatar que o mecanismo padrão falha no aparelho. |
 | 2026-08-27 | Dado técnico por modelo não existe | A aplicabilidade automática vem só de `vehicles.fuel_type` — o que uma motorização **é**. Correia × corrente, intervalo de fabricante, fluido específico de câmbio: nada disso é derivável hoje, e nenhuma fonte confiável está integrada. A FIPE identifica o veículo; **não** é fonte de plano de manutenção. | O sistema pergunta em vez de inventar, e "não sei" é resposta gravada. Reabrir quando existir uma fonte de dado por modelo — aí `vehicle_profile_answers` vira o lugar de gravar `source: manufacturer` em vez de `user`. |
 | 2026-08-27 | Só existe uma pergunta de perfil | `timing_drive` é a única em `internal/maintenance/profile.go`. Outras candidatas óbvias (tipo de câmbio, fluido de arrefecimento, freio a disco nas quatro rodas) não entraram porque não têm consequência clara no catálogo atual. | Uma pergunta nova é um elemento a mais na lista em Go. Só vale acrescentar quando a resposta **decidir** um item do catálogo — pergunta sem consequência é fricção. |
 | 2026-08-27 | `origin` tem seis valores e o servidor escreve dois | `manufacturer`, `manual`, `admin` e `external_provider` existem no CHECK e no contrato; nada os grava. | Deliberado: a coluna responde "quem disse isso?" e ampliá-la agora custou uma migration, ampliá-la depois custaria uma migration **e** um app antigo que não conhece os valores. O `parseEnum` do app já cai em `desconhecido`. |
 | 2026-08-27 | Híbrido plug-in não tem valor próprio em `fuel_type` | `hibrido` cobre híbrido e híbrido plug-in. Os componentes são os mesmos (motor a combustão + bateria de tração), então a aplicabilidade não muda. | Não inventar um valor novo sem necessidade de produto. Se algum dia um item existir só em PHEV, aí sim. |
-| 2026-08-27 | Item marcado `not_applicable` continua acessível por id | `PlanDetailScreen` lê `maintenancePlansProvider`, que exclui esses planos, e mostra "Este plano não está mais ativo." Nenhuma rota do app leva a um deles hoje (a tela de perfil não navega para o detalhe, e um item inaplicável nunca vira alerta). | Se algum dia um deep link levar a um, a frase fica enganosa. Trocar por "Seu carro não usa este item" quando isso acontecer. |
-
+| 2026-08-27 | Item marcado `not_applicable` continua acessível por id | `PlanDetailScreen` lê `maintenancePlansProvider`, que exclui esses planos, e mostra "Este item não está mais sendo acompanhado." Nenhuma rota do app leva a um deles hoje (a tela de perfil não navega para o detalhe, e um item inaplicável nunca vira alerta). | Se algum dia um deep link levar a um, a frase fica enganosa. Trocar por "Seu carro não usa este item" quando isso acontecer. |

@@ -45,7 +45,10 @@ void main() {
     expect(body['items'], [
       {'maintenance_item_id': _care.maintenanceItemId},
     ]);
-    expect(find.text('Registrado hoje · Próxima verificação em 15 dias'), findsOneWidget);
+    expect(
+      find.text('Registrado hoje · Próxima verificação em 15 dias'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a 200 retry is success, same as 201', (tester) async {
@@ -70,14 +73,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(adapter.postedBodies, hasLength(1));
-    final button = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Feito'),
+    final button = tester.widget<OutlinedButton>(
+      find.widgetWithText(OutlinedButton, 'Feito'),
     );
     expect(button.onPressed, isNull);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.tap(
-      find.widgetWithText(FilledButton, 'Feito'),
+      find.widgetWithText(OutlinedButton, 'Feito'),
       warnIfMissed: false,
     );
     await tester.pump();
@@ -119,7 +122,11 @@ void main() {
   });
 }
 
-Future<void> _open(WidgetTester tester, _Adapter adapter, _Counts counts) async {
+Future<void> _open(
+  WidgetTester tester,
+  _Adapter adapter,
+  _Counts counts,
+) async {
   final client = ApiClient(adapter: adapter, logPrint: (_) {});
   addTearDown(client.close);
 
@@ -147,7 +154,10 @@ Future<void> _open(WidgetTester tester, _Adapter adapter, _Counts counts) async 
             children: [
               _ProviderProbe(vehicleId: _vehicleId, counts: counts),
               Expanded(
-                child: CuidadosView(vehicleId: _vehicleId, newId: () => _fixedId),
+                child: CuidadosView(
+                  vehicleId: _vehicleId,
+                  newId: () => _fixedId,
+                ),
               ),
             ],
           ),

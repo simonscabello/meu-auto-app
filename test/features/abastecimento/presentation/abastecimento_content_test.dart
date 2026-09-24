@@ -33,53 +33,50 @@ void main() {
     expect(find.text(abastecimentoRegisterLabel), findsOneWidget);
   });
 
-  testWidgets('each consumption status has its own phrase and no invented km/L', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: Scaffold(
-          body: AbastecimentoListContent(
-            state: PagedState(
-              items: [
-                _fill(
-                  id: 'ok',
-                  status: ConsumptionStatus.ok,
-                  value: 17.82,
-                ),
-                _fill(id: 'partial', status: ConsumptionStatus.partialFill),
-                _fill(
-                  id: 'first',
-                  status: ConsumptionStatus.insufficientData,
-                ),
-                _fill(id: 'unavail', status: ConsumptionStatus.unavailable),
-                _fill(id: 'unknown', status: ConsumptionStatus.desconhecido),
-              ],
-              hasMore: false,
+  testWidgets(
+    'each consumption status has its own phrase and no invented km/L',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: AbastecimentoListContent(
+              state: PagedState(
+                items: [
+                  _fill(id: 'ok', status: ConsumptionStatus.ok, value: 17.82),
+                  _fill(id: 'partial', status: ConsumptionStatus.partialFill),
+                  _fill(
+                    id: 'first',
+                    status: ConsumptionStatus.insufficientData,
+                  ),
+                  _fill(id: 'unavail', status: ConsumptionStatus.unavailable),
+                  _fill(id: 'unknown', status: ConsumptionStatus.desconhecido),
+                ],
+                hasMore: false,
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('17,8 km/L'), findsOneWidget);
-    expect(
-      find.text(
-        'Abastecimento parcial — o consumo entra no próximo tanque cheio.',
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.text('Consumo disponível a partir do próximo tanque cheio.'),
-      findsOneWidget,
-    );
-    expect(
-      find.text('Não foi possível calcular o consumo deste registro.'),
-      findsNWidgets(2),
-    );
-    expect(find.textContaining('17,82'), findsNothing);
-  });
+      expect(find.text('17,8 km/L'), findsOneWidget);
+      expect(
+        find.text(
+          'Abastecimento parcial — o consumo entra no próximo tanque cheio.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Consumo disponível a partir do próximo tanque cheio.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Não foi possível calcular o consumo deste registro.'),
+        findsNWidgets(2),
+      );
+      expect(find.textContaining('17,82'), findsNothing);
+    },
+  );
 
   testWidgets('delete confirmation cites the odometer reading', (tester) async {
     var deleted = 0;
@@ -124,9 +121,7 @@ void main() {
   testWidgets('an electric vehicle hides the dashboard card', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(
-          body: LastAbastecimentoCard(supported: false),
-        ),
+        home: Scaffold(body: LastAbastecimentoCard(supported: false)),
       ),
     );
 

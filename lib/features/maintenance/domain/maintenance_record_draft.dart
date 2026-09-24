@@ -77,11 +77,12 @@ final class MaintenanceRecordDraft {
     this.workshopName,
     this.totalCostCents,
     this.notes,
+    this.correction = false,
   });
 
   static const maxItems = 20;
 
-  static const noItemsReason = 'Adicione pelo menos um item para salvar.';
+  static const noItemsReason = 'Escolha pelo menos um item do que foi feito.';
 
   final String id;
   final CivilDate occurredOn;
@@ -91,6 +92,12 @@ final class MaintenanceRecordDraft {
   final Money? totalCostCents;
   final String? notes;
   final List<MaintenanceRecordLineDraft> items;
+
+  /// The owner confirmed a mileage the odometer rule questioned — "o valor
+  /// está certo, registrar assim". Sent as `source: correction`, which is the
+  /// only thing that makes the server skip the neighbour check; resending the
+  /// same draft without it answered the same `odometer_rollback` forever.
+  final bool correction;
 
   bool get canSave => items.isNotEmpty && items.length <= maxItems;
 
@@ -141,7 +148,22 @@ final class MaintenanceRecordDraft {
       'total_cost_cents': ?totalCostCents?.cents,
       'notes': ?note,
       'items': [for (final line in items) line.toJson()],
+      if (correction) 'source': 'correction',
     };
+  }
+
+  MaintenanceRecordDraft asCorrection() {
+    return MaintenanceRecordDraft(
+      id: id,
+      occurredOn: occurredOn,
+      mileageKm: mileageKm,
+      kind: kind,
+      workshopName: workshopName,
+      totalCostCents: totalCostCents,
+      notes: notes,
+      items: items,
+      correction: true,
+    );
   }
 
   MaintenanceRecordDraft _withItems(List<MaintenanceRecordLineDraft> next) {
@@ -154,6 +176,7 @@ final class MaintenanceRecordDraft {
       totalCostCents: totalCostCents,
       notes: notes,
       items: next,
+      correction: correction,
     );
   }
 }

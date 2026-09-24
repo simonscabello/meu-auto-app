@@ -33,7 +33,7 @@ void main() {
             remainingKm: -2000,
           ),
         ),
-        'Está vencida',
+        'passou 2.000 km',
       );
     });
 
@@ -51,10 +51,22 @@ void main() {
   });
 
   group('"não sei" and "nunca foi feito" do not read the same', () {
-    test('never asked asks', () {
+    // The group already says the date is missing; the row says how often the
+    // item is done instead of repeating the same request on every line.
+    test('never asked says how often the item is done', () {
+      expect(
+        planStatusPhrase(
+          _plan(
+            status: MaintenanceStatus.semBaseline,
+            intervalKm: 10000,
+            intervalMonths: 12,
+          ),
+        ),
+        'A cada 10.000 km ou 12 meses',
+      );
       expect(
         planStatusPhrase(_plan(status: MaintenanceStatus.semBaseline)),
-        'Informe a última vez para começarmos a contar',
+        'Informe quando foi feito',
       );
     });
 
@@ -66,7 +78,7 @@ void main() {
             historyStatus: MaintenanceHistoryStatus.unknown,
           ),
         ),
-        'Você não lembra — tudo bem',
+        'Você não lembra quando foi',
       );
     });
 
@@ -79,6 +91,22 @@ void main() {
           ),
         ),
         'Nunca foi feito',
+      );
+    });
+
+    // With a server that counts "never" from the car being new, the item has a
+    // real due point — and the row says where it counts from.
+    test('never done, counted from new, says so next to the figures', () {
+      expect(
+        planStatusPhrase(
+          _plan(
+            status: MaintenanceStatus.vencido,
+            historyStatus: MaintenanceHistoryStatus.never,
+            baseline: MaintenanceBaseline.sinceNew,
+            remainingKm: -80000,
+          ),
+        ),
+        'Nunca feito · passou 80.000 km',
       );
     });
   });
@@ -170,6 +198,42 @@ void main() {
     });
   });
 
+  group('the plan detail does not repeat its chip', () {
+    test('on track, it says how far off the next service is', () {
+      expect(
+        planDetailHeadline(
+          _plan(remainingKm: 60000, remainingDays: 1461, intervalKm: 60000),
+        ),
+        'faltam mais de 4 anos · faltam 60.000 km',
+      );
+    });
+
+    test('counted from new, it says so before the distance', () {
+      expect(
+        planDetailHeadline(
+          _plan(remainingKm: 12000, baseline: MaintenanceBaseline.sinceNew),
+        ),
+        'Nunca feito · faltam 12.000 km',
+      );
+    });
+
+    test('late, it keeps the list phrase', () {
+      expect(
+        planDetailHeadline(
+          _plan(status: MaintenanceStatus.vencido, remainingKm: -2000),
+        ),
+        'passou 2.000 km',
+      );
+    });
+
+    test('without a baseline, the facts speak and the line is empty', () {
+      expect(
+        planDetailHeadline(_plan(status: MaintenanceStatus.semBaseline)),
+        '',
+      );
+    });
+  });
+
   test('an unknown strategy falls back to the plain status phrase', () {
     expect(
       planStatusPhrase(
@@ -190,6 +254,9 @@ MaintenancePlan _plan({
   MaintenanceItemKind itemKind = MaintenanceItemKind.maintenance,
   int? remainingKm,
   int? remainingDays,
+  int? intervalKm,
+  int? intervalMonths,
+  MaintenanceBaseline baseline = MaintenanceBaseline.none,
 }) {
   return MaintenancePlan(
     id: 'plan-1',
@@ -205,5 +272,8 @@ MaintenancePlan _plan({
     status: status,
     remainingKm: remainingKm,
     remainingDays: remainingDays,
+    intervalKm: intervalKm,
+    intervalMonths: intervalMonths,
+    baseline: baseline,
   );
 }

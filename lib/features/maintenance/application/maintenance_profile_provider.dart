@@ -1,9 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_client.dart';
-import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
-import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/data/maintenance_profile_repository.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 
 final maintenanceProfileRepositoryProvider =
     Provider<MaintenanceProfileRepository>((ref) {
@@ -19,7 +18,5 @@ final maintenanceProfileProvider =
 /// Answering a question changes which plans exist, so both plan lists reload —
 /// and so does the dashboard, whose prompt counts the open questions.
 void invalidateAfterProfileWrite(WidgetRef ref, String vehicleId) {
-  ref.invalidate(maintenanceProfileProvider(vehicleId));
-  invalidateAfterPlanWrite(ref, vehicleId);
-  ref.invalidate(dashboardProvider(vehicleId));
+  invalidateVehicleDerived(ref, vehicleId);
 }

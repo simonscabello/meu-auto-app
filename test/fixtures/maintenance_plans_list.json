@@ -3,8 +3,12 @@
     {
       "alert_days": 15,
       "alert_km": 1000,
+      "baseline": "record",
       "due_at_km": 108200,
       "due_on": "2026-09-10",
+      "history_priority": 100,
+      "history_question": "Quando foi a última troca de óleo?",
+      "history_status": "not_asked",
       "id": "aaaaaaaa-aaaa-7aaa-8aaa-aaaaaaaaaaaa",
       "interval_days": null,
       "interval_km": 10000,
@@ -15,15 +19,12 @@
       "last_mileage_km": 98200,
       "last_occurred_on": "2025-08-10",
       "maintenance_item_id": "bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb",
+      "notes": null,
       "origin": "suggested",
       "remaining_days": 15,
       "remaining_km": 1550,
       "status": "em_dia",
-      "strategy": "periodic",
-      "history_status": "not_asked",
-      "notes": null,
-      "history_question": "Quando foi a última troca de óleo?",
-      "history_priority": 100
+      "strategy": "periodic"
     }
   ]
 }

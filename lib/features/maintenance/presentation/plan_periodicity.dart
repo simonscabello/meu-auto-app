@@ -10,11 +10,7 @@ Future<void> showPlanPeriodicitySheet(
   required MaintenancePlan plan,
 }) {
   if (plan.itemKind == MaintenanceItemKind.care) {
-    return CarePeriodicitySheet.show(
-      context,
-      vehicleId: vehicleId,
-      plan: plan,
-    );
+    return CarePeriodicitySheet.show(context, vehicleId: vehicleId, plan: plan);
   }
   return PlanIntervalSheet.show(context, vehicleId: vehicleId, plan: plan);
 }

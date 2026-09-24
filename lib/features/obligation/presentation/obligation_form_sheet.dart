@@ -12,7 +12,9 @@ import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/domain/obligation_copy.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 class ObligationFormSheet extends ConsumerStatefulWidget {
@@ -36,7 +38,10 @@ class ObligationFormSheet extends ConsumerStatefulWidget {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      // A form: closes through its header or the back button, which both
+      // ask before discarding. See AppSheetHeader.
+      showDragHandle: false,
+      enableDrag: false,
       useSafeArea: true,
       builder: (sheetContext) => ObligationFormSheet(
         vehicleId: vehicleId,
@@ -56,12 +61,32 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
   late final TextEditingController _amount;
   late final TextEditingController _notes;
   CivilDate? _dueOn;
+
+  /// Kept across retries of a create, for the year it was taken for. A retry
+  /// after a timeout then gets its own row back instead of "já existe um IPVA
+  /// deste ano"; a different year is a different request and takes a new id.
+  String? _createId;
+  int? _createIdYear;
   bool _submitting = false;
   bool _offline = false;
   String? _banner;
   Map<String, String> _fieldErrors = {};
 
   bool get _editing => widget.existing != null;
+
+  late final List<String> _openedWith;
+  CivilDate? _dueOpenedWith;
+
+  List<TextEditingController> get _fields => [_year, _amount, _notes];
+
+  bool get _isDirty {
+    if (_dueOn != _dueOpenedWith) return true;
+    final fields = _fields;
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i].text != _openedWith[i]) return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -73,6 +98,8 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
     _amount = moneyController(existing?.amountCents);
     _notes = TextEditingController(text: existing?.notes ?? '');
     _dueOn = existing?.dueOn;
+    _openedWith = [for (final field in _fields) field.text];
+    _dueOpenedWith = _dueOn;
   }
 
   @override
@@ -125,16 +152,20 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
               notes: notes,
             );
       } else {
-        await ref
-            .read(obligationRepositoryProvider)
-            .createObligation(
-              vehicleId: widget.vehicleId,
-              kind: widget.kind,
-              referenceYear: year!,
-              dueOn: _dueOn!,
-              amountCents: centsFromMoneyField(_amount.text),
-              notes: notes.isEmpty ? null : notes,
-            );
+        final repository = ref.read(obligationRepositoryProvider);
+        if (_createId == null || _createIdYear != year) {
+          _createId = repository.nextId();
+          _createIdYear = year;
+        }
+        await repository.createObligation(
+          id: _createId,
+          vehicleId: widget.vehicleId,
+          kind: widget.kind,
+          referenceYear: year!,
+          dueOn: _dueOn!,
+          amountCents: centsFromMoneyField(_amount.text),
+          notes: notes.isEmpty ? null : notes,
+        );
       }
       invalidateAfterObligationWrite(ref, widget.vehicleId);
       if (!mounted) return;
@@ -167,78 +198,83 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
     final kindLabel = obligationKindLabel(widget.kind);
     final title = _editing ? 'Editar $kindLabel' : 'Registrar $kindLabel';
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.s16,
-        right: AppSpacing.s16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s16,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s16),
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            if (!_editing) ...[
-              TextField(
-                controller: _year,
+    return AppDiscardGuard(
+      listenable: Listenable.merge(_fields),
+      isDirty: () => _isDirty,
+      busy: _submitting,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.s16,
+          right: AppSpacing.s16,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s16,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSheetHeader(title: title),
+              const SizedBox(height: AppSpacing.s8),
+              if (_banner != null) AuthFormBanner(message: _banner!),
+              if (!_editing) ...[
+                TextField(
+                  controller: _year,
+                  enabled: !_submitting,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'Ano de referência',
+                    errorText: _fieldErrors['reference_year'],
+                    errorMaxLines: 3,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.s12),
+              ],
+              AppDateField(
+                value: _dueOn,
+                onPick: _submitting ? () {} : _pickDueOn,
+                label: 'Vencimento',
+                emptyLabel: 'Escolher vencimento',
                 enabled: !_submitting,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Ano de referência',
-                  errorText: _fieldErrors['reference_year'],
-                  errorMaxLines: 3,
+                errorText: _fieldErrors['due_on'],
+              ),
+              const SizedBox(height: AppSpacing.s8),
+              Text(
+                'A data varia por estado e pelo final da placa.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpacing.s12),
+              AppMoneyField(
+                controller: _amount,
+                label: 'Valor (opcional)',
+                enabled: !_submitting,
+                errorText: _fieldErrors['amount_cents'],
+              ),
+              const SizedBox(height: AppSpacing.s12),
+              TextField(
+                controller: _notes,
+                enabled: !_submitting,
+                minLines: 2,
+                maxLines: 4,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  labelText: 'Observações (opcional)',
+                  errorText: _fieldErrors['notes'],
+                  errorMaxLines: 3,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s16),
+              AppButton(
+                label: _offline
+                    ? 'Tentar de novo'
+                    : (_editing ? 'Salvar $kindLabel' : 'Registrar $kindLabel'),
+                loading: _submitting,
+                onPressed: _submitting ? null : _submit,
+              ),
             ],
-            AppDateField(
-              value: _dueOn,
-              onPick: _submitting ? () {} : _pickDueOn,
-              label: 'Vencimento',
-              emptyLabel: 'Escolher vencimento',
-              enabled: !_submitting,
-              errorText: _fieldErrors['due_on'],
-            ),
-            const SizedBox(height: AppSpacing.s8),
-            Text(
-              'A data varia por estado e pelo final da placa.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppMoneyField(
-              controller: _amount,
-              label: 'Valor (opcional)',
-              enabled: !_submitting,
-              errorText: _fieldErrors['amount_cents'],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            TextField(
-              controller: _notes,
-              enabled: !_submitting,
-              minLines: 2,
-              maxLines: 4,
-              textInputAction: TextInputAction.newline,
-              decoration: InputDecoration(
-                labelText: 'Observações (opcional)',
-                errorText: _fieldErrors['notes'],
-                errorMaxLines: 3,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s16),
-            AppButton(
-              label: _offline
-                  ? 'Tentar de novo'
-                  : (_editing ? 'Salvar $kindLabel' : 'Registrar $kindLabel'),
-              loading: _submitting,
-              onPressed: _submitting ? null : _submit,
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -17,6 +17,7 @@ import 'package:meu_auto/features/onboarding/application/calibrar_provider.dart'
 import 'package:meu_auto/features/onboarding/data/calibrar_skip_store.dart';
 import 'package:meu_auto/features/onboarding/domain/calibrar_questions.dart';
 import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 
 void main() {
   late _Adapter adapter;
@@ -147,6 +148,31 @@ void main() {
     },
   );
 
+  testWidgets("the mileage starts empty, with today's reading as a hint", (
+    tester,
+  ) async {
+    await _startAsking(tester, adapter, skipStore);
+
+    final field = tester.widget<TextField>(
+      find.descendant(
+        of: find.byType(AppKmField),
+        matching: find.byType(TextField),
+      ),
+    );
+    expect(field.controller!.text, isEmpty);
+    expect(find.textContaining('48.320 km'), findsOneWidget);
+
+    await tester.tap(find.text('Escolher data'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.postedBodies, isEmpty);
+    expect(find.text('Informe a quilometragem.'), findsOneWidget);
+  });
+
   testWidgets('odometer rollback keeps the answer and lets the owner skip it', (
     tester,
   ) async {
@@ -176,11 +202,16 @@ void main() {
   });
 }
 
-Future<void> _pickDate(WidgetTester tester) async {
+/// Picks the date and types the mileage of that day. The field starts empty on
+/// purpose: every answer here is about the past, and today's reading left in
+/// place used to be saved as the mileage of a service done months ago.
+Future<void> _pickDate(WidgetTester tester, {String mileage = '48320'}) async {
   await tester.tap(find.text('Escolher data'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('OK'));
   await tester.pumpAndSettle();
+  await tester.enterText(find.byType(AppKmField), mileage);
+  await tester.pump();
 }
 
 Future<void> _startAsking(

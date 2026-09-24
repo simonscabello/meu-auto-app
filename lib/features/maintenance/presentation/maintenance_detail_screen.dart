@@ -9,22 +9,21 @@ import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
-import 'package:meu_auto/features/costs/application/costs_provider.dart';
-import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record_draft.dart';
 import 'package:meu_auto/features/maintenance/presentation/item_picker_sheet.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_edit_sheet.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
-import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
-import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -90,22 +89,31 @@ class _MaintenanceDetailScreenState
   /// made. Retracting the record is still the way to undo a wrong one.
   Future<void> _addItems(MaintenanceRecord record) async {
     final onRecord = {for (final line in record.items) line.maintenanceItemId};
+    final hidden = notApplicableItemIds(
+      await ref
+          .read(maintenancePlansWithHiddenProvider(record.vehicleId).future)
+          .then<AsyncValue<List<MaintenancePlan>>>(AsyncData.new)
+          .catchError(
+            (Object error, StackTrace stack) =>
+                AsyncError<List<MaintenancePlan>>(error, stack),
+          ),
+    );
+    if (!mounted) return;
     final picked = await ItemPickerSheet.show(
       context,
       selected: const [],
       lockedItemIds: onRecord,
       title: 'Adicionar item que faltou',
+      hiddenItemIds: hidden,
     );
     if (picked == null || picked.isEmpty || !mounted) return;
 
     setState(() => _addingItem = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref
-          .read(maintenanceRecordRepositoryProvider)
-          .addItems(record.id, [
-            for (final item in picked) MaintenanceRecordLineDraft(item: item),
-          ]);
+      await ref.read(maintenanceRecordRepositoryProvider).addItems(record.id, [
+        for (final item in picked) MaintenanceRecordLineDraft(item: item),
+      ]);
 
       // Every clock the new lines reset moved, so the same invalidation a new
       // record triggers applies here — plus this record itself, which is the
@@ -134,14 +142,14 @@ class _MaintenanceDetailScreenState
   Future<void> _confirmRetraction(MaintenanceRecord record) async {
     final confirmed = await confirmAction(
       context,
-      title: 'Retratar esta manutenção?',
+      title: 'Excluir esta manutenção?',
       message:
           'Ela sai do histórico do carro.\n\n'
           'A quilometragem que você registrou junto com ela também é removida, '
           'e os itens envolvidos voltam a contar a partir do registro anterior '
           '— o que pode mudar quando eles vencem.\n\n'
           'Não dá para desfazer.',
-      confirmLabel: 'Retratar',
+      confirmLabel: 'Excluir',
       destructive: true,
     );
     if (!confirmed || !mounted) return;
@@ -155,14 +163,12 @@ class _MaintenanceDetailScreenState
           .retract(record.id);
       // Everything the record was holding up moves: the odometer reading it
       // produced is gone, so current mileage and every distance-based due date
-      // change with it.
-      ref.invalidate(dashboardProvider(record.vehicleId));
-      ref.invalidate(odometerHistoryProvider(record.vehicleId));
-      ref.invalidate(timelineProvider(record.vehicleId));
-      ref.invalidate(costsDashboardProvider);
+      // change with it — the clock of each item falls back to the record
+      // before.
+      invalidateVehicleDerived(ref, record.vehicleId);
       await ref.read(vehiclesProvider.notifier).reload();
       navigator.pop();
-      showAppSnackBar(messenger, message: 'Manutenção retratada.');
+      showAppSnackBar(messenger, message: 'Manutenção excluída.');
     } on ApiFailure catch (failure) {
       if (!mounted) return;
       setState(() => _retracting = false);
@@ -308,7 +314,7 @@ class MaintenanceDetailContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.s8),
         if (onRetract != null)
           AppButton(
-            label: 'Retratar manutenção',
+            label: 'Excluir manutenção',
             variant: AppButtonVariant.destructive,
             loading: retracting,
             onPressed: onRetract,
@@ -428,7 +434,6 @@ class _ItemRow extends StatelessWidget {
     );
   }
 }
-
 
 /// States the warranty as fact, and stops there.
 ///

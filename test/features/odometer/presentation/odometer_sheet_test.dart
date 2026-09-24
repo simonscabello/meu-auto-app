@@ -102,6 +102,26 @@ void main() {
     expect(find.text('Atual: 48.320 km'), findsOneWidget);
   });
 
+  testWidgets('a retry after a dropped connection resends the same reading', (
+    tester,
+  ) async {
+    adapter.dropFirstPost = true;
+    var issued = 0;
+    await _open(tester, adapter, newId: () => 'reading-${++issued}');
+
+    await tester.enterText(find.byType(TextField).first, '48900');
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Tentar de novo'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.postedBodies, hasLength(2));
+    expect(adapter.postedBodies.first['id'], 'reading-1');
+    expect(adapter.postedBodies.last['id'], 'reading-1');
+    expect(issued, 1);
+  });
+
   testWidgets('a plain success closes the sheet and confirms', (tester) async {
     await _open(tester, adapter);
 
@@ -119,7 +139,11 @@ void main() {
   });
 }
 
-Future<void> _open(WidgetTester tester, _OdometerAdapter adapter) async {
+Future<void> _open(
+  WidgetTester tester,
+  _OdometerAdapter adapter, {
+  String Function()? newId,
+}) async {
   final client = ApiClient(adapter: adapter);
   addTearDown(client.close);
 
@@ -129,7 +153,8 @@ Future<void> _open(WidgetTester tester, _OdometerAdapter adapter) async {
         tokenStorageProvider.overrideWith((ref) => TokenStorage.memory()),
         apiClientProvider.overrideWithValue(client),
         odometerRepositoryProvider.overrideWith(
-          (ref) => OdometerRepository(api: client, newId: () => _fixedId),
+          (ref) =>
+              OdometerRepository(api: client, newId: newId ?? () => _fixedId),
         ),
       ],
       child: MaterialApp(
@@ -161,6 +186,7 @@ const _fixedId = '33333333-3333-7333-8333-333333333333';
 
 final class _OdometerAdapter implements HttpClientAdapter {
   bool rejectFirstPost = false;
+  bool dropFirstPost = false;
   final List<Map<String, dynamic>> postedBodies = [];
 
   @override
@@ -172,6 +198,13 @@ final class _OdometerAdapter implements HttpClientAdapter {
     if (options.method == 'POST' && options.path.contains('/odometer')) {
       final body = Map<String, dynamic>.from(options.data as Map);
       postedBodies.add(body);
+
+      if (dropFirstPost && postedBodies.length == 1) {
+        throw DioException.connectionTimeout(
+          timeout: const Duration(seconds: 10),
+          requestOptions: options,
+        );
+      }
 
       if (rejectFirstPost && postedBodies.length == 1) {
         return _json(422, {

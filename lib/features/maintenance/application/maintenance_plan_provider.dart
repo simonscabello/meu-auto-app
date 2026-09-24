@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_client.dart';
-import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/maintenance/data/maintenance_plan_repository.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 
 final maintenancePlanRepositoryProvider = Provider<MaintenancePlanRepository>((
   ref,
@@ -32,21 +32,31 @@ final maintenancePlansWithHiddenProvider =
           .list(vehicleId, includeNotApplicable: true);
     });
 
+/// The catalogue items this vehicle does not have, from the list that carries
+/// them. Empty while it loads or if it failed: then nothing is hidden, which
+/// is the safe side for a form that records what was done.
+Set<String> notApplicableItemIds(AsyncValue<List<MaintenancePlan>> plans) {
+  final list = plans.valueOrNull;
+  if (list == null) return const {};
+  return {
+    for (final plan in list)
+      if (plan.status == MaintenanceStatus.naoSeAplica) plan.maintenanceItemId,
+  };
+}
+
 /// One plan by id. Tries the member route first; an older server that 404s
 /// still has the row in the vehicle list.
 final maintenancePlanProvider =
-    FutureProvider.family<MaintenancePlan, ({String vehicleId, String planId})>((
-      ref,
-      args,
-    ) {
-      return ref
-          .watch(maintenancePlanRepositoryProvider)
-          .getWithFallback(planId: args.planId, vehicleId: args.vehicleId);
-    });
+    FutureProvider.family<MaintenancePlan, ({String vehicleId, String planId})>(
+      (ref, args) {
+        return ref
+            .watch(maintenancePlanRepositoryProvider)
+            .getWithFallback(planId: args.planId, vehicleId: args.vehicleId);
+      },
+    );
 
+/// A plan change moves its due date, the verdict on Início and the profile's
+/// counts, so it refreshes the same set as any other write on the vehicle.
 void invalidateAfterPlanWrite(WidgetRef ref, String vehicleId) {
-  ref.invalidate(maintenancePlansProvider(vehicleId));
-  ref.invalidate(maintenancePlansWithHiddenProvider(vehicleId));
-  ref.invalidate(maintenancePlanProvider);
-  ref.invalidate(dashboardProvider(vehicleId));
+  invalidateVehicleDerived(ref, vehicleId);
 }

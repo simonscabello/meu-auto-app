@@ -1,4 +1,5 @@
 import 'package:meu_auto/core/network/api_client.dart';
+import 'package:meu_auto/core/network/api_envelope.dart';
 import 'package:meu_auto/core/network/api_paths.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 
@@ -25,5 +26,12 @@ final class DashboardRepository {
       query: {'cost_months': costMonths},
     );
     return Dashboard.fromJson(body);
+  }
+
+  /// Everything that needs attention, from every domain, already ordered.
+  /// The dashboard carries only the first few; this is the rest.
+  Future<List<Alert>> alerts(String vehicleId) async {
+    final body = await api.get(ApiPaths.vehicleAlerts(vehicleId));
+    return listOf(body, Alert.fromJson);
   }
 }

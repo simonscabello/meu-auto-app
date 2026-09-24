@@ -113,7 +113,7 @@ void main() {
     );
 
     expect(find.text('Não sei quando foi'), findsNothing);
-    expect(find.text('Você não lembra — tudo bem'), findsOneWidget);
+    expect(find.text('Você não lembra quando foi'), findsWidgets);
   });
 
   testWidgets('each history answer reports itself, and writes no record', (
@@ -136,16 +136,61 @@ void main() {
     ]);
   });
 
-  testWidgets('"meu carro não usa isso" is offered as a correction', (
+  // The rarer choices live in the app bar menu, out of the way of the two
+  // things someone opens this screen to do.
+  testWidgets('"meu carro não tem isso" is offered in the menu', (
     tester,
   ) async {
     var tapped = false;
-    await _pump(tester, _plan(), onNotApplicable: () => tapped = true);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          appBar: AppBar(
+            actions: [
+              PlanDetailMenu(
+                onNotApplicable: () => tapped = true,
+                onDeactivate: () {},
+              ),
+            ],
+          ),
+          body: const SizedBox.shrink(),
+        ),
+      ),
+    );
 
-    await tester.tap(find.text('Meu carro não usa isso'));
-    await tester.pump();
+    await tester.tap(find.byTooltip('Mais opções'));
+    await tester.pumpAndSettle();
+    expect(find.text('Parar de acompanhar'), findsOneWidget);
+    await tester.tap(find.text('Meu carro não tem isso'));
+    await tester.pumpAndSettle();
 
     expect(tapped, isTrue);
+  });
+
+  // "Nunca foi feito" counts from the car being new; the screen says so where
+  // the last service would be, instead of a 0 km visit that never happened.
+  testWidgets('a since-new baseline is explained, not shown as a service', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _plan(
+        status: MaintenanceStatus.vencido,
+        historyStatus: MaintenanceHistoryStatus.never,
+        baseline: MaintenanceBaseline.sinceNew,
+        intervalKm: 60000,
+      ),
+    );
+
+    expect(
+      find.text(
+        'Nunca foi feito — contamos a partir de quando o carro era novo',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Informar a última vez'), findsNothing);
+    expect(find.text('Registrar serviço'), findsOneWidget);
   });
 
   // A condition-based item explains itself, because "a cada 50.000 km" on a
@@ -169,7 +214,6 @@ Future<void> _pump(
   ThemeData? theme,
   double scale = 1.0,
   ValueChanged<MaintenanceHistoryStatus>? onHistoryUnknown,
-  VoidCallback? onNotApplicable,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -181,7 +225,6 @@ Future<void> _pump(
             plan: plan,
             history: history,
             onHistoryUnknown: onHistoryUnknown,
-            onNotApplicable: onNotApplicable,
           ),
         ),
       ),
@@ -203,6 +246,7 @@ MaintenancePlan _plan({
   int? remainingDays,
   CivilDate? lastOccurredOn,
   int? lastMileageKm,
+  MaintenanceBaseline baseline = MaintenanceBaseline.none,
 }) {
   return MaintenancePlan(
     id: 'plan-1',
@@ -225,6 +269,7 @@ MaintenancePlan _plan({
     remainingDays: remainingDays,
     lastOccurredOn: lastOccurredOn,
     lastMileageKm: lastMileageKm,
+    baseline: baseline,
   );
 }
 

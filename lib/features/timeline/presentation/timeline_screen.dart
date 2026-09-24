@@ -12,29 +12,38 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento_copy.dart';
+import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
+import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/add_record_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
 
-/// Histórico tab: the unified timeline of the selected vehicle.
+/// Histórico tab: what was done to the selected vehicle and what it cost.
+///
+/// A tab again. It had been reduced to the last row of the maintenance list,
+/// under twenty plans — and "o que já foi feito e quanto gastou" is one of the
+/// three things the product exists to answer. The cost summary sits at the top
+/// of the list, one tap from the full breakdown.
 class TimelineScreen extends ConsumerWidget {
   const TimelineScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedVehicleProvider);
-    final vehicle = selected.value;
+    final vehicle = selected.valueOrNull;
 
     return AppScaffold(
-      title: 'Histórico',
+      titleWidget: const VehicleContextTitle(title: 'Histórico'),
       actions: [
         if (vehicle != null)
           AppIconButton(
@@ -42,6 +51,7 @@ class TimelineScreen extends ConsumerWidget {
             icon: Icons.add,
             onPressed: () => AddRecordSheet.show(context),
           ),
+        const ProfileButton(),
       ],
       onRefresh: vehicle == null ? null : () => _refresh(ref, vehicle.id),
       body: selected.when(
@@ -59,6 +69,7 @@ class TimelineScreen extends ConsumerWidget {
 
   Future<void> _refresh(WidgetRef ref, String vehicleId) async {
     ref.invalidate(timelineProvider(vehicleId));
+    ref.invalidate(dashboardProvider(vehicleId));
     try {
       await ref.read(timelineProvider(vehicleId).future);
     } on Object {
@@ -102,6 +113,10 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(timelineProvider(widget.vehicleId));
+    final costs = ref
+        .watch(dashboardProvider(widget.vehicleId))
+        .valueOrNull
+        ?.costs;
 
     return history.when(
       loading: () => const _TimelineSkeleton(),
@@ -112,6 +127,12 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       data: (state) => TimelineContent(
         state: state,
         scroll: _scroll,
+        header: costs == null || costs.totalCents.cents == 0
+            ? null
+            : TimelineCostsSummary(
+                costs: costs,
+                onTap: () => context.push(AppRoutes.costs),
+              ),
         onOpen: (entry) => _open(entry),
         onAddRecord: () => AddRecordSheet.show(context),
         onRetryPage: () =>
@@ -136,9 +157,8 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
 ///
 /// Three things the shape has to deliver, and each is a layout decision:
 ///
-///  * **Dates found at a glance** — the day header pins to the top while its
-///    events scroll under it, so the reader always knows which day they are
-///    looking at.
+///  * **Dates found at a glance** — each day and its events share one visual
+///    block, so a date never becomes a detached band while scrolling.
 ///  * **Mileage and money legible as a column** — both are set in tabular
 ///    figures, right-aligned, so the numbers line up down the page.
 ///  * **Kinds told apart** — a small icon per event, and the type as the
@@ -151,10 +171,14 @@ class TimelineContent extends StatelessWidget {
     this.onOpen,
     this.onAddRecord,
     this.onRetryPage,
+    this.header,
   });
 
   final PagedState<TimelineEntry> state;
   final ScrollController? scroll;
+
+  /// Shown above the first day — the cost summary on the Histórico tab.
+  final Widget? header;
   final ValueChanged<TimelineEntry>? onOpen;
   final VoidCallback? onAddRecord;
   final VoidCallback? onRetryPage;
@@ -171,15 +195,19 @@ class TimelineContent extends StatelessWidget {
     return CustomScrollView(
       controller: scroll,
       slivers: [
-        for (final day in days) ...[
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _DayHeaderDelegate(
-              label: day.label,
-              year: day.year,
-              weekday: day.weekday,
+        if (header != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.s16,
+                AppSpacing.s8,
+                AppSpacing.s16,
+                0,
+              ),
+              child: header,
             ),
           ),
+        for (final day in days) ...[
           // One surface per day rather than tiles straight on the page. The
           // rail still carries the order inside the day; the surface is what
           // says where the day ends — and it is the same bounded group every
@@ -192,43 +220,109 @@ class TimelineContent extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.s16,
-                0,
+                AppSpacing.s16,
                 AppSpacing.s16,
                 AppSpacing.s24,
               ),
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: groupSurfaceColor(scheme),
-                  borderRadius: AppRadius.borderM,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s8,
-                    vertical: AppSpacing.s4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _DayHeader(
+                    label: day.label,
+                    year: day.year,
+                    weekday: day.weekday,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (var i = 0; i < day.entries.length; i++)
-                        _EntryTile(
-                          entry: day.entries[i],
-                          isLast: i == day.entries.length - 1,
-                          onTap:
-                              onOpen != null &&
-                                  routeForTimelineEntry(day.entries[i]) != null
-                              ? () => onOpen!(day.entries[i])
-                              : null,
-                        ),
-                    ],
+                  const SizedBox(height: AppSpacing.s4),
+                  Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: groupSurfaceColor(scheme),
+                      borderRadius: AppRadius.borderM,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.s8,
+                        vertical: AppSpacing.s4,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < day.entries.length; i++)
+                            _EntryTile(
+                              entry: day.entries[i],
+                              isLast: i == day.entries.length - 1,
+                              onTap:
+                                  onOpen != null &&
+                                      routeForTimelineEntry(day.entries[i]) !=
+                                          null
+                                  ? () => onOpen!(day.entries[i])
+                                  : null,
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
         ],
         SliverToBoxAdapter(
           child: _Footer(state: state, onRetry: onRetryPage),
+        ),
+      ],
+    );
+  }
+}
+
+/// What the car cost in the last twelve months, as the head of its history.
+///
+/// The same `/dashboard` figure Início shows; the breakdown by category and
+/// period is one tap away.
+class TimelineCostsSummary extends StatelessWidget {
+  const TimelineCostsSummary({super.key, required this.costs, this.onTap});
+
+  final DashboardCosts costs;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final period = costs.periodMonths == 1
+        ? 'últimos 30 dias'
+        : 'últimos ${costs.periodMonths} meses';
+    return AppGroup(
+      title: 'Gastos registrados · $period',
+      dividerIndent: 0,
+      children: [
+        AppListRowShell(
+          onTap: onTap,
+          semanticLabel:
+              'Gastos registrados nos $period: ${costs.totalCents.format()}. '
+              'Ver detalhes',
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  costs.totalCents.format(),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontFeatures: AppTypography.tabular,
+                  ),
+                ),
+              ),
+              Text(
+                'Ver detalhes',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -328,13 +422,8 @@ class _EmptyHistory extends StatelessWidget {
   }
 }
 
-/// The pinned day header.
-///
-/// It carries the page background so the rows scrolling beneath it are hidden
-/// rather than showing through, and the rail is redrawn inside it so the line
-/// appears continuous across the join.
-class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _DayHeaderDelegate({
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({
     required this.label,
     required this.year,
     required this.weekday,
@@ -345,55 +434,29 @@ class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String weekday;
 
   @override
-  double get minExtent => 46;
-
-  @override
-  double get maxExtent => 46;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      color: theme.scaffoldBackgroundColor,
-      alignment: Alignment.bottomLeft,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s4,
-      ),
-      child: Text.rich(
-        TextSpan(
-          text: label,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.onSurface,
-            letterSpacing: 0.6,
-            fontFeatures: AppTypography.tabular,
-          ),
-          children: [
-            TextSpan(
-              text: ' $year · $weekday',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ],
+    return Text.rich(
+      TextSpan(
+        text: label,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSurface,
+          letterSpacing: 0.6,
+          fontFeatures: AppTypography.tabular,
         ),
+        children: [
+          TextSpan(
+            text: ' $year · $weekday',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
       ),
     );
   }
-
-  @override
-  bool shouldRebuild(_DayHeaderDelegate oldDelegate) =>
-      oldDelegate.label != label ||
-      oldDelegate.year != year ||
-      oldDelegate.weekday != weekday;
 }
 
 class _EntryTile extends StatelessWidget {
@@ -457,6 +520,15 @@ IconData _iconFor(TimelineEntry entry) {
 String? _subtitleOf(TimelineEntry entry) {
   final raw = entry.subtitle?.trim();
   if (raw == null || raw.isEmpty) return null;
+  // A server from before the fix sent the reading's source column as it is:
+  // "manual" says nothing, and "correction" reached the screen in English.
+  if (entry.kind == TimelineEntryKind.odometro) {
+    return switch (raw) {
+      'manual' => null,
+      'correction' => 'Correção',
+      _ => raw,
+    };
+  }
   if (entry.kind != TimelineEntryKind.abastecimento) return raw;
   final fuel = AbastecimentoFuel.fromWire(raw);
   if (fuel == AbastecimentoFuel.desconhecido) return raw;

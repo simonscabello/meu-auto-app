@@ -11,15 +11,15 @@ import 'package:meu_auto/features/maintenance/application/maintenance_plan_provi
 import 'package:meu_auto/features/maintenance/application/maintenance_profile_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
-import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
+import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/maintenance/presentation/plan_create_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
-import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
@@ -35,7 +35,7 @@ class VehicleProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vehicle = ref.watch(selectedVehicleProvider).value;
+    final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
     if (vehicle == null) {
       return const AppScaffold(title: 'Seu carro', body: SizedBox.shrink());
     }
@@ -72,8 +72,9 @@ class VehicleProfileView extends ConsumerWidget {
         profile: data,
         inUse: plans.inUse,
         notApplicable: plans.notApplicable,
-        onAnswer: (question, answer) =>
-            unawaited(_answer(context, ref, vehicleId, question, answer)),
+        onAnswer: (question, answer) => unawaited(
+          answerProfileQuestion(context, ref, vehicleId, question, answer),
+        ),
         onRestore: (plan) => unawaited(_restore(context, ref, vehicleId, plan)),
         onFixFuel: () => context.push(AppRoutes.vehicleEdit(vehicleId)),
         onPlanTap: (plan) => context.push(AppRoutes.plan(plan.id)),
@@ -106,28 +107,6 @@ class VehicleProfileView extends ConsumerWidget {
           if (plan.status == MaintenanceStatus.naoSeAplica) plan,
       ],
     );
-  }
-
-  Future<void> _answer(
-    BuildContext context,
-    WidgetRef ref,
-    String vehicleId,
-    String question,
-    String answer,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref
-          .read(maintenanceProfileRepositoryProvider)
-          .answer(vehicleId, question: question, answer: answer);
-      invalidateAfterProfileWrite(ref, vehicleId);
-      showAppSnackBar(messenger, message: 'Anotado.');
-    } on ApiFailure catch (failure) {
-      showAppSnackBar(
-        messenger,
-        message: ApiFormErrors.bannerOf(failure) ?? failure.message,
-      );
-    }
   }
 
   Future<void> _restore(
@@ -259,7 +238,7 @@ class VehicleProfileContent extends StatelessWidget {
         ],
 
         for (final question in profile.questions) ...[
-          _QuestionCard(
+          ProfileQuestionCard(
             question: question,
             onAnswer: onAnswer == null
                 ? null
@@ -339,9 +318,37 @@ class VehicleProfileContent extends StatelessWidget {
   }
 }
 
+/// Posts an answer to a profile question and refreshes what it changes.
+///
+/// Shared by this screen and the maintenance tab, which now shows the open
+/// question at its top — it used to live only here, two taps and a scroll
+/// away, so the one technical fact worth interrupting someone for (belt or
+/// chain) was rarely answered.
+Future<void> answerProfileQuestion(
+  BuildContext context,
+  WidgetRef ref,
+  String vehicleId,
+  String question,
+  String answer,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref
+        .read(maintenanceProfileRepositoryProvider)
+        .answer(vehicleId, question: question, answer: answer);
+    invalidateAfterProfileWrite(ref, vehicleId);
+    showAppSnackBar(messenger, message: 'Anotado.');
+  } on ApiFailure catch (failure) {
+    showAppSnackBar(
+      messenger,
+      message: ApiFormErrors.bannerOf(failure) ?? failure.message,
+    );
+  }
+}
+
 /// One question the server wrote, with the answers it offered.
-class _QuestionCard extends StatelessWidget {
-  const _QuestionCard({required this.question, this.onAnswer});
+class ProfileQuestionCard extends StatelessWidget {
+  const ProfileQuestionCard({super.key, required this.question, this.onAnswer});
 
   final MaintenanceProfileQuestion question;
   final ValueChanged<String>? onAnswer;

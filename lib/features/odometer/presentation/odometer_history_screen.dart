@@ -6,18 +6,16 @@ import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
-import 'package:meu_auto/features/costs/application/costs_provider.dart';
-import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_reading.dart';
-import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
+import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_list_row.dart';
-import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
+import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
@@ -124,9 +122,7 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
           .remove(reading.id);
       // Current mileage is derived from these rows, so everything measured in
       // distance moves with them.
-      ref.invalidate(dashboardProvider(widget.vehicleId));
-      ref.invalidate(timelineProvider(widget.vehicleId));
-      ref.invalidate(costsDashboardProvider);
+      invalidateVehicleDerived(ref, widget.vehicleId);
       await ref.read(vehiclesProvider.notifier).reload();
       if (!mounted) return;
       setState(() => _deletingId = null);

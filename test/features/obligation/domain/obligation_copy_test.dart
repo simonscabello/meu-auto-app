@@ -14,14 +14,27 @@ void main() {
       expect(obligationStatusPhrase(_obligation()), 'Em dia');
     });
 
-    test('paid late uses remaining_days from the server', () {
+    // Lateness is the payment date against the due date. remaining_days counts
+    // from today, and reading it as lateness made an IPVA paid on the day read
+    // "pago com 60 dias de atraso" two months later.
+    test('paid late compares the payment date with the due date', () {
       expect(
-        obligationStatusPhrase(_obligation(remainingDays: -3)),
+        obligationStatusPhrase(
+          _obligation(paidOn: const CivilDate(2026, 3, 18), remainingDays: -60),
+        ),
         'pago com 3 dias de atraso',
       );
       expect(
-        obligationStatusPhrase(_obligation(remainingDays: -1)),
+        obligationStatusPhrase(
+          _obligation(paidOn: const CivilDate(2026, 3, 16), remainingDays: -60),
+        ),
         'pago com 1 dia de atraso',
+      );
+      expect(
+        obligationStatusPhrase(
+          _obligation(paidOn: const CivilDate(2026, 3, 15), remainingDays: -60),
+        ),
+        'Em dia',
       );
     });
 
@@ -107,6 +120,18 @@ void main() {
       );
     });
 
+    // Renewing adds a policy; the old one keeps its dates and would go on
+    // saying the car has no cover, beside the policy that covers it.
+    test('a renewed policy reads as renewed, not uncovered', () {
+      final old = _seguro(
+        status: SeguroStatus.vencido,
+        remainingDays: -4,
+        renewed: true,
+      );
+      expect(seguroListSubtitle(old), 'Renovado');
+      expect(seguroStatusPhrase(old), isNot(contains('sem cobertura')));
+    });
+
     test('expired says the car is uncovered, without alarm', () {
       expect(
         seguroStatusPhrase(
@@ -122,6 +147,7 @@ Obligation _obligation({
   ObligationKind kind = ObligationKind.ipva,
   ObligationStatus status = ObligationStatus.pago,
   int remainingDays = 20,
+  CivilDate? paidOn,
 }) {
   return Obligation(
     id: 'o1',
@@ -129,6 +155,7 @@ Obligation _obligation({
     kind: kind,
     referenceYear: 2026,
     dueOn: const CivilDate(2026, 3, 15),
+    paidOn: paidOn,
     amountCents: const Money.fromCents(184237),
     status: status,
     remainingDays: remainingDays,
@@ -140,6 +167,7 @@ Obligation _obligation({
 Seguro _seguro({
   SeguroStatus status = SeguroStatus.vigente,
   int remainingDays = 136,
+  bool renewed = false,
 }) {
   return Seguro(
     id: 's1',
@@ -151,5 +179,6 @@ Seguro _seguro({
     remainingDays: remainingDays,
     createdAt: DateTime.utc(2026, 1, 10),
     updatedAt: DateTime.utc(2026, 1, 10),
+    renewed: renewed,
   );
 }

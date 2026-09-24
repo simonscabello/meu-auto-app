@@ -52,10 +52,7 @@ void main() {
     });
 
     test('an unknown kind falls back instead of throwing', () {
-      final entry = TimelineEntry.fromJson({
-        ..._odometro,
-        'kind': 'multa',
-      });
+      final entry = TimelineEntry.fromJson({..._odometro, 'kind': 'multa'});
       expect(entry.kind, TimelineEntryKind.desconhecido);
     });
 
@@ -109,11 +106,7 @@ void main() {
     test('labels a care record Cuidado when the server sent no title', () {
       expect(
         titleOf(
-          TimelineEntry.fromJson({
-            ..._manutencao,
-            'title': null,
-            'care': true,
-          }),
+          TimelineEntry.fromJson({..._manutencao, 'title': null, 'care': true}),
         ),
         'Cuidado',
       );

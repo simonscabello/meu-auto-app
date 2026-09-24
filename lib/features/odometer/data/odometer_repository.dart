@@ -27,6 +27,11 @@ final class OdometerRepository {
   final ApiClient api;
   final String Function() _newId;
 
+  /// A fresh client id for a create. A form takes one when it first submits
+  /// and keeps it for every retry, so "Tentar de novo" after a timeout replays
+  /// the same request instead of creating a second row.
+  String nextId() => _newId();
+
   /// [force] resends the reading as a correction, which is how the server lets
   /// a rejected value through. Only ever set from an explicit choice by the
   /// owner — never automatically, because the whole point of the rejection is

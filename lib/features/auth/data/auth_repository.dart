@@ -64,6 +64,17 @@ final class AuthRepository {
     return User.fromJson(body);
   }
 
+  Future<Session> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final body = await api.post(
+      ApiPaths.changePassword,
+      body: {'current_password': currentPassword, 'new_password': newPassword},
+    );
+    return Session.fromJson(body);
+  }
+
   Future<void> deleteMe({required String password}) async {
     await api.delete(ApiPaths.me, body: {'password': password});
   }

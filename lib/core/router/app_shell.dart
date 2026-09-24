@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-/// The four top-level destinations, split by where in time they sit.
+/// The four top-level destinations, one per job the owner comes to do.
 ///
-/// Início is now, Cuidados is what is coming, Histórico is what happened, and
-/// Perfil is the account. That division is why four is enough: every screen
-/// in the app answers one of those questions, and a fifth tab would only be a
-/// second door into one of them.
+/// Início is how the car is and what to do now. Manutenção is what the car
+/// needs and when. Documentos holds IPVA, licenciamento and seguro. Histórico
+/// is what was done and what it cost — one of the three things the product
+/// promises, and for a while reachable only from the last row of the
+/// maintenance list.
+///
+/// Perfil is not a tab. It is the account — a name, a password, the theme,
+/// the list of cars — visited a few times a year, and it sits behind the
+/// account button on every tab's app bar, where the owner's other apps keep
+/// it. The tab it held is worth more as Histórico.
 ///
 /// There is no global add button. The one that used to sit in the middle of
 /// this bar opened a sheet of seven things, which made adding a two-step
@@ -33,21 +39,21 @@ class AppShell extends StatelessWidget {
             tooltip: '',
           ),
           NavigationDestination(
-            icon: Icon(Icons.event_available_outlined),
-            selectedIcon: Icon(Icons.event_available),
-            label: 'Cuidados',
+            icon: Icon(Icons.build_outlined),
+            selectedIcon: Icon(Icons.build),
+            label: 'Manutenção',
+            tooltip: '',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.description_outlined),
+            selectedIcon: Icon(Icons.description),
+            label: 'Documentos',
             tooltip: '',
           ),
           NavigationDestination(
             icon: Icon(Icons.history_outlined),
             selectedIcon: Icon(Icons.history),
             label: 'Histórico',
-            tooltip: '',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Perfil',
             tooltip: '',
           ),
         ],

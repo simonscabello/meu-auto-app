@@ -28,10 +28,7 @@ enum AbastecimentoFuel {
 
 /// What this vehicle accepts at a pump. Derived on the server from `fuel_type`.
 final class RefuelingCapability {
-  const RefuelingCapability({
-    required this.supported,
-    required this.fuelTypes,
-  });
+  const RefuelingCapability({required this.supported, required this.fuelTypes});
 
   /// An older payload, or a parse that found nothing: keep the entry visible
   /// rather than inventing that the car is electric.

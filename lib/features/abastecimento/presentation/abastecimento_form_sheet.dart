@@ -17,7 +17,9 @@ import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 class AbastecimentoFormSheet extends ConsumerStatefulWidget {
@@ -50,7 +52,10 @@ class AbastecimentoFormSheet extends ConsumerStatefulWidget {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
+      // A form: closes through its header or the back button, which both
+      // ask before discarding. See AppSheetHeader.
+      showDragHandle: false,
+      enableDrag: false,
       useSafeArea: true,
       builder: (sheetContext) => AbastecimentoFormSheet(
         vehicleId: vehicleId,
@@ -88,6 +93,30 @@ class _AbastecimentoFormSheetState
 
   bool get _editing => widget.existing != null;
 
+  late final List<String> _openedWith;
+  late final CivilDate _dateOpenedWith;
+  late final bool _fullTankOpenedWith;
+  AbastecimentoFuel? _fuelOpenedWith;
+
+  List<TextEditingController> get _fields => [
+    _mileage,
+    _liters,
+    _cost,
+    _station,
+    _notes,
+  ];
+
+  bool get _isDirty {
+    if (_occurredOn != _dateOpenedWith) return true;
+    if (_fullTank != _fullTankOpenedWith) return true;
+    if (_fuel != _fuelOpenedWith) return true;
+    final fields = _fields;
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i].text != _openedWith[i]) return true;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,6 +141,10 @@ class _AbastecimentoFormSheetState
         (existing?.stationName?.trim().isNotEmpty ?? false) ||
         (existing?.notes?.trim().isNotEmpty ?? false);
     _showDetails = hasDetails;
+    _openedWith = [for (final field in _fields) field.text];
+    _dateOpenedWith = _occurredOn;
+    _fullTankOpenedWith = _fullTank;
+    _fuelOpenedWith = _fuel;
   }
 
   @override
@@ -246,130 +279,132 @@ class _AbastecimentoFormSheetState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final title = _editing
-        ? 'Editar abastecimento'
-        : 'Registrar abastecimento';
+    final title = _editing ? 'Editar abastecimento' : 'Registrar abastecimento';
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.s16,
-        right: AppSpacing.s16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s16,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(title, style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s16),
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            AppKmField(
-              controller: _mileage,
-              enabled: !_submitting,
-              errorText: _fieldErrors['mileage_km'],
-              helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppLitersField(
-              controller: _liters,
-              enabled: !_submitting,
-              errorText: _fieldErrors['volume_ml'],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppMoneyField(
-              controller: _cost,
-              label: 'Valor total',
-              enabled: !_submitting,
-              errorText: _fieldErrors['total_cost_cents'],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            _FuelField(
-              offered: widget.fuelTypes,
-              selected: _fuel,
-              enabled: !_submitting,
-              errorText: _fieldErrors['fuel'],
-              onSelected: (fuel) => setState(() => _fuel = fuel),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Tanque cheio'),
-              value: _fullTank,
-              onChanged: _submitting
-                  ? null
-                  : (value) => setState(() => _fullTank = value),
-            ),
-            AppDateField(
-              value: _occurredOn,
-              onPick: _submitting ? () {} : _pickDate,
-              enabled: !_submitting,
-              errorText: _fieldErrors['occurred_on'],
-            ),
-            if (_showDetails) ...[
-              const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _station,
+    return AppDiscardGuard(
+      listenable: Listenable.merge(_fields),
+      isDirty: () => _isDirty,
+      busy: _submitting,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.s16,
+          right: AppSpacing.s16,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s16,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSheetHeader(title: title),
+              const SizedBox(height: AppSpacing.s8),
+              if (_banner != null) AuthFormBanner(message: _banner!),
+              AppKmField(
+                controller: _mileage,
                 enabled: !_submitting,
-                maxLength: 120,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Posto (opcional)',
-                  errorText: _fieldErrors['station_name'],
-                  errorMaxLines: 3,
-                  counterText: '',
-                ),
+                errorText: _fieldErrors['mileage_km'],
+                helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
               ),
               const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _notes,
+              AppLitersField(
+                controller: _liters,
                 enabled: !_submitting,
-                maxLength: 500,
-                minLines: 2,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: 'Observação (opcional)',
-                  errorText: _fieldErrors['notes'],
-                  errorMaxLines: 3,
-                  counterText: '',
-                ),
+                errorText: _fieldErrors['volume_ml'],
               ),
-            ] else
+              const SizedBox(height: AppSpacing.s12),
+              AppMoneyField(
+                controller: _cost,
+                label: 'Valor total',
+                enabled: !_submitting,
+                errorText: _fieldErrors['total_cost_cents'],
+              ),
+              const SizedBox(height: AppSpacing.s12),
+              _FuelField(
+                offered: widget.fuelTypes,
+                selected: _fuel,
+                enabled: !_submitting,
+                errorText: _fieldErrors['fuel'],
+                onSelected: (fuel) => setState(() => _fuel = fuel),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Tanque cheio'),
+                value: _fullTank,
+                onChanged: _submitting
+                    ? null
+                    : (value) => setState(() => _fullTank = value),
+              ),
+              AppDateField(
+                value: _occurredOn,
+                onPick: _submitting ? () {} : _pickDate,
+                enabled: !_submitting,
+                errorText: _fieldErrors['occurred_on'],
+              ),
+              if (_showDetails) ...[
+                const SizedBox(height: AppSpacing.s12),
+                TextField(
+                  controller: _station,
+                  enabled: !_submitting,
+                  maxLength: 120,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'Posto (opcional)',
+                    errorText: _fieldErrors['station_name'],
+                    errorMaxLines: 3,
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.s12),
+                TextField(
+                  controller: _notes,
+                  enabled: !_submitting,
+                  maxLength: 500,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: 'Observação (opcional)',
+                    errorText: _fieldErrors['notes'],
+                    errorMaxLines: 3,
+                    counterText: '',
+                  ),
+                ),
+              ] else
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppButton(
+                    label: 'Mais detalhes',
+                    variant: AppButtonVariant.tertiary,
+                    onPressed: _submitting
+                        ? null
+                        : () => setState(() => _showDetails = true),
+                  ),
+                ),
+              const SizedBox(height: AppSpacing.s16),
+              AppButton(
+                label: _offline
+                    ? 'Tentar de novo'
+                    : (_editing
+                          ? 'Salvar abastecimento'
+                          : 'Registrar abastecimento'),
+                loading: _submitting,
+                onPressed: _submitting ? null : _submit,
+              ),
               Align(
                 alignment: Alignment.centerLeft,
                 child: AppButton(
-                  label: 'Mais detalhes',
+                  label: 'Ver histórico',
                   variant: AppButtonVariant.tertiary,
                   onPressed: _submitting
                       ? null
-                      : () => setState(() => _showDetails = true),
+                      : () {
+                          final router = GoRouter.of(context);
+                          Navigator.of(context).pop();
+                          router.push(AppRoutes.abastecimentos);
+                        },
                 ),
               ),
-            const SizedBox(height: AppSpacing.s16),
-            AppButton(
-              label: _offline
-                  ? 'Tentar de novo'
-                  : (_editing
-                        ? 'Salvar abastecimento'
-                        : 'Registrar abastecimento'),
-              loading: _submitting,
-              onPressed: _submitting ? null : _submit,
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppButton(
-                label: 'Ver histórico',
-                variant: AppButtonVariant.tertiary,
-                onPressed: _submitting
-                    ? null
-                    : () {
-                        final router = GoRouter.of(context);
-                        Navigator.of(context).pop();
-                        router.push(AppRoutes.abastecimentos);
-                      },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

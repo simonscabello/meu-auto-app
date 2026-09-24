@@ -14,9 +14,8 @@ import 'package:meu_auto/features/profile/domain/profile_copy.dart';
 import 'package:meu_auto/features/profile/presentation/name_edit_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
-import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_segmented.dart';
 import 'package:meu_auto/shared/widgets/app_setting_row.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -51,10 +50,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await ref.read(authControllerProvider.notifier).updateName(name);
     } on ApiFailure catch (failure) {
       if (!mounted) return;
-      showAppSnackBar(
-        ScaffoldMessenger.of(context),
-        message: failure.message,
-      );
+      showAppSnackBar(ScaffoldMessenger.of(context), message: failure.message);
     } catch (_) {
       if (!mounted) return;
       showAppSnackBar(
@@ -72,10 +68,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     await ref.read(authControllerProvider.notifier).logout();
   }
 
+  Future<void> _changePassword() async {
+    final changed = await context.push<bool>(AppRoutes.changePassword);
+    if (changed != true || !mounted) return;
+    showAppSnackBar(
+      ScaffoldMessenger.of(context),
+      message: 'Senha alterada. Os outros aparelhos foram desconectados.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
-    final themeMode = ref.watch(themeModeProvider).value ?? ThemeMode.system;
+    final themeMode =
+        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
 
     return AppScaffold(
       title: 'Perfil',
@@ -104,6 +110,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               unawaited(ref.read(themeModeProvider.notifier).setMode(mode));
             },
             onVehicles: () => context.push(AppRoutes.vehicles),
+            onChangePassword: () => unawaited(_changePassword()),
             onLogout: _logout,
             onDeleteAccount: () => context.push(AppRoutes.deleteAccount),
           );
@@ -133,6 +140,7 @@ class ProfileContent extends StatelessWidget {
     required this.onEditName,
     required this.onThemeMode,
     required this.onVehicles,
+    required this.onChangePassword,
     required this.onLogout,
     required this.onDeleteAccount,
     this.loggingOut = false,
@@ -144,6 +152,7 @@ class ProfileContent extends StatelessWidget {
   final VoidCallback onEditName;
   final ValueChanged<ThemeMode> onThemeMode;
   final VoidCallback onVehicles;
+  final VoidCallback onChangePassword;
   final VoidCallback onLogout;
   final VoidCallback onDeleteAccount;
 
@@ -158,92 +167,111 @@ class ProfileContent extends StatelessWidget {
         AppSpacing.s16,
         AppSpacing.s32,
       ),
+      // Grouped like every other list in the app: the label outside and quiet,
+      // the rows inside one surface. The rows used to sit straight on the page
+      // with loose dividers, the one screen left that read as "um site sem
+      // CSS".
       children: [
-        const AppSectionHeader(title: 'Conta'),
-        AppSettingRow(
-          label: 'Nome',
-          value: user.name,
-          onTap: loggingOut ? null : onEditName,
-        ),
-        const AppRowDivider(indent: 0),
-        AppSettingRow(label: 'E-mail', value: user.email),
-        Padding(
-          padding: const EdgeInsets.only(top: AppSpacing.s4),
-          child: Text(
-            ProfileCopy.emailExplanation,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+        AppGroup(
+          title: 'Conta',
+          dividerIndent: 0,
+          footnote: ProfileCopy.emailExplanation,
+          children: [
+            AppSettingRow(
+              label: 'Nome',
+              value: user.name,
+              onTap: loggingOut ? null : onEditName,
             ),
-          ),
+            AppSettingRow(label: 'E-mail', value: user.email),
+            AppSettingRow(
+              label: 'Alterar senha',
+              icon: Icons.lock_outline,
+              onTap: loggingOut ? null : onChangePassword,
+            ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.s24),
-        const AppSectionHeader(title: 'Veículos'),
-        AppSettingRow(
-          label: 'Meus veículos',
-          icon: Icons.directions_car_outlined,
-          onTap: loggingOut ? null : onVehicles,
+        const SizedBox(height: appGroupGap),
+        AppGroup(
+          title: 'Veículos',
+          dividerIndent: 0,
+          children: [
+            AppSettingRow(
+              label: 'Meus veículos',
+              icon: Icons.directions_car_outlined,
+              onTap: loggingOut ? null : onVehicles,
+            ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.s24),
-        const AppSectionHeader(title: 'Aparência'),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text('Tema', style: theme.textTheme.bodyLarge),
+        const SizedBox(height: appGroupGap),
+        AppGroup(
+          title: 'Aparência',
+          dividerIndent: 0,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('Tema', style: theme.textTheme.bodyLarge),
+                  ),
+                  const SizedBox(width: AppSpacing.s16),
+                  // Constrained rather than Expanded: at a large text scale the
+                  // three labels need room, but the control must never grow wide
+                  // enough to push the label off a 360dp screen.
+                  SizedBox(
+                    width: 210,
+                    child: AppSegmented<ThemeMode>(
+                      value: themeMode,
+                      enabled: !loggingOut,
+                      onChanged: onThemeMode,
+                      options: const [
+                        AppSegmentedOption(
+                          value: ThemeMode.light,
+                          label: 'Claro',
+                        ),
+                        AppSegmentedOption(
+                          value: ThemeMode.dark,
+                          label: 'Escuro',
+                        ),
+                        AppSegmentedOption(
+                          value: ThemeMode.system,
+                          label: 'Sistema',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.s16),
-              // Constrained rather than Expanded: at a large text scale the
-              // three labels need room, but the control must never grow wide
-              // enough to push the label off a 360dp screen.
-              SizedBox(
-                width: 210,
-                child: AppSegmented<ThemeMode>(
-                  value: themeMode,
-                  enabled: !loggingOut,
-                  onChanged: onThemeMode,
-                  options: const [
-                    AppSegmentedOption(
-                      value: ThemeMode.light,
-                      label: 'Claro',
-                    ),
-                    AppSegmentedOption(
-                      value: ThemeMode.dark,
-                      label: 'Escuro',
-                    ),
-                    AppSegmentedOption(
-                      value: ThemeMode.system,
-                      label: 'Sistema',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.s32),
         // Kept apart, and last. Signing out and deleting an account are not
         // settings; they are exits, and they must not sit a thumb's width
         // from the theme picker.
-        const AppSectionHeader(title: 'Sessão'),
-        AppSettingRow(
-          label: 'Sair',
-          icon: Icons.logout,
-          onTap: onLogout,
-          trailing: loggingOut
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : null,
-        ),
-        const AppRowDivider(indent: 0),
-        AppSettingRow(
-          label: 'Excluir minha conta',
-          icon: Icons.delete_outline,
-          destructive: true,
-          onTap: loggingOut ? null : onDeleteAccount,
+        AppGroup(
+          title: 'Sessão',
+          dividerIndent: 0,
+          children: [
+            AppSettingRow(
+              label: 'Sair',
+              icon: Icons.logout,
+              onTap: onLogout,
+              trailing: loggingOut
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+            ),
+            AppSettingRow(
+              label: 'Excluir minha conta',
+              icon: Icons.delete_outline,
+              destructive: true,
+              onTap: loggingOut ? null : onDeleteAccount,
+            ),
+          ],
         ),
       ],
     );

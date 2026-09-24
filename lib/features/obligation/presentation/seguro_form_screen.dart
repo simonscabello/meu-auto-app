@@ -10,11 +10,11 @@ import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/obligation/application/obligation_provider.dart';
 import 'package:meu_auto/features/obligation/domain/seguro.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
+import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
-import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -65,6 +65,10 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
   late final TextEditingController _brokerName;
   late final TextEditingController _brokerPhone;
   late final TextEditingController _notes;
+
+  /// Kept across retries of a create, so a timeout does not become two
+  /// policies — and a premium counted twice in the costs.
+  String? _createId;
   CivilDate? _startsOn;
   CivilDate? _endsOn;
   late bool _showDetails;
@@ -151,17 +155,6 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
     setState(() => _endsOn = picked);
   }
 
-  Future<bool> _confirmDiscard() {
-    return confirmAction(
-      context,
-      title: 'Descartar este registro?',
-      message: 'O que você preencheu será perdido.',
-      cancelLabel: 'Continuar editando',
-      confirmLabel: 'Descartar',
-      destructive: true,
-    );
-  }
-
   Future<void> _submit() async {
     final insurer = _insurer.text.trim();
     if (insurer.isEmpty) {
@@ -216,20 +209,21 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
               notes: notes,
             );
       } else {
-        await ref
-            .read(obligationRepositoryProvider)
-            .createSeguro(
-              vehicleId: widget.vehicleId,
-              insurerName: insurer,
-              startsOn: _startsOn!,
-              endsOn: _endsOn!,
-              policyNumber: policy.isEmpty ? null : policy,
-              premiumCents: centsFromMoneyField(_premium.text),
-              emergencyPhone: emergency.isEmpty ? null : emergency,
-              brokerName: brokerName.isEmpty ? null : brokerName,
-              brokerPhone: brokerPhone.isEmpty ? null : brokerPhone,
-              notes: notes.isEmpty ? null : notes,
-            );
+        final repository = ref.read(obligationRepositoryProvider);
+        _createId ??= repository.nextId();
+        await repository.createSeguro(
+          id: _createId,
+          vehicleId: widget.vehicleId,
+          insurerName: insurer,
+          startsOn: _startsOn!,
+          endsOn: _endsOn!,
+          policyNumber: policy.isEmpty ? null : policy,
+          premiumCents: centsFromMoneyField(_premium.text),
+          emergencyPhone: emergency.isEmpty ? null : emergency,
+          brokerName: brokerName.isEmpty ? null : brokerName,
+          brokerPhone: brokerPhone.isEmpty ? null : brokerPhone,
+          notes: notes.isEmpty ? null : notes,
+        );
       }
       invalidateAfterSeguroWrite(ref, widget.vehicleId);
       if (!mounted) return;
@@ -256,15 +250,20 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: !_submitting && !_isDirty,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop || _submitting) return;
-        final discard = await _confirmDiscard();
-        if (discard && context.mounted) {
-          Navigator.of(context).pop();
-        }
-      },
+    return AppDiscardGuard(
+      listenable: Listenable.merge([
+        _insurer,
+        _policy,
+        _premium,
+        _emergency,
+        _brokerName,
+        _brokerPhone,
+        _notes,
+      ]),
+      isDirty: () => _isDirty,
+      busy: _submitting,
+      title: 'Descartar este registro?',
+      message: 'O que você preencheu será perdido.',
       child: AppScaffold(
         title: _editing ? 'Editar seguro' : 'Registrar seguro',
         body: ListView(

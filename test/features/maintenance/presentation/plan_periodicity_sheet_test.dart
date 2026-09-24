@@ -75,7 +75,9 @@ MaintenancePlan _plan({required MaintenanceItemKind kind}) {
   return MaintenancePlan(
     id: 'plan-1',
     maintenanceItemId: 'item-1',
-    itemSlug: kind == MaintenanceItemKind.care ? 'calibrar_pneus' : 'troca_oleo',
+    itemSlug: kind == MaintenanceItemKind.care
+        ? 'calibrar_pneus'
+        : 'troca_oleo',
     itemName: kind == MaintenanceItemKind.care
         ? 'Calibrar os pneus'
         : 'Troca de óleo do motor',

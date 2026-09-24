@@ -12,41 +12,42 @@ import 'package:meu_auto/features/abastecimento/presentation/abastecimento_detai
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_list_screen.dart';
 import 'package:meu_auto/features/abastecimento/presentation/last_abastecimento_card.dart';
+import 'package:meu_auto/features/auth/domain/user.dart';
 import 'package:meu_auto/features/auth/presentation/login_screen.dart';
 import 'package:meu_auto/features/auth/presentation/password_reset_confirm_screen.dart';
 import 'package:meu_auto/features/auth/presentation/password_reset_request_screen.dart';
 import 'package:meu_auto/features/auth/presentation/register_screen.dart';
-import 'package:meu_auto/features/auth/domain/user.dart';
 import 'package:meu_auto/features/auth/presentation/splash_screen.dart';
 import 'package:meu_auto/features/catalog/domain/vehicle_catalog.dart';
 import 'package:meu_auto/features/catalog/presentation/vehicle_catalog_sheet.dart';
-import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
-import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
-import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
-import 'package:meu_auto/features/profile/presentation/delete_account_screen.dart';
-import 'package:meu_auto/features/profile/presentation/profile_screen.dart';
 import 'package:meu_auto/features/costs/presentation/costs_screen.dart';
+import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
+import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/maintenance/presentation/cuidados_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_form_screen.dart';
 import 'package:meu_auto/features/maintenance/presentation/vehicle_profile_screen.dart';
-import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
 import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/domain/seguro.dart';
 import 'package:meu_auto/features/obligation/presentation/documentos_section.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_detail_screen.dart';
 import 'package:meu_auto/features/obligation/presentation/seguro_detail_screen.dart';
+import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
+import 'package:meu_auto/features/profile/presentation/change_password_screen.dart';
+import 'package:meu_auto/features/profile/presentation/delete_account_screen.dart';
+import 'package:meu_auto/features/profile/presentation/profile_screen.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_detail_screen.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
-import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_number_field.dart';
 
 /// Every screen has to survive the combination that actually breaks layouts in
 /// the field: a small, cheap phone plus the system font scaled up.
@@ -75,6 +76,7 @@ void main() {
     'password reset confirm': () =>
         const PasswordResetConfirmScreen(token: 'test-token'),
     'profile': _ProfileHarness.new,
+    'change password': ChangePasswordScreen.new,
     'delete account': _DeleteAccountHarness.new,
     'maintenance form': () => ProviderScope(
       overrides: [
@@ -710,6 +712,7 @@ class _ProfileHarness extends StatelessWidget {
         onEditName: () {},
         onThemeMode: (_) {},
         onVehicles: () {},
+        onChangePassword: () {},
         onLogout: () {},
         onDeleteAccount: () {},
       ),

@@ -21,6 +21,7 @@ dono vê passa a depender de qual tela ele abriu.
 
 Verdade de produto (para quem é, o que está fora de escopo, o que está em
 aberto) fica em [`PRODUCT.md`](./PRODUCT.md).
+Prioridades e gates de lançamento ficam no [`ROADMAP.md`](../ROADMAP.md).
 
 ## Rodando em desenvolvimento
 

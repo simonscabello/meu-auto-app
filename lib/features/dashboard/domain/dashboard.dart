@@ -20,6 +20,9 @@ enum AlertKind {
 enum AlertSeverity {
   vencido,
   venceEmBreve,
+
+  /// Only in [Dashboard.upcoming]: fine today, listed because it comes next.
+  emDia,
   desconhecido;
 
   static AlertSeverity fromWire(String? raw) =>
@@ -137,6 +140,7 @@ final class DashboardAlerts {
     required this.dueSoon,
     required this.needsBaseline,
     required this.items,
+    this.unknownHistory,
   });
 
   final int overdue;
@@ -144,12 +148,23 @@ final class DashboardAlerts {
   final int needsBaseline;
   final List<Alert> items;
 
+  /// Maintenance items nobody knows when were last done — including the ones
+  /// answered "não sei", which [needsBaseline] stops counting. Null from a
+  /// server that predates the field.
+  final int? unknownHistory;
+
+  /// How many items the verdict must not call "em dia". A server without the
+  /// field still reports [needsBaseline], the part of it nobody was asked
+  /// about, which is the most this app can honestly say there.
+  int get itemsWithoutHistory => unknownHistory ?? needsBaseline;
+
   factory DashboardAlerts.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'];
     return DashboardAlerts(
       overdue: json['overdue'] as int,
       dueSoon: json['due_soon'] as int,
       needsBaseline: json['needs_baseline'] as int,
+      unknownHistory: json['unknown_history'] as int?,
       items: [
         if (rawItems is List)
           for (final item in rawItems)
@@ -237,7 +252,7 @@ final class DashboardCosts {
   final Money totalCents;
   final List<CostCategory> categories;
 
-/// Bars to draw. [categories] when the server sent them; otherwise the
+  /// Bars to draw. [categories] when the server sent them; otherwise the
   /// three frozen fields an older payload still carries.
   List<CostCategory> get bars {
     if (categories.isNotEmpty) return categories;
@@ -303,6 +318,7 @@ final class Dashboard {
     required this.profile,
     required this.costs,
     this.lastAbastecimento,
+    this.upcoming = const [],
   });
 
   final DashboardVehicle vehicle;
@@ -312,9 +328,14 @@ final class Dashboard {
   final DashboardCosts costs;
   final LastAbastecimento? lastAbastecimento;
 
+  /// What comes next among the things that are fine today, most advanced
+  /// first, at most three. Empty from a server that predates it.
+  final List<Alert> upcoming;
+
   factory Dashboard.fromJson(Map<String, dynamic> json) {
     final rawProfile = json['profile'];
     final rawLast = json['last_abastecimento'];
+    final rawUpcoming = json['upcoming'];
     return Dashboard(
       vehicle: DashboardVehicle.fromJson(_asMap(json['vehicle'])),
       odometer: DashboardOdometer.fromJson(_asMap(json['odometer'])),
@@ -328,6 +349,11 @@ final class Dashboard {
       lastAbastecimento: rawLast is Map
           ? LastAbastecimento.fromJson(Map<String, dynamic>.from(rawLast))
           : null,
+      upcoming: [
+        if (rawUpcoming is List)
+          for (final item in rawUpcoming)
+            if (item is Map) Alert.fromJson(Map<String, dynamic>.from(item)),
+      ],
     );
   }
 }

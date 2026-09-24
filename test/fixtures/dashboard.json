@@ -16,7 +16,8 @@
       }
     ],
     "needs_baseline": 0,
-    "overdue": 0
+    "overdue": 0,
+    "unknown_history": 3
   },
   "costs": {
     "abastecimento_cents": 0,
@@ -73,6 +74,25 @@
     "current_km": 106650,
     "recorded_on": "2026-08-10"
   },
+  "profile": {
+    "open_questions": 1,
+    "powertrain_known": true,
+    "status": "incomplete"
+  },
+  "upcoming": [
+    {
+      "due_at_km": 150000,
+      "due_on": "2027-03-10",
+      "kind": "manutencao",
+      "reference_id": "bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb",
+      "reference_type": "maintenance_plan",
+      "remaining_days": 197,
+      "remaining_km": 4800,
+      "severity": "em_dia",
+      "subtitle": null,
+      "title": "Fluido de arrefecimento"
+    }
+  ],
   "vehicle": {
     "brand": "Fiat",
     "id": "22222222-2222-7222-8222-222222222222",
@@ -80,10 +100,5 @@
     "nickname": "Argolino",
     "plate": "ABC1D23",
     "version": "1.0 Drive"
-  },
-  "profile": {
-    "open_questions": 1,
-    "powertrain_known": true,
-    "status": "incomplete"
   }
 }

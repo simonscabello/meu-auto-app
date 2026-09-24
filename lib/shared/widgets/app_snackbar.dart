@@ -25,6 +25,17 @@ void showAppSnackBar(
         action: onUndo == null
             ? null
             : SnackBarAction(label: 'Desfazer', onPressed: onUndo),
+        // Flutter keeps a snack bar with an action on screen until it is
+        // tapped. "Desfazer" stayed over every tab for as long as the app was
+        // open after one tap on Feito. It goes after a while like any other
+        // confirmation — except under a screen reader, where reaching the
+        // button takes longer than any timeout.
+        duration: onUndo == null
+            ? const Duration(seconds: 4)
+            : const Duration(seconds: 6),
+        persist:
+            onUndo != null &&
+            MediaQuery.accessibleNavigationOf(messenger.context),
       ),
     );
 }
