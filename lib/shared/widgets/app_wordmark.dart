@@ -4,9 +4,9 @@ import 'package:meu_auto/core/theme/app_typography.dart';
 /// The product name, set as a mark.
 ///
 /// This is typography, not artwork: there is no logo and none is invented
-/// here. What makes it a mark rather than a label is the pair — `Meu` in the
-/// quiet neutral, `Auto` in the brand teal — set tighter than body copy. When
-/// a drawn logo exists it replaces this widget and nothing else changes.
+/// here. What makes it a mark rather than a label is the pair — `Meu` quiet,
+/// `Auto` in the text colour and bold — set tighter than body copy. When a
+/// drawn logo exists it replaces this widget and nothing else changes.
 ///
 /// Screen readers get the two spans as one string, "Meu Auto", because that is
 /// what it is.
@@ -19,35 +19,40 @@ class AppWordmark extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final base = switch (size) {
+      AppWordmarkSize.small => theme.textTheme.titleMedium,
       AppWordmarkSize.medium => theme.textTheme.headlineMedium,
       AppWordmarkSize.large => theme.textTheme.displaySmall,
     };
     final style = base?.copyWith(
-      letterSpacing: -0.5,
+      letterSpacing: size == AppWordmarkSize.small ? -0.2 : -0.8,
       fontFeatures: AppTypography.tabular,
     );
 
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(
-            text: 'Meu',
-            style: style?.copyWith(
-              fontWeight: FontWeight.w400,
-              color: theme.colorScheme.onSurfaceVariant,
+    return Semantics(
+      label: 'Meu Auto',
+      excludeSemantics: true,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: 'Meu',
+              style: style?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          TextSpan(
-            text: ' Auto',
-            style: style?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.primary,
+            TextSpan(
+              text: ' Auto',
+              style: style?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-enum AppWordmarkSize { medium, large }
+enum AppWordmarkSize { small, medium, large }

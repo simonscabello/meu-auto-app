@@ -7,20 +7,24 @@ import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog.dart';
 import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 /// Updating the mileage is the most frequent write in the app, and it happens
 /// standing up, one-handed, next to a pump. A bottom sheet with the field
-/// already focused is three taps from Início; a full screen would not be.
+/// already focused is two taps from Início; a full screen would not be.
 class OdometerSheet extends ConsumerStatefulWidget {
   const OdometerSheet({
     super.key,
@@ -36,11 +40,8 @@ class OdometerSheet extends ConsumerStatefulWidget {
     required String vehicleId,
     required int currentMileageKm,
   }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<void>(
+      context,
       builder: (sheetContext) => OdometerSheet(
         vehicleId: vehicleId,
         currentMileageKm: currentMileageKm,
@@ -126,8 +127,6 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
       invalidateVehicleDerived(ref, widget.vehicleId);
 
       if (!mounted) return;
-      // Both are looked up before the pop: afterwards this element is on its
-      // way out of the tree and an ancestor lookup through it is a race.
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
       showAppSnackBar(
@@ -177,107 +176,90 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final scheme = Theme.of(context).colorScheme;
 
     return AppDiscardGuard(
       listenable: Listenable.merge([_mileage, _notes]),
       isDirty: () => _isDirty,
       busy: _submitting,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: AppSpacing.s24,
-          right: AppSpacing.s24,
-          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s24,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Atualizar quilometragem',
-                style: theme.textTheme.titleLarge,
-              ),
-              const SizedBox(height: AppSpacing.s16),
-              AppKmField(
-                controller: _mileage,
-                autofocus: true,
-                enabled: !_submitting,
-                textStyle: theme.textTheme.headlineMedium,
-                textInputAction: _showNotes
-                    ? TextInputAction.next
-                    : TextInputAction.done,
-                onSubmitted: (_) =>
-                    _submitting || _showNotes ? null : _submit(),
-                errorText: _fieldError,
-                helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
-              ),
-              const SizedBox(height: AppSpacing.s12),
-              AppDateField(
-                value: _occurredOn,
-                onPick: _pickDate,
-                enabled: !_submitting,
-              ),
-              if (_showNotes) ...[
-                const SizedBox(height: AppSpacing.s8),
-                TextField(
-                  controller: _notes,
-                  enabled: !_submitting,
-                  maxLength: 500,
-                  maxLines: 2,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submitting ? null : _submit(),
-                  decoration: const InputDecoration(
-                    labelText: 'Observação',
-                    counterText: '',
-                  ),
-                ),
-              ] else
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _submitting
-                        ? null
-                        : () => setState(() => _showNotes = true),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Adicionar observação'),
-                  ),
-                ),
-              if (_banner != null) ...[
-                const SizedBox(height: AppSpacing.s8),
-                Text(
-                  _banner!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.s16),
-              SizedBox(
-                width: double.infinity,
-                child: AppButton(
-                  label: _offline ? 'Tentar de novo' : 'Salvar',
-                  loading: _submitting,
-                  onPressed: _submit,
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: AppButton(
-                  label: 'Ver histórico',
-                  variant: AppButtonVariant.tertiary,
-                  onPressed: _submitting
-                      ? null
-                      : () {
-                          final router = GoRouter.of(context);
-                          Navigator.of(context).pop();
-                          router.push(AppRoutes.odometer);
-                        },
-                ),
-              ),
-            ],
+      child: AppSheetBody(
+        children: [
+          const AppSheetHeader(
+            title: 'Atualizar quilometragem',
+            closable: false,
           ),
-        ),
+          const SizedBox(height: AppSpacing.s16),
+          if (_banner != null) AuthFormBanner(message: _banner!),
+          // The reading, set as the instrument shows it.
+          AppKmField(
+            controller: _mileage,
+            autofocus: true,
+            enabled: !_submitting,
+            textStyle: AppTypography.instrument(
+              size: 32,
+              color: scheme.onSurface,
+            ),
+            textInputAction: _showNotes
+                ? TextInputAction.next
+                : TextInputAction.done,
+            onSubmitted: (_) => _submitting || _showNotes ? null : _submit(),
+            errorText: _fieldError,
+            helperText: 'Atual: ${formatKm(widget.currentMileageKm)}',
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          AppDateField(
+            value: _occurredOn,
+            onPick: _pickDate,
+            enabled: !_submitting,
+          ),
+          if (_showNotes) ...[
+            const SizedBox(height: AppSpacing.s12),
+            TextField(
+              controller: _notes,
+              enabled: !_submitting,
+              maxLength: 500,
+              maxLines: 2,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submitting ? null : _submit(),
+              decoration: const InputDecoration(
+                labelText: 'Observação',
+                counterText: '',
+              ),
+            ),
+          ] else
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppButton(
+                label: 'Adicionar observação',
+                icon: Icons.add,
+                variant: AppButtonVariant.tertiary,
+                onPressed: _submitting
+                    ? null
+                    : () => setState(() => _showNotes = true),
+              ),
+            ),
+          const SizedBox(height: AppSpacing.s16),
+          AppButton(
+            label: _offline ? 'Tentar de novo' : 'Salvar',
+            loading: _submitting,
+            onPressed: _submit,
+            expanded: true,
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AppButton(
+              label: 'Ver histórico',
+              variant: AppButtonVariant.tertiary,
+              onPressed: _submitting
+                  ? null
+                  : () {
+                      final router = GoRouter.of(context);
+                      Navigator.of(context).pop();
+                      router.push(AppRoutes.odometer);
+                    },
+            ),
+          ),
+        ],
       ),
     );
   }

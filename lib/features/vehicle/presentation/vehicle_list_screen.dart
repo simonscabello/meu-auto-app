@@ -6,10 +6,12 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
-import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -30,10 +32,8 @@ class VehicleListScreen extends ConsumerWidget {
       ],
       onRefresh: () => ref.read(vehiclesProvider.notifier).reload(),
       body: list.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s24),
-          child: AppSkeletonList(),
-        ),
+        loading: () =>
+            const Padding(padding: AppSpacing.screen, child: AppSkeletonList()),
         error: (error, _) => AppErrorState.fromError(
           error: error,
           onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
@@ -41,6 +41,7 @@ class VehicleListScreen extends ConsumerWidget {
         data: (state) {
           if (state.vehicles.isEmpty) {
             return AppEmptyState(
+              icon: Icons.directions_car_outlined,
               title: 'Cadastre seu primeiro veículo',
               message:
                   'Com o carro cadastrado, os prazos e o histórico ficam neste app.',
@@ -48,18 +49,28 @@ class VehicleListScreen extends ConsumerWidget {
               onAction: () => context.push(AppRoutes.vehicleNew),
             );
           }
-          return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.s16,
-              AppSpacing.s8,
-              AppSpacing.s16,
-              AppSpacing.s32,
-            ),
-            itemCount: state.vehicles.length,
-            separatorBuilder: (context, index) => const AppRowDivider(),
-            itemBuilder: (context, index) {
-              return _VehicleTile(vehicle: state.vehicles[index]);
-            },
+          return ListView(
+            padding: AppSpacing.screen,
+            children: [
+              AppGroup(
+                children: [
+                  for (final vehicle in state.vehicles)
+                    _VehicleTile(key: ValueKey(vehicle.id), vehicle: vehicle),
+                ],
+              ),
+              const SizedBox(height: appGroupGap),
+              AppGroup(
+                children: [
+                  AppListRow(
+                    icon: Icons.add,
+                    iconTone: AppIconWellTone.accent,
+                    title: 'Adicionar veículo',
+                    onTap: () => context.push(AppRoutes.vehicleNew),
+                    showChevron: true,
+                  ),
+                ],
+              ),
+            ],
           );
         },
       ),
@@ -68,7 +79,7 @@ class VehicleListScreen extends ConsumerWidget {
 }
 
 class _VehicleTile extends StatelessWidget {
-  const _VehicleTile({required this.vehicle});
+  const _VehicleTile({super.key, required this.vehicle});
 
   final Vehicle vehicle;
 
@@ -76,7 +87,7 @@ class _VehicleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppListRow(
       icon: Icons.directions_car_outlined,
-      title: vehicle.displayName,
+      title: vehicle.shortName,
       subtitle: _detail(),
       onTap: () => context.push(AppRoutes.vehicle(vehicle.id)),
       showChevron: true,
@@ -86,9 +97,7 @@ class _VehicleTile extends StatelessWidget {
   /// What tells two of the owner's cars apart, in one line.
   ///
   /// The nickname is already the title when there is one, so the make and
-  /// model only appear underneath in that case — repeating "Fiat Argo" as
-  /// both title and subtitle is how the old card ended up four lines tall
-  /// for a vehicle with three facts.
+  /// model only appear underneath in that case.
   String _detail() {
     final nick = vehicle.nickname?.trim();
     final parts = <String>[

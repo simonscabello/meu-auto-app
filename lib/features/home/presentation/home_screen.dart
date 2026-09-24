@@ -1,52 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:meu_auto/features/home/presentation/home_header.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
-import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
+import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
-import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
-/// The Início tab: the app bar identifies the car and switches between cars,
-/// and the body is the dashboard for whichever one is selected.
+/// The Início tab. No app bar: the header is part of the page, so the mark,
+/// the account and the car scroll with the rest and the pull-to-refresh
+/// starts from the very top.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedVehicleProvider);
+    final vehicles = ref.watch(vehiclesProvider).valueOrNull?.vehicles ?? [];
     final vehicleId = selected.valueOrNull?.id;
 
     return AppScaffold(
-      titleWidget: selected.when(
-        loading: () => const AppSkeleton(width: 180, height: 24),
-        error: (error, _) => const Text('Início'),
-        data: (vehicle) {
-          if (vehicle == null) {
-            return const Text('Início');
-          }
-          return VehicleSwitcherTitle(name: vehicle.shortName);
-        },
-      ),
-      actions: const [ProfileButton()],
       onRefresh: () => _refresh(ref, vehicleId),
       body: selected.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(),
-        ),
-        error: (error, _) => AppErrorState.fromError(
-          error: error,
-          onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+        loading: () => const DashboardSkeleton(),
+        error: (error, _) => Padding(
+          padding: const EdgeInsets.all(AppSpacing.page),
+          child: AppErrorState.fromError(
+            error: error,
+            onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+          ),
         ),
         // A null vehicle cannot be reached from here: the router sends an
         // account with no vehicles to the first-vehicle form instead of the
         // shell. Rendering nothing is the safe answer if that ever changes.
         data: (vehicle) => vehicle == null
             ? const SizedBox.shrink()
-            : DashboardView(vehicleId: vehicle.id),
+            : DashboardView(
+                vehicleId: vehicle.id,
+                header: HomeHeader(
+                  name: vehicle.headlineName,
+                  metaParts: vehicle.metaParts,
+                  canSwitch: vehicles.length > 1,
+                  onSwitch: () => VehicleSwitcherSheet.show(context),
+                  onAccount: () => context.push(AppRoutes.profile),
+                ),
+              ),
       ),
     );
   }

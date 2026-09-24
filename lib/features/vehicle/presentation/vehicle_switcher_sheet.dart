@@ -5,26 +5,25 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
 /// Which car the rest of the app is about.
 ///
-/// It was a stock `ListTile` list with `selected: true` on the current one,
-/// and that is what made the chosen car look broken: Material paints **both**
-/// the title and the subtitle in the primary colour for a selected tile, so
-/// the car name and its plate came out as two teal lines of different sizes
-/// with nothing marking them as one row. Selection is a tick here, and the
-/// name stays the colour every other name in the app is.
+/// Selection is a tick and an accent well; the name stays the colour every
+/// other name in the app is. Material's `selected` tile painted the title and
+/// the plate in the primary colour and the chosen car looked broken.
 class VehicleSwitcherSheet extends ConsumerWidget {
   const VehicleSwitcherSheet({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
+    return showAppSheet<void>(
+      context,
       builder: (sheetContext) => const VehicleSwitcherSheet(),
     );
   }
@@ -86,30 +85,25 @@ class VehicleSwitcherContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.s16,
+        const Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.page,
             0,
-            AppSpacing.s16,
-            AppSpacing.s12,
+            AppSpacing.page,
+            AppSpacing.s8,
           ),
-          child: Semantics(
-            header: true,
-            child: Text('Veículos', style: theme.textTheme.titleMedium),
-          ),
+          child: AppSheetHeader(title: 'Veículos', closable: false),
         ),
         Flexible(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.s16,
+              AppSpacing.page,
               0,
-              AppSpacing.s16,
+              AppSpacing.page,
               AppSpacing.s16,
             ),
             child: Column(
@@ -133,6 +127,7 @@ class VehicleSwitcherContent extends StatelessWidget {
                   children: [
                     AppListRow(
                       icon: Icons.add,
+                      iconTone: AppIconWellTone.accent,
                       title: 'Adicionar veículo',
                       onTap: onAdd,
                       showChevron: onAdd != null,
@@ -171,34 +166,36 @@ class _VehicleRow extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final plate = vehicle.plate?.trim();
-    final name = vehicle.displayName;
+    final name = vehicle.shortName;
 
     return AppListRowShell(
       onTap: onTap,
       semanticLabel: selected ? '$name, veículo em uso' : 'Usar $name',
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(
-              Icons.directions_car_outlined,
-              size: 22,
-              color: selected ? scheme.primary : scheme.onSurfaceVariant,
-            ),
+          AppIconWell(
+            icon: Icons.directions_car_outlined,
+            tone: selected ? AppIconWellTone.accent : AppIconWellTone.neutral,
           ),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: theme.textTheme.bodyLarge),
+                Text(
+                  name,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 if (plate != null && plate.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     plate,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: scheme.onSurfaceVariant,
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ],
@@ -207,10 +204,7 @@ class _VehicleRow extends StatelessWidget {
           ),
           if (selected) ...[
             const SizedBox(width: AppSpacing.s8),
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Icon(Icons.check, size: 20, color: scheme.primary),
-            ),
+            Icon(Icons.check, size: 20, color: scheme.primary),
           ],
         ],
       ),

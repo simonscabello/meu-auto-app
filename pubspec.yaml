@@ -78,6 +78,27 @@ flutter:
   assets:
     - assets/icon/
 
+  # Inter for text and Rajdhani for the instrument figures. Both under the SIL
+  # Open Font License (the OFL texts sit beside the files). Subsetted to Latin
+  # by the source, which is all pt-BR needs; ~65 KB per weight.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+    - family: Rajdhani
+      fonts:
+        - asset: assets/fonts/Rajdhani-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Rajdhani-Bold.ttf
+          weight: 700
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
@@ -109,15 +130,15 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  adaptive_icon_background: "#121717"
+  adaptive_icon_background: "#060E18"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
   # Default is 16. The PNG already sits at 58.2% of the canvas (Android
   # adaptive safe zone is 61%); another inset would shrink the mark.
   adaptive_icon_foreground_inset: 0
 
 flutter_native_splash:
-  color: "#F4F6F6"
-  color_dark: "#121717"
+  color: "#EEF3F8"
+  color_dark: "#060E18"
   image: "assets/icon/splash_light.png"
   image_dark: "assets/icon/splash_dark.png"
   web: false
@@ -126,7 +147,7 @@ flutter_native_splash:
     # ~66,7% centrais. splash_dark.png ocupa 70% e seria cortado; a camada
     # adaptativa ja respeita esse limite (58,2%), entao e' ela que vai aqui.
     image: "assets/icon/icon_foreground.png"
-    color: "#F4F6F6"
-    color_dark: "#121717"
-    icon_background_color: "#F4F6F6"
-    icon_background_color_dark: "#121717"
+    color: "#EEF3F8"
+    color_dark: "#060E18"
+    icon_background_color: "#EEF3F8"
+    icon_background_color_dark: "#060E18"

@@ -29,7 +29,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byIcon(Icons.wifi_off), findsOneWidget);
+    expect(find.byIcon(Icons.wifi_off_outlined), findsOneWidget);
 
     await tester.tap(find.text('Tentar de novo'));
     expect(retried, isTrue);

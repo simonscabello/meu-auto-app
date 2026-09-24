@@ -8,6 +8,7 @@ import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/auth/presentation/auth_password_field.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
@@ -171,55 +172,70 @@ class ChangePasswordContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AutofillGroup(
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.s24),
+        padding: AppSpacing.screenHeaded,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
-          Text(
-            'Os outros aparelhos serão desconectados. Este continuará conectado.',
-            style: Theme.of(context).textTheme.bodyLarge,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+            child: Text(
+              'Os outros aparelhos serão desconectados. Este continuará '
+              'conectado.',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.s24),
           if (banner != null) AuthFormBanner(message: banner!),
-          AuthPasswordField(
-            controller: currentPasswordController,
-            label: 'Senha atual',
-            enabled: !submitting,
-            errorText: currentPasswordError,
-            textInputAction: TextInputAction.next,
-            onChanged: (_) => onCurrentPasswordChanged(),
+          AppFormSection(
+            title: 'Senha atual',
+            children: [
+              AuthPasswordField(
+                controller: currentPasswordController,
+                label: 'Senha atual',
+                enabled: !submitting,
+                errorText: currentPasswordError,
+                textInputAction: TextInputAction.next,
+                onChanged: (_) => onCurrentPasswordChanged(),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.s16),
-          AuthPasswordField(
-            controller: newPasswordController,
-            label: 'Nova senha',
-            hint: 'Mínimo de 8 caracteres. Sem exigência de símbolo ou número.',
-            enabled: !submitting,
-            autofillHints: const [AutofillHints.newPassword],
-            errorText: newPasswordError,
-            textInputAction: TextInputAction.next,
-            onChanged: (_) => onNewPasswordChanged(),
-          ),
-          const SizedBox(height: AppSpacing.s16),
-          AuthPasswordField(
-            controller: confirmationController,
-            label: 'Confirmar nova senha',
-            enabled: !submitting,
-            autofillHints: const [AutofillHints.newPassword],
-            errorText: confirmationError,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => onSubmit(),
-            onChanged: (_) => onConfirmationChanged(),
+          const AppFormGap(),
+          AppFormSection(
+            title: 'Nova senha',
+            children: [
+              AuthPasswordField(
+                controller: newPasswordController,
+                label: 'Nova senha',
+                hint:
+                    'Mínimo de 8 caracteres. Sem exigência de símbolo ou número.',
+                enabled: !submitting,
+                autofillHints: const [AutofillHints.newPassword],
+                errorText: newPasswordError,
+                textInputAction: TextInputAction.next,
+                onChanged: (_) => onNewPasswordChanged(),
+              ),
+              AuthPasswordField(
+                controller: confirmationController,
+                label: 'Confirmar nova senha',
+                enabled: !submitting,
+                autofillHints: const [AutofillHints.newPassword],
+                errorText: confirmationError,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => onSubmit(),
+                onChanged: (_) => onConfirmationChanged(),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.s24),
-          SizedBox(
-            width: double.infinity,
-            child: AppButton(
-              label: offline ? 'Tentar de novo' : 'Alterar senha',
-              loading: submitting,
-              onPressed: canSubmit && !submitting ? onSubmit : null,
-            ),
+          AppButton(
+            label: offline ? 'Tentar de novo' : 'Alterar senha',
+            loading: submitting,
+            onPressed: canSubmit && !submitting ? onSubmit : null,
+            expanded: true,
           ),
         ],
       ),

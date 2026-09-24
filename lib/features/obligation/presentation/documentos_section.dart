@@ -13,6 +13,7 @@ import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -39,12 +40,7 @@ class DocumentosScreen extends ConsumerWidget {
             ? const SizedBox.shrink()
             : ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.s16,
-                  AppSpacing.s8,
-                  AppSpacing.s16,
-                  AppSpacing.s32,
-                ),
+                padding: AppSpacing.screen,
                 children: [
                   DocumentosSection(vehicleId: current.id, showHeading: false),
                 ],
@@ -91,7 +87,7 @@ class DocumentosSection extends ConsumerWidget {
           children: [
             AppSkeleton(width: 180, height: 14),
             SizedBox(height: AppSpacing.s16),
-            AppSkeletonList(count: 3, itemHeight: 44),
+            AppSkeletonList(count: 3, itemHeight: 56),
           ],
         ),
       );
@@ -134,20 +130,13 @@ class DocumentosSection extends ConsumerWidget {
   }
 }
 
-/// IPVA, licenciamento and seguro in the dedicated Documents destination.
-///
-/// It used to sit below every maintenance plan in Cuidados. Giving these
-/// records their own destination keeps legal deadlines and insurance easy to
-/// reach without making the care list carry two different jobs.
-///
-/// The way to add one is the last row of its own group, which reads as "and
-/// one more here" and cannot overflow the way a header button does when the
-/// label is "Registrar licenciamento" at a large text scale.
+/// IPVA, licenciamento and seguro, each in its own group.
 ///
 /// The three kinds are separate groups rather than one long list on purpose:
-/// IPVA, licenciamento and seguro have nothing to do with each other beyond
-/// arriving in the same envelope, and a row that says "Nenhum seguro
-/// registrado" has to sit under the word Seguro to mean anything.
+/// they have nothing to do with each other beyond arriving in the same
+/// envelope, and a row that says "Nenhum seguro registrado" has to sit under
+/// the word Seguro to mean anything. The way to add one is the last row of
+/// its group, which reads as "and one more here".
 class DocumentosContent extends StatelessWidget {
   const DocumentosContent({
     super.key,
@@ -256,24 +245,19 @@ class _DocumentosSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
+      padding: AppSpacing.screen,
       children: const [
         AppSkeleton(width: 80, height: 14),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeletonList(count: 2, itemHeight: 44),
-        SizedBox(height: AppSpacing.s24),
+        SizedBox(height: AppSpacing.s12),
+        AppSkeleton(width: double.infinity, height: 124),
+        SizedBox(height: AppSpacing.block),
         AppSkeleton(width: 130, height: 14),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeletonList(count: 2, itemHeight: 44),
-        SizedBox(height: AppSpacing.s24),
+        SizedBox(height: AppSpacing.s12),
+        AppSkeleton(width: double.infinity, height: 124),
+        SizedBox(height: AppSpacing.block),
         AppSkeleton(width: 90, height: 14),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeletonList(count: 2, itemHeight: 44),
+        SizedBox(height: AppSpacing.s12),
+        AppSkeleton(width: double.infinity, height: 124),
       ],
     );
   }
@@ -310,7 +294,12 @@ class _KindGroup extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(emptyTitle, style: theme.textTheme.bodyLarge),
+                Text(
+                  emptyTitle,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   emptyMessage,
@@ -324,7 +313,12 @@ class _KindGroup extends StatelessWidget {
         else
           ...rows,
         if (onRegister != null)
-          AppListRow(icon: Icons.add, title: actionLabel, onTap: onRegister),
+          AppListRow(
+            icon: Icons.add,
+            iconTone: AppIconWellTone.accent,
+            title: actionLabel,
+            onTap: onRegister,
+          ),
       ],
     );
   }
@@ -338,19 +332,13 @@ class _ObligationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visual = statusColors(
-      AppStatus.fromWire(obligation.status.wire),
-      Theme.of(context).brightness,
-    );
-    final overdue = obligation.status == ObligationStatus.vencido;
-
     return AppListRow(
       icon: obligation.kind == ObligationKind.ipva
           ? Icons.receipt_long_outlined
           : Icons.description_outlined,
       title: obligationTitle(obligation),
       subtitle: obligationListSubtitle(obligation),
-      accent: overdue ? visual.foreground : null,
+      status: AppStatus.fromWire(obligation.status.wire),
       onTap: onTap,
       showChevron: onTap != null,
     );
@@ -365,17 +353,16 @@ class _SeguroRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visual = statusColors(
-      AppStatus.fromWire(seguro.status.wire),
-      Theme.of(context).brightness,
-    );
-    final overdue = seguro.status == SeguroStatus.vencido;
-
+    // A policy the next one took over from is history, not a warning: its
+    // row stays quiet whatever the wire says.
+    final status = seguro.renewed
+        ? AppStatus.semPeriodicidade
+        : AppStatus.fromWire(seguro.status.wire);
     return AppListRow(
       icon: Icons.shield_outlined,
       title: seguro.insurerName,
       subtitle: seguroListSubtitle(seguro),
-      accent: overdue ? visual.foreground : null,
+      status: status,
       onTap: onTap,
       showChevron: onTap != null,
     );

@@ -14,6 +14,7 @@ import 'package:meu_auto/features/auth/domain/password_reset_copy.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/auth/presentation/auth_password_field.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 
 class PasswordResetConfirmScreen extends ConsumerStatefulWidget {
@@ -109,25 +110,31 @@ class _PasswordResetConfirmScreenState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_succeeded) {
       return AppScaffold(
         title: 'Redefinir senha',
-        body: Padding(
-          padding: const EdgeInsets.all(AppSpacing.s24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                PasswordResetCopy.sessionsEnded,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: AppSpacing.s24),
-              AppButton(
-                label: 'Entrar',
-                onPressed: () => unawaited(_goToLogin()),
-              ),
-            ],
-          ),
+        body: ListView(
+          padding: AppSpacing.screenHeaded,
+          children: [
+            const SizedBox(height: AppSpacing.s16),
+            const AppIconWell(
+              icon: Icons.check_circle_outline,
+              size: AppIconWellSize.xl,
+              tone: AppIconWellTone.accent,
+            ),
+            const SizedBox(height: AppSpacing.s24),
+            Text(
+              PasswordResetCopy.sessionsEnded,
+              style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+            ),
+            const SizedBox(height: AppSpacing.s32),
+            AppButton(
+              label: 'Entrar',
+              onPressed: () => unawaited(_goToLogin()),
+              expanded: true,
+            ),
+          ],
         ),
       );
     }
@@ -135,22 +142,26 @@ class _PasswordResetConfirmScreenState
     if (_invalidLink && _fieldErrors.isEmpty) {
       return AppScaffold(
         title: 'Redefinir senha',
-        body: Padding(
-          padding: const EdgeInsets.all(AppSpacing.s24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _banner ?? 'Link de redefinição inválido ou expirado.',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: AppSpacing.s24),
-              AppButton(
-                label: 'Pedir outro link',
-                onPressed: () => context.go(AppRoutes.passwordReset),
-              ),
-            ],
-          ),
+        body: ListView(
+          padding: AppSpacing.screenHeaded,
+          children: [
+            const SizedBox(height: AppSpacing.s16),
+            const AppIconWell(
+              icon: Icons.link_off_outlined,
+              size: AppIconWellSize.xl,
+            ),
+            const SizedBox(height: AppSpacing.s24),
+            Text(
+              _banner ?? 'Link de redefinição inválido ou expirado.',
+              style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+            ),
+            const SizedBox(height: AppSpacing.s32),
+            AppButton(
+              label: 'Pedir outro link',
+              onPressed: () => context.go(AppRoutes.passwordReset),
+              expanded: true,
+            ),
+          ],
         ),
       );
     }
@@ -158,7 +169,7 @@ class _PasswordResetConfirmScreenState
     return AppScaffold(
       title: 'Redefinir senha',
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.s24),
+        padding: AppSpacing.screenHeaded,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           if (_banner != null) AuthFormBanner(message: _banner!),
@@ -184,13 +195,11 @@ class _PasswordResetConfirmScreenState
             },
           ),
           const SizedBox(height: AppSpacing.s24),
-          SizedBox(
-            width: double.infinity,
-            child: AppButton(
-              label: _offline ? 'Tentar de novo' : 'Redefinir senha',
-              loading: _submitting,
-              onPressed: _canSubmit ? _submit : null,
-            ),
+          AppButton(
+            label: _offline ? 'Tentar de novo' : 'Redefinir senha',
+            loading: _submitting,
+            onPressed: _canSubmit ? _submit : null,
+            expanded: true,
           ),
         ],
       ),

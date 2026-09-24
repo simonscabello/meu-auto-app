@@ -39,9 +39,12 @@ final class SharedPreferencesThemeModeStore implements ThemeModeStore {
     ThemeMode.system => 'system',
   };
 
+  /// Dark is the identity — a night cluster — so a fresh install starts
+  /// there rather than following the phone. Claro and Sistema stay one tap
+  /// away in Perfil.
   static ThemeMode _decode(String? raw) => switch (raw) {
     'light' => ThemeMode.light,
-    'dark' => ThemeMode.dark,
-    _ => ThemeMode.system,
+    'system' => ThemeMode.system,
+    _ => ThemeMode.dark,
   };
 }

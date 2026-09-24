@@ -7,13 +7,12 @@ import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
-/// One alert — or one "what comes next" item — as a row.
+/// One alert as a row.
 ///
 /// Shared by Início and the full list behind its "Ver todos", so the two say
-/// the same thing about the same item. The status chip that used to sit here
-/// is gone: the group above says what the list is, [alertDetailLine] says how
-/// late or how close in words, and the tint on an overdue icon is the third
-/// signal, never the only one.
+/// the same thing about the same item. The well is tinted only for a loud
+/// status — red for late, amber for close — and [alertDetailLine] says how
+/// late or how close in words, so the colour is never the only signal.
 class AlertRow extends StatelessWidget {
   const AlertRow({super.key, required this.alert, this.onTap});
 
@@ -23,18 +22,15 @@ class AlertRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final visual = statusColors(
-      alertStatusOf(alert.severity),
-      theme.brightness,
-    );
-    final overdue = alert.severity == AlertSeverity.vencido;
+    final status = alertStatusOf(alert.severity);
+    final visual = statusColors(status, theme.brightness);
     final detail = alertDetailLine(alert);
 
     return AppListRow(
       icon: alertIconOf(alert.kind),
       title: alert.title,
       subtitle: detail ?? visual.label,
-      accent: overdue ? visual.foreground : null,
+      status: status,
       onTap: onTap,
       showChevron: onTap != null,
       semanticLabel: detail == null
@@ -49,7 +45,6 @@ class AlertRow extends StatelessWidget {
 /// Never invents a subtitle, and never writes "0 km" for a dimension that came
 /// back null — null means the dimension does not apply. An upcoming item that
 /// is still far away is said as how far, not as a status word.
-@visibleForTesting
 String? alertDetailLine(Alert alert) {
   final parts = <String>[];
   final subtitle = alert.subtitle?.trim();
@@ -75,12 +70,12 @@ String? alertDetailLine(Alert alert) {
 IconData alertIconOf(AlertKind kind) {
   return switch (kind) {
     AlertKind.manutencao => Icons.build_outlined,
-    AlertKind.cuidado => Icons.checklist_rtl,
+    AlertKind.cuidado => Icons.checklist_rtl_outlined,
     AlertKind.garantia => Icons.verified_user_outlined,
     AlertKind.ipva => Icons.receipt_long_outlined,
     AlertKind.licenciamento => Icons.description_outlined,
     AlertKind.seguro => Icons.shield_outlined,
-    AlertKind.desconhecido => Icons.notifications_none,
+    AlertKind.desconhecido => Icons.notifications_none_outlined,
   };
 }
 
@@ -107,7 +102,8 @@ String routeForAlert(Alert alert) {
   };
 }
 
-/// Upcoming, as the distance to it: "em 4.200 km", "em 10/03/2027", or both.
+/// Upcoming, as the distance to it: "Faltam 4.200 km ou 30 dias",
+/// "Faltam 4.200 km ou 12/02/2027", "Em 12/02/2027".
 ///
 /// Uses the figures the server computed. The date is written as a date once
 /// it is more than about a month and a half out, because "faltam 197 dias"
@@ -118,18 +114,26 @@ String? upcomingSummary({
   int? remainingDays,
   CivilDate? dueOn,
 }) {
-  final parts = <String>[];
-  if (remainingKm != null && remainingKm > 0) {
-    parts.add('em ${formatKm(remainingKm)}');
-  }
+  final km = remainingKm != null && remainingKm > 0
+      ? formatKm(remainingKm)
+      : null;
+
+  String? when;
+  var whenIsDate = false;
   if (remainingDays != null && remainingDays >= 0) {
+    if (remainingDays == 0) {
+      return 'Vence hoje';
+    }
     if (remainingDays > 45 && dueOn != null) {
-      parts.add('em ${formatCivilDate(dueOn)}');
+      when = formatCivilDate(dueOn);
+      whenIsDate = true;
     } else {
-      final days = remainingDaysPhrase(remainingDays);
-      if (days != null) parts.add(days);
+      when = remainingDays == 1 ? '1 dia' : '$remainingDays dias';
     }
   }
-  if (parts.isEmpty) return null;
-  return parts.join(' ou ');
+
+  if (km == null && when == null) return null;
+  if (km != null && when != null) return 'Faltam $km ou $when';
+  if (km != null) return 'Faltam $km';
+  return whenIsDate ? 'Em $when' : 'Faltam $when';
 }

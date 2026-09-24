@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_status_colors.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 
-/// One scannable line: icon, name, one line of state, and whatever the row
-/// is worth on the right.
-///
-/// This is the shape that replaced a card per item. A list of eighteen
-/// maintenance plans as eighteen bordered boxes is a list nobody reads; the
-/// same eighteen as rows under a section label can be scanned in a second.
-/// The detail that used to be printed on every card now lives one tap away,
-/// on the item itself.
+/// One scannable line: an icon in its well, a name, one line of state, and
+/// whatever the row is worth on the right.
 ///
 /// [accent] is the only colour a row carries, and it is deliberately small:
-/// the section a row sits under already says whether it is urgent, and
+/// the group a row sits under already says whether it is urgent, and
 /// [subtitle] says it in words. Colour is the third signal, never the only
-/// one.
+/// one. Passing [status] tints the well and the state line together; passing
+/// [accent] alone tints just the text and glyph.
 ///
 /// **[trailing] sits outside the row's tap target, always.** A row whose
 /// right-hand side is a button has two actions in it, and a tap on the button
@@ -28,10 +26,12 @@ class AppListRow extends StatelessWidget {
     this.subtitle,
     this.icon,
     this.accent,
+    this.status,
     this.trailing,
     this.onTap,
     this.showChevron = false,
     this.semanticLabel,
+    this.iconTone,
   });
 
   final String title;
@@ -46,6 +46,10 @@ class AppListRow extends StatelessWidget {
   /// late or close: tinting every row is the same as tinting none.
   final Color? accent;
 
+  /// A loud status — late or close — that tints the well as well as the text.
+  /// Quiet statuses are ignored, so a row can pass its status unconditionally.
+  final AppStatus? status;
+
   /// An action of its own, or a figure. Never part of [onTap].
   final Widget? trailing;
 
@@ -56,35 +60,50 @@ class AppListRow extends StatelessWidget {
   /// which is what a sighted person reads.
   final String? semanticLabel;
 
+  /// Forces the well's tone — accent for the "add" row at the foot of a
+  /// group, say. Defaults to neutral, or status when [status] is loud.
+  final AppIconWellTone? iconTone;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final iconColor = accent ?? scheme.onSurfaceVariant;
+    final tones = AppTones.of(context);
+    final loud = status?.isLoud ?? false;
+    final visual = loud ? statusColors(status!, theme.brightness) : null;
+    final textAccent = accent ?? visual?.foreground;
 
     final main = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (icon != null) ...[
-          Padding(
-            // Optical alignment with the cap height of the title rather than
-            // its line box, so the icon does not float above short names.
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(icon, size: 22, color: iconColor),
+          AppIconWell(
+            icon: icon!,
+            tone:
+                iconTone ??
+                (loud ? AppIconWellTone.status : AppIconWellTone.neutral),
+            status: status,
+            color: iconTone == null && !loud ? accent : null,
           ),
           const SizedBox(width: AppSpacing.s12),
         ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: theme.textTheme.bodyLarge),
+              Text(
+                title,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               if (subtitle != null && subtitle!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
                   subtitle!,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: accent ?? scheme.onSurfaceVariant,
+                    color: textAccent ?? scheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -92,11 +111,8 @@ class AppListRow extends StatelessWidget {
           ),
         ),
         if (showChevron) ...[
-          const SizedBox(width: AppSpacing.s4),
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-          ),
+          const SizedBox(width: AppSpacing.s8),
+          Icon(Icons.chevron_right, size: 20, color: scheme.outline),
         ],
       ],
     );
@@ -116,6 +132,7 @@ class AppListRow extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: AppRadius.borderS,
+            highlightColor: tones.overlayPressed,
             child: ConstrainedBox(
               constraints: const BoxConstraints(
                 minHeight: AppSpacing.minTapTarget,
@@ -179,6 +196,7 @@ class AppListRowShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tones = AppTones.of(context);
     final padded = Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
       child: child,
@@ -197,6 +215,7 @@ class AppListRowShell extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: AppRadius.borderS,
+          highlightColor: tones.overlayPressed,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               minHeight: AppSpacing.minTapTarget,
@@ -209,12 +228,12 @@ class AppListRowShell extends StatelessWidget {
   }
 }
 
-/// The hairline between rows in a group.
+/// The hairline between rows that are not inside an [AppGroup].
 ///
 /// Indented past the icon column so the rows read as one list rather than as
-/// separate blocks — the whole reason this is not a stack of cards.
+/// separate blocks.
 class AppRowDivider extends StatelessWidget {
-  const AppRowDivider({super.key, this.indent = 34});
+  const AppRowDivider({super.key, this.indent = 50});
 
   final double indent;
 
@@ -224,9 +243,7 @@ class AppRowDivider extends StatelessWidget {
       height: 1,
       thickness: 1,
       indent: indent,
-      color: Theme.of(context).colorScheme.outlineVariant.withValues(
-        alpha: 0.55,
-      ),
+      color: AppTones.of(context).divider,
     );
   }
 }

@@ -25,14 +25,18 @@ import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
+import 'package:meu_auto/shared/widgets/app_folded_section.dart';
+import 'package:meu_auto/shared/widgets/app_form_section.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
+import 'package:meu_auto/shared/widgets/app_switch_row.dart';
 
 class MaintenanceFormScreen extends ConsumerStatefulWidget {
   const MaintenanceFormScreen({
@@ -268,9 +272,8 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
     setState(() {
       _occurredOn = picked;
       // Today's mileage is the right guess for a service done today and the
-      // wrong one for anything earlier. Left in place, it was saved as-is and
-      // every due point measured from the record came out late. A past date
-      // with the prefilled value untouched clears it, so the field asks.
+      // wrong one for anything earlier. A past date with the prefilled value
+      // untouched clears it, so the field asks.
       if (picked != _initialOccurredOn && _mileage.text == _initialMileage) {
         _mileage.clear();
       }
@@ -286,7 +289,11 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
       if (items != null) _applyPreselectedId(items);
     });
 
+    final theme = Theme.of(context);
     final canSave = _items.isNotEmpty;
+    final detailsHaveError = _fieldErrors.keys.any(
+      (key) => key.startsWith('items['),
+    );
 
     return AppDiscardGuard(
       listenable: Listenable.merge([
@@ -306,114 +313,118 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.s16),
+                padding: AppSpacing.screen,
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
                   if (_banner != null) AuthFormBanner(message: _banner!),
-                  const AppSectionHeader(title: 'O que foi feito'),
-                  const SizedBox(height: AppSpacing.s8),
-                  for (var i = 0; i < _items.length; i++) ...[
-                    _itemCard(i),
-                    const SizedBox(height: AppSpacing.s8),
-                  ],
-                  OutlinedButton.icon(
-                    onPressed: _submitting ? null : _openPicker,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text(
-                      _items.isEmpty
-                          ? 'Adicionar item'
-                          : 'Adicionar outro item',
-                    ),
-                  ),
-                  if (_fieldErrors['items'] != null) ...[
-                    const SizedBox(height: AppSpacing.s8),
-                    Text(
-                      _fieldErrors['items']!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
+                  AppFormSection(
+                    title: 'O que foi feito',
+                    children: [
+                      AppGroup(
+                        children: [
+                          for (var i = 0; i < _items.length; i++) _itemRow(i),
+                          AppListRow(
+                            icon: Icons.add,
+                            iconTone: AppIconWellTone.accent,
+                            title: _items.isEmpty
+                                ? 'Adicionar item'
+                                : 'Adicionar outro item',
+                            onTap: _submitting ? null : _openPicker,
+                            showChevron: true,
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.s24),
-                  const AppSectionHeader(title: 'Quando'),
-                  const SizedBox(height: AppSpacing.s8),
-                  AppDateField(
-                    value: _occurredOn,
-                    onPick: _pickDate,
-                    enabled: !_submitting,
-                    errorText: _fieldErrors['occurred_on'],
+                      if (_fieldErrors['items'] != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.s4,
+                          ),
+                          child: Text(
+                            _fieldErrors['items']!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.s12),
-                  AppKmField(
-                    controller: _mileage,
-                    enabled: !_submitting,
-                    label: _occurredOn == _initialOccurredOn
-                        ? 'Quilometragem'
-                        : 'Quilometragem no dia do serviço',
-                    helperText: 'Hoje: ${formatKm(widget.currentMileageKm)}',
-                    errorText: _fieldErrors['mileage_km'],
+                  const AppFormGap(),
+                  AppFormSection(
+                    title: 'Quando',
+                    children: [
+                      AppDateField(
+                        value: _occurredOn,
+                        onPick: _pickDate,
+                        enabled: !_submitting,
+                        errorText: _fieldErrors['occurred_on'],
+                      ),
+                      AppKmField(
+                        controller: _mileage,
+                        enabled: !_submitting,
+                        label: _occurredOn == _initialOccurredOn
+                            ? 'Quilometragem'
+                            : 'Quilometragem no dia do serviço',
+                        helperText:
+                            'Hoje: ${formatKm(widget.currentMileageKm)}',
+                        errorText: _fieldErrors['mileage_km'],
+                      ),
+                      AppSwitchRow(
+                        title: 'Não tenho o comprovante',
+                        subtitle:
+                            'Para um serviço informado de memória — feito '
+                            'antes de você usar o app, por exemplo',
+                        value: _declared,
+                        onChanged: _submitting
+                            ? null
+                            : (value) => setState(() => _declared = value),
+                      ),
+                    ],
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Não tenho o comprovante'),
-                    subtitle: const Text(
-                      'Use quando estiver informando de memória, por exemplo '
-                      'um serviço feito antes de você começar a usar o app.',
-                    ),
-                    value: _declared,
-                    onChanged: _submitting
-                        ? null
-                        : (value) => setState(() => _declared = value),
-                  ),
-                  const SizedBox(height: AppSpacing.s16),
-                  const AppSectionHeader(title: 'Onde e quanto'),
-                  const SizedBox(height: AppSpacing.s8),
-                  TextField(
-                    controller: _workshop,
-                    enabled: !_submitting,
-                    maxLength: 120,
-                    textInputAction: TextInputAction.next,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(
-                      labelText: 'Oficina',
-                      counterText: '',
-                      errorText: _fieldErrors['workshop_name'],
-                      errorMaxLines: 3,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  AppMoneyField(
-                    controller: _cost,
-                    label: 'Valor total',
-                    enabled: !_submitting,
-                    errorText: _fieldErrors['total_cost_cents'],
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  TextField(
-                    controller: _notes,
-                    enabled: !_submitting,
-                    maxLength: 500,
-                    maxLines: 2,
-                    textInputAction: TextInputAction.done,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      labelText: 'Observação',
-                      counterText: '',
-                      errorText: _fieldErrors['notes'],
-                      errorMaxLines: 3,
-                    ),
+                  const AppFormGap(),
+                  AppFormSection(
+                    title: 'Onde e quanto',
+                    children: [
+                      TextField(
+                        controller: _workshop,
+                        enabled: !_submitting,
+                        maxLength: 120,
+                        textInputAction: TextInputAction.next,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: 'Oficina',
+                          counterText: '',
+                          errorText: _fieldErrors['workshop_name'],
+                        ),
+                      ),
+                      AppMoneyField(
+                        controller: _cost,
+                        label: 'Valor total',
+                        enabled: !_submitting,
+                        errorText: _fieldErrors['total_cost_cents'],
+                      ),
+                      TextField(
+                        controller: _notes,
+                        enabled: !_submitting,
+                        maxLength: 500,
+                        maxLines: 2,
+                        textInputAction: TextInputAction.done,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          labelText: 'Observação',
+                          counterText: '',
+                          errorText: _fieldErrors['notes'],
+                        ),
+                      ),
+                    ],
                   ),
                   if (_items.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.s16),
-                    ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      childrenPadding: EdgeInsets.zero,
-                      initiallyExpanded: false,
-                      title: const Text('Detalhes por item'),
-                      subtitle: const Text(
-                        'Garantia, marca e valor de cada serviço — opcional',
-                      ),
+                    const AppFormGap(),
+                    AppFoldedSection(
+                      title: 'Detalhes por item',
+                      subtitle:
+                          'Garantia, marca e valor de cada serviço — opcional',
+                      initiallyOpen: detailsHaveError,
                       children: [
                         for (var i = 0; i < _items.length; i++)
                           _ItemDetails(
@@ -426,38 +437,18 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                       ],
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.s16),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.s16,
-                0,
-                AppSpacing.s16,
-                AppSpacing.s16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!canSave) ...[
-                    // A hint, not an error: nothing has gone wrong on a form
-                    // that just opened. It used to arrive in the error colour
-                    // before a single tap.
-                    Text(
-                      MaintenanceRecordDraft.noItemsReason,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s8),
-                  ],
-                  AppButton(
-                    label: _offline ? 'Tentar de novo' : 'Salvar',
-                    loading: _submitting,
-                    onPressed: canSave ? _submit : null,
-                  ),
-                ],
+            AppFormFooter(
+              // A hint, not an error: nothing has gone wrong on a form that
+              // just opened.
+              hint: canSave ? null : MaintenanceRecordDraft.noItemsReason,
+              child: AppButton(
+                label: _offline ? 'Tentar de novo' : 'Salvar',
+                loading: _submitting,
+                onPressed: canSave ? _submit : null,
+                expanded: true,
               ),
             ),
           ],
@@ -466,24 +457,33 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
     );
   }
 
-  Widget _itemCard(int index) {
+  Widget _itemRow(int index) {
     final item = _items[index];
     final id = item.id;
-    return _SelectedItemCard(
-      item: item,
-      errorText: _cardError(index),
-      onRemove: _submitting
+    return AppListRow(
+      key: ValueKey(id),
+      icon: maintenanceIconFor(item.slug),
+      title: item.name,
+      subtitle: _rowError(index),
+      accent: _rowError(index) == null
           ? null
-          : () => setState(
-              () => _setItems([
-                for (final current in _items)
-                  if (current.id != id) current,
-              ]),
-            ),
+          : Theme.of(context).colorScheme.error,
+      trailing: AppIconButton(
+        label: 'Remover ${item.name}',
+        icon: Icons.close,
+        onPressed: _submitting
+            ? null
+            : () => setState(
+                () => _setItems([
+                  for (final current in _items)
+                    if (current.id != id) current,
+                ]),
+              ),
+      ),
     );
   }
 
-  String? _cardError(int index) {
+  String? _rowError(int index) {
     const names = [
       'description',
       'part_brand',
@@ -497,66 +497,6 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
       if (error != null) return error;
     }
     return null;
-  }
-}
-
-class _SelectedItemCard extends StatelessWidget {
-  const _SelectedItemCard({
-    required this.item,
-    required this.onRemove,
-    this.errorText,
-  });
-
-  final MaintenanceItem item;
-  final VoidCallback? onRemove;
-  final String? errorText;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AppCard(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s4,
-        AppSpacing.s8,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                maintenanceIconFor(item.slug),
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: Text(item.name, style: theme.textTheme.titleSmall),
-              ),
-              AppIconButton(
-                label: 'Remover',
-                icon: Icons.close,
-                onPressed: onRemove,
-              ),
-            ],
-          ),
-          if (errorText != null)
-            Padding(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.s8,
-                bottom: AppSpacing.s8,
-              ),
-              child: Text(
-                errorText!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
   }
 }
 
@@ -579,11 +519,9 @@ class _ItemDetails extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.s16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: AppFormSection(
+        title: item.name,
         children: [
-          Text(item.name, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.s8),
           TextField(
             controller: controllers.description,
             enabled: enabled,
@@ -594,7 +532,6 @@ class _ItemDetails extends StatelessWidget {
               errorText: itemFieldError(fieldErrors, index, 'description'),
             ),
           ),
-          const SizedBox(height: AppSpacing.s8),
           TextField(
             controller: controllers.partBrand,
             enabled: enabled,
@@ -605,35 +542,47 @@ class _ItemDetails extends StatelessWidget {
               errorText: itemFieldError(fieldErrors, index, 'part_brand'),
             ),
           ),
-          const SizedBox(height: AppSpacing.s8),
           AppMoneyField(
             controller: controllers.cost,
             label: 'Valor deste item',
             enabled: enabled,
             errorText: itemFieldError(fieldErrors, index, 'cost_cents'),
           ),
-          const SizedBox(height: AppSpacing.s8),
-          TextField(
-            controller: controllers.warrantyMonths,
-            enabled: enabled,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.next,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(3),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controllers.warrantyMonths,
+                  enabled: enabled,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(3),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Garantia',
+                    suffixText: 'meses',
+                    errorText: itemFieldError(
+                      fieldErrors,
+                      index,
+                      'warranty_months',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s12),
+              Expanded(
+                child: AppKmField(
+                  controller: controllers.warrantyKm,
+                  label: 'Garantia',
+                  enabled: enabled,
+                  textInputAction: TextInputAction.done,
+                  errorText: itemFieldError(fieldErrors, index, 'warranty_km'),
+                ),
+              ),
             ],
-            decoration: InputDecoration(
-              labelText: 'Garantia em meses',
-              errorText: itemFieldError(fieldErrors, index, 'warranty_months'),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          AppKmField(
-            controller: controllers.warrantyKm,
-            label: 'Garantia em km',
-            enabled: enabled,
-            textInputAction: TextInputAction.done,
-            errorText: itemFieldError(fieldErrors, index, 'warranty_km'),
           ),
         ],
       ),

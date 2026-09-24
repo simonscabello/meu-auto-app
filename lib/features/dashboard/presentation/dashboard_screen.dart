@@ -2,51 +2,74 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
-import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
-import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
-import 'package:meu_auto/features/abastecimento/presentation/last_abastecimento_card.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/dashboard/presentation/alert_row.dart';
+import 'package:meu_auto/features/dashboard/presentation/mileage_display.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
+import 'package:meu_auto/features/maintenance/domain/plan_progress.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
-import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
+import 'package:meu_auto/shared/widgets/app_quick_action.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 export 'package:meu_auto/features/dashboard/presentation/alert_row.dart'
     show routeForAlert;
+export 'package:meu_auto/features/dashboard/presentation/mileage_display.dart'
+    show odometerCaption, odometerIsStale;
 
 /// Início, for one vehicle. Owns the loading, error and content states and
 /// hands the data to [DashboardContent], which knows nothing about providers.
 class DashboardView extends ConsumerWidget {
-  const DashboardView({super.key, required this.vehicleId});
+  const DashboardView({super.key, required this.vehicleId, this.header});
 
   final String vehicleId;
+
+  /// The head of the page — the mark, the account and the car — which is
+  /// known before the dashboard arrives and stays put while it loads.
+  final Widget? header;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider(vehicleId));
     final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
+    // The plans carry the interval an alert does not, which is what turns
+    // "faltam 4.112 km" into a bar. The tab keeps them alive; reading them
+    // here costs no request, and a list that has not arrived just means no
+    // bars yet.
+    final plans = ref.watch(maintenancePlansProvider(vehicleId)).valueOrNull;
+    final progress = plans == null
+        ? const <String, double>{}
+        : planProgressById(plans);
 
     return dashboard.when(
       skipLoadingOnReload: true,
-      loading: () => const _DashboardSkeleton(),
-      error: (error, _) => AppErrorState.fromError(
-        error: error,
-        onRetry: () => ref.invalidate(dashboardProvider(vehicleId)),
+      loading: () => DashboardSkeleton(header: header),
+      error: (error, _) => _WithHeader(
+        header: header,
+        child: AppErrorState.fromError(
+          error: error,
+          onRetry: () => ref.invalidate(dashboardProvider(vehicleId)),
+        ),
       ),
       data: (data) => DashboardContent(
         dashboard: data,
+        header: header,
         today: CivilDate.todayLocal(),
         refuelingSupported: vehicle?.refueling.supported ?? false,
+        progressByReference: progress,
         onOdometerTap: () => OdometerSheet.show(
           context,
           vehicleId: vehicleId,
@@ -57,8 +80,6 @@ class DashboardView extends ConsumerWidget {
         onStartHistory: () => context.push(AppRoutes.calibrar(vehicleId)),
         onSeeAllAlerts: () => context.push(AppRoutes.alerts),
         onAlertTap: (alert) => _openAlert(context, alert),
-        onCostsTap: () => context.push(AppRoutes.costs),
-        onAbastecimentoTap: () => context.push(AppRoutes.abastecimentos),
         onRegisterMaintenance: () => context.push(AppRoutes.maintenanceNew),
         onRegisterAbastecimento: vehicle == null
             ? null
@@ -83,23 +104,48 @@ class DashboardView extends ConsumerWidget {
   }
 }
 
-/// Início as pure presentation: how the car is, what to do now, what comes
-/// next.
+class _WithHeader extends StatelessWidget {
+  const _WithHeader({required this.child, this.header});
+
+  final Widget? header;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (header == null) return child;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.s8,
+            AppSpacing.page,
+            0,
+          ),
+          child: header,
+        ),
+        Expanded(child: child),
+      ],
+    );
+  }
+}
+
+/// Início as pure presentation. Five questions, in order, and nothing else:
 ///
-/// In order, and every block a bounded group:
+///  1. **Which car?** The header.
+///  2. **How far has it gone?** The mileage, as the hero figure, with the
+///     pencil beside it — the one prominent way to update it.
+///  3. **Does anything need me?** A discreet strip between two hairlines:
+///     what is late or close, from every domain, red only on the glyph and
+///     the figure. When nothing is, one quiet line says so — and says
+///     honestly when the app does not know yet.
+///  4. **What do I want to record?** Two named actions of exactly equal
+///     weight.
+///  5. **What comes next?** At most three upcoming items, each with how far
+///     it is and — only when the figures allow it — how far along.
 ///
-///  1. **The car.** Mileage as the hero figure, and the verdict under it. The
-///     verdict has four states, not three: something is late, something is
-///     close, *we do not know yet*, and everything is fine. The third one is
-///     the fix for a brand-new car greeted with a green "Tudo em dia" while
-///     the app knew nothing about it — including right after the owner said
-///     "não sei" to every history question.
-///  2. **What you came to do.** Named actions, side by side.
-///  3. **Precisa de atenção** — what is late or close, from every domain.
-///  4. **Em seguida** — what comes next among the things that are fine. Before
-///     it, a car with nothing due showed a verdict and nothing else, and
-///     "what is coming?" is the owner's most valuable question.
-///  5. The last fill and what the car has cost, when there is one.
+/// Costs and the last fill are not here. They live on Histórico, where the
+/// question "what did this car cost" is the reason to open the tab.
 ///
 /// Every number arrived computed by the server. Nothing in this file derives a
 /// due date, a status or a total; it turns figures into sentences.
@@ -107,27 +153,33 @@ class DashboardContent extends StatelessWidget {
   const DashboardContent({
     super.key,
     required this.dashboard,
+    this.header,
     this.today,
     this.refuelingSupported = false,
+    this.progressByReference = const {},
     this.onOdometerTap,
     this.onProfileTap,
     this.onMaintenanceTap,
     this.onStartHistory,
     this.onSeeAllAlerts,
     this.onAlertTap,
-    this.onCostsTap,
-    this.onAbastecimentoTap,
     this.onRegisterAbastecimento,
     this.onRegisterMaintenance,
   });
 
   final Dashboard dashboard;
+  final Widget? header;
 
   /// Only for how old the mileage reading is. Null leaves the caption as the
   /// date it was recorded.
   final CivilDate? today;
 
   final bool refuelingSupported;
+
+  /// How far along each upcoming plan is, by plan id. An item with no entry
+  /// gets no bar.
+  final Map<String, double> progressByReference;
+
   final VoidCallback? onOdometerTap;
   final VoidCallback? onProfileTap;
   final VoidCallback? onMaintenanceTap;
@@ -137,8 +189,6 @@ class DashboardContent extends StatelessWidget {
 
   final VoidCallback? onSeeAllAlerts;
   final ValueChanged<Alert>? onAlertTap;
-  final VoidCallback? onCostsTap;
-  final VoidCallback? onAbastecimentoTap;
   final VoidCallback? onRegisterAbastecimento;
   final VoidCallback? onRegisterMaintenance;
 
@@ -148,129 +198,99 @@ class DashboardContent extends StatelessWidget {
     final verdict = verdictOf(dashboard);
     final profilePrompt = profilePromptOf(dashboard.profile);
     final totalAlerts = alerts.overdue + alerts.dueSoon;
-    final showCosts = dashboard.costs.totalCents.cents > 0;
-    final seeAll = totalAlerts > alerts.items.length ? onSeeAllAlerts : null;
+    final shown = alerts.items.take(_maxAlertsOnHome).toList();
+    final seeAll = totalAlerts > shown.length ? onSeeAllAlerts : null;
+
+    final quietRows = <Widget>[
+      // The two gaps that stop the app working sit right under the verdict
+      // they undermine: without a fuel type the engine items are simply
+      // missing, and without a plan there is nothing to report on.
+      if (profilePrompt != null)
+        AppListRow(
+          icon: Icons.tune_outlined,
+          title: profilePrompt,
+          onTap: onProfileTap,
+          showChevron: onProfileTap != null,
+        ),
+      // The next step for a car the app knows nothing about. Not a nag: it
+      // shows only while there are questions nobody was asked, and goes away
+      // the moment they are answered — "não sei" included.
+      if (verdict.kind == VerdictKind.unknown &&
+          alerts.needsBaseline > 0 &&
+          onStartHistory != null)
+        AppListRow(
+          icon: Icons.fact_check_outlined,
+          title: 'Conte o que já foi feito no carro',
+          subtitle: 'Algumas perguntas rápidas. Depois, o aviso chega na hora',
+          onTap: onStartHistory,
+          showChevron: true,
+        ),
+      // With something late or close the verdict speaks about that, and the
+      // items nobody knows about would go unmentioned. One quiet row keeps
+      // them on the screen without competing with what is overdue.
+      if (verdict.kind != VerdictKind.unknown && alerts.itemsWithoutHistory > 0)
+        AppListRow(
+          icon: Icons.help_outline,
+          title: unknownHistoryPhrase(alerts.itemsWithoutHistory),
+          subtitle: 'Informe quando foram feitos para receber o aviso',
+          onTap: onMaintenanceTap,
+          showChevron: onMaintenanceTap != null,
+        ),
+    ];
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
+        AppSpacing.page,
         AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
+        AppSpacing.page,
+        AppSpacing.s40,
       ),
       children: [
-        _VehiclePanel(
-          odometer: dashboard.odometer,
-          plate: dashboard.vehicle.plate,
-          verdict: verdict,
-          today: today,
-          onOdometerTap: onOdometerTap,
-          onVerdictTap: _verdictTap(verdict, seeAll),
+        if (header != null) ...[
+          header!,
+          const SizedBox(height: AppSpacing.block),
+        ],
+        MileageDisplay(
+          currentKm: dashboard.odometer.currentKm,
+          caption: odometerCaption(dashboard.odometer.recordedOn, today),
+          stale: odometerIsStale(dashboard.odometer.recordedOn, today),
+          onTap: onOdometerTap,
         ),
-        // The two gaps that stop the app working sit right under the verdict
-        // they undermine: without a fuel type the engine items are simply
-        // missing, and without a plan there is nothing to report on.
-        if (profilePrompt != null) ...[
-          const SizedBox(height: AppSpacing.s12),
-          AppGroup(
-            children: [
-              AppListRow(
-                icon: Icons.tune,
-                title: profilePrompt,
-                onTap: onProfileTap,
-                showChevron: onProfileTap != null,
-              ),
-            ],
-          ),
-        ],
-        // The next step for a car the app knows nothing about. Not a nag: it
-        // shows only while there are questions nobody was asked, and goes away
-        // the moment they are answered — "não sei" included.
-        if (verdict.kind == VerdictKind.unknown &&
-            alerts.needsBaseline > 0 &&
-            onStartHistory != null) ...[
-          const SizedBox(height: AppSpacing.s12),
-          AppGroup(
-            children: [
-              AppListRow(
-                icon: Icons.fact_check_outlined,
-                title: 'Conte o que já foi feito no carro',
-                subtitle:
-                    'Algumas perguntas rápidas, e o Meu Auto passa a avisar '
-                    'na hora certa',
-                onTap: onStartHistory,
-                showChevron: true,
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: appGroupGap),
+        const SizedBox(height: AppSpacing.block),
+        AttentionStrip(
+          verdict: verdict,
+          alerts: shown,
+          seeAllLabel: seeAll == null ? null : 'Ver todos ($totalAlerts)',
+          onSeeAll: seeAll,
+          onHeaderTap: _verdictTap(verdict, seeAll),
+          onAlertTap: onAlertTap,
+          quietRows: quietRows,
+        ),
+        const SizedBox(height: AppSpacing.block),
         _QuickActions(
           onRegisterAbastecimento: refuelingSupported
               ? onRegisterAbastecimento
               : null,
           onRegisterMaintenance: onRegisterMaintenance,
-          onOdometerTap: onOdometerTap,
         ),
-        if (alerts.items.isNotEmpty) ...[
-          const SizedBox(height: appGroupGap),
-          AppGroup(
-            title: 'Precisa de atenção',
-            actionLabel: seeAll == null ? null : 'Ver todos ($totalAlerts)',
-            onAction: seeAll,
-            children: [
-              for (final alert in alerts.items)
-                AlertRow(
-                  alert: alert,
-                  onTap: onAlertTap == null ? null : () => onAlertTap!(alert),
-                ),
-            ],
-          ),
-        ],
         if (dashboard.upcoming.isNotEmpty) ...[
-          const SizedBox(height: appGroupGap),
-          AppGroup(
-            title: 'Em seguida',
-            children: [
-              for (final item in dashboard.upcoming)
-                AlertRow(
-                  alert: item,
-                  onTap: onAlertTap == null ? null : () => onAlertTap!(item),
-                ),
-            ],
+          const SizedBox(height: AppSpacing.s32),
+          AppSectionHeader(
+            title: 'Próximos cuidados',
+            emphasis: AppSectionEmphasis.title,
+            actionLabel: onMaintenanceTap == null ? null : 'Ver todos',
+            onAction: onMaintenanceTap,
           ),
-        ],
-        // With something late or close the verdict speaks about that, and the
-        // items nobody knows about would go unmentioned. One quiet row keeps
-        // them on the screen without competing with what is overdue.
-        if (verdict.kind != VerdictKind.unknown &&
-            alerts.itemsWithoutHistory > 0) ...[
-          const SizedBox(height: appGroupGap),
-          AppGroup(
-            children: [
-              AppListRow(
-                icon: Icons.help_outline,
-                title: unknownHistoryPhrase(alerts.itemsWithoutHistory),
-                subtitle:
-                    'Informe quando foram feitos e o Meu Auto passa a avisar',
-                onTap: onMaintenanceTap,
-                showChevron: onMaintenanceTap != null,
-              ),
-            ],
-          ),
-        ],
-        if (refuelingSupported && dashboard.lastAbastecimento != null) ...[
-          const SizedBox(height: appGroupGap),
-          LastAbastecimentoCard(
-            supported: true,
-            last: dashboard.lastAbastecimento,
-            onTap: onAbastecimentoTap,
-            onRegister: onRegisterAbastecimento,
-          ),
-        ],
-        if (showCosts) ...[
-          const SizedBox(height: appGroupGap),
-          _CostsSection(costs: dashboard.costs, onTap: onCostsTap),
+          for (var i = 0; i < dashboard.upcoming.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.s12),
+            UpcomingCareCard(
+              alert: dashboard.upcoming[i],
+              progress: progressByReference[dashboard.upcoming[i].referenceId],
+              onTap: onAlertTap == null
+                  ? null
+                  : () => onAlertTap!(dashboard.upcoming[i]),
+            ),
+          ],
         ],
       ],
     );
@@ -287,6 +307,11 @@ class DashboardContent extends StatelessWidget {
     };
   }
 }
+
+/// How many late or close items Início lists before pointing at the full
+/// list. Three is what fits above the fold on a small phone with the mileage
+/// still visible.
+const _maxAlertsOnHome = 3;
 
 // ---------------------------------------------------------------- verdict
 
@@ -321,17 +346,13 @@ final class DashboardVerdict {
 
 /// Priority order, and only one shows: late, close, unknown, fine.
 ///
-/// The phrase names what it counts. It used to say "2 itens precisam de
-/// atenção" while counting only the late ones, right above a group with that
-/// very title listing three — the one due soon included. Late says "vencidos",
-/// and what is close besides goes on the quiet second line.
+/// The phrase names what it counts. Late says "vencidos", and what is close
+/// besides goes on the quiet second line.
 ///
-/// "Unknown" is neutral on purpose. It used to be folded into "Tudo em dia",
-/// because putting a dozen setup prompts where the verdict goes made a new car
-/// look broken — and the fix went one step too far the other way, into
-/// claiming a car was fine when nothing was known about it. "Nada vencido até
-/// agora" is true, and the line under it says what is missing, in grey rather
-/// than in the status colours.
+/// "Unknown" is neutral on purpose: a car nobody has told the app about is
+/// not "em dia", and it is not broken either. "Nada vencido até agora" is
+/// true, and the line under it says what is missing, in grey rather than in
+/// the status colours.
 @visibleForTesting
 DashboardVerdict verdictOf(Dashboard dashboard) {
   final alerts = dashboard.alerts;
@@ -396,7 +417,7 @@ String unknownHistoryPhrase(int count) {
 String? profilePromptOf(DashboardProfile profile) {
   if (!profile.powertrainKnown) {
     return 'Falta dizer qual o combustível do seu carro. '
-        'Com isso a gente sabe o que ele precisa — e o que não precisa.';
+        'É o que define o que ele precisa — e o que não precisa.';
   }
   if (profile.status == MaintenanceProfileStatus.unknown) {
     return 'Ainda não temos um plano para este carro. '
@@ -405,392 +426,221 @@ String? profilePromptOf(DashboardProfile profile) {
   return null;
 }
 
-/// How old the mileage is, when that matters.
-///
-/// Every distance-based due date is measured from this number, and the server
-/// has no way to know the car kept moving. A reading months old makes "faltam
-/// 3.000 km" a guess, so past about six weeks the caption says how old it is
-/// and asks for a new one — the whole panel is already the way to update it.
-@visibleForTesting
-String odometerCaption(CivilDate? recordedOn, CivilDate? today) {
-  if (recordedOn == null) return 'Quilometragem atual';
-  if (today == null) return 'Atualizada em ${formatCivilDayMonth(recordedOn)}';
-  final days = recordedOn.daysUntil(today);
-  if (days <= 0) return 'Atualizada hoje';
-  if (days == 1) return 'Atualizada ontem';
-  if (days <= _staleAfterDays) {
-    return 'Atualizada em ${formatCivilDayMonth(recordedOn)}';
-  }
-  final months = (days / 30).round();
-  final age = months <= 1 ? 'há mais de um mês' : 'há $months meses';
-  return 'Atualizada $age — toque para conferir';
-}
-
-/// Whether [odometerCaption] is asking for a new reading.
-@visibleForTesting
-bool odometerIsStale(CivilDate? recordedOn, CivilDate? today) {
-  if (recordedOn == null || today == null) return false;
-  return recordedOn.daysUntil(today) > _staleAfterDays;
-}
-
-const _staleAfterDays = 45;
-
-/// `cost_months` is a rolling window measured back from `since`, not a calendar
-/// month. Calling one month "este mês" would be wrong on every day but the 1st.
-@visibleForTesting
-String costPeriodLabel(int periodMonths) {
-  if (periodMonths == 1) {
-    return 'Gastos registrados · últimos 30 dias';
-  }
-  return 'Gastos registrados · últimos $periodMonths meses';
-}
-
-const _categoryLabels = {
-  'manutencao': 'manutenção',
-  'ipva': 'IPVA',
-  'licenciamento': 'licenciamento',
-  'seguro': 'seguro',
-  'obligations': 'IPVA e licenciamento',
-  'abastecimento': 'combustível',
-  'expenses': 'despesas',
-};
-
-/// Spells out what the total actually covers.
-///
-/// Required by the contract, and by honesty: without day-to-day expenses this
-/// figure is a partial sum, and presenting it as the cost of running the car
-/// would be a lie. An unmapped category is shown raw rather than dropped, so a
-/// category added later still appears.
-@visibleForTesting
-String? includedCategoriesLine(List<String> categories) {
-  if (categories.isEmpty) return null;
-  final labels = [
-    for (final category in categories) _categoryLabels[category] ?? category,
-  ];
-  if (labels.length == 1) return 'Inclui ${labels.single}';
-  final head = labels.sublist(0, labels.length - 1).join(', ');
-  return 'Inclui $head e ${labels.last}';
-}
-
 // ---------------------------------------------------------------- pieces
 
-/// The car, as one panel: how far it has gone, which car it is, and whether
-/// it is fine.
-class _VehiclePanel extends StatelessWidget {
-  const _VehiclePanel({
-    required this.odometer,
+/// What needs attention, as a strip between two hairlines.
+///
+/// No card: the strip is part of the page. The head of it is the verdict —
+/// the glyph in a tinted well, the count, the quiet detail — and under it the
+/// items themselves, three at most. Red appears on the glyph and on the
+/// figure that says how late, and nowhere else. When nothing is late the
+/// strip is one line, and it stays honest: "we do not know yet" is one of
+/// its states.
+class AttentionStrip extends StatelessWidget {
+  const AttentionStrip({
+    super.key,
     required this.verdict,
-    this.plate,
-    this.today,
-    this.onOdometerTap,
-    this.onVerdictTap,
+    this.alerts = const [],
+    this.seeAllLabel,
+    this.onSeeAll,
+    this.onHeaderTap,
+    this.onAlertTap,
+    this.quietRows = const [],
   });
 
-  final DashboardOdometer odometer;
   final DashboardVerdict verdict;
-  final String? plate;
-  final CivilDate? today;
-  final VoidCallback? onOdometerTap;
-  final VoidCallback? onVerdictTap;
+  final List<Alert> alerts;
+  final String? seeAllLabel;
+  final VoidCallback? onSeeAll;
+  final VoidCallback? onHeaderTap;
+  final ValueChanged<Alert>? onAlertTap;
+
+  /// Rows about what is missing rather than what is late, in the same strip
+  /// so the page does not grow a second list.
+  final List<Widget> quietRows;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final tones = AppTones.of(context);
     final visual = statusColors(verdict.status, theme.brightness);
     final loud = verdict.loud;
-    final fine = verdict.kind == VerdictKind.fine;
 
-    final iconColor = loud
-        ? visual.foreground
-        : fine
-        ? scheme.primary
-        : scheme.onSurfaceVariant;
-    final icon = switch (verdict.kind) {
-      VerdictKind.unknown || VerdictKind.nothingTracked => Icons.help_outline,
-      _ => visual.icon,
+    final (tone, icon) = switch (verdict.kind) {
+      VerdictKind.overdue ||
+      VerdictKind.dueSoon => (AppIconWellTone.status, visual.icon),
+      VerdictKind.fine => (AppIconWellTone.accent, Icons.check_circle_outline),
+      VerdictKind.unknown || VerdictKind.nothingTracked => (
+        AppIconWellTone.neutral,
+        Icons.help_outline,
+      ),
     };
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: groupSurfaceColor(scheme),
-        borderRadius: AppRadius.borderM,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _OdometerReading(
-            odometer: odometer,
-            plate: plate,
-            today: today,
-            onTap: onOdometerTap,
-          ),
-          // The verdict carries the status fill edge to edge along the foot
-          // of the panel, so "something is late" registers before a word is
-          // read — and looks like nothing at all when the car is fine.
-          Semantics(
-            button: onVerdictTap != null,
-            label: verdict.detail == null
-                ? verdict.phrase
-                : '${verdict.phrase}. ${verdict.detail}',
-            excludeSemantics: true,
-            child: Material(
-              color: loud ? visual.background : Colors.transparent,
-              child: InkWell(
-                onTap: onVerdictTap,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minHeight: AppSpacing.minTapTarget,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.s16,
-                      vertical: AppSpacing.s12,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(icon, size: 20, color: iconColor),
-                        const SizedBox(width: AppSpacing.s12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                verdict.phrase,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  color: loud
-                                      ? visual.foreground
-                                      : scheme.onSurface,
-                                ),
-                              ),
-                              if (verdict.detail != null)
-                                Text(
-                                  verdict.detail!,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        if (onVerdictTap != null)
-                          Icon(
-                            Icons.chevron_right,
-                            size: 20,
-                            color: loud ? visual.foreground : scheme.outline,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+    final head = AppListRow(
+      icon: icon,
+      iconTone: tone,
+      status: verdict.status,
+      title: verdict.phrase,
+      subtitle: verdict.detail,
+      accent: loud ? null : scheme.onSurfaceVariant,
+      onTap: onHeaderTap,
+      showChevron: onHeaderTap != null && onSeeAll == null,
+      trailing: onSeeAll == null
+          ? null
+          : AppSectionAction(
+              label: seeAllLabel ?? 'Ver todos',
+              onPressed: onSeeAll,
             ),
-          ),
-        ],
-      ),
+      semanticLabel: verdict.detail == null
+          ? verdict.phrase
+          : '${verdict.phrase}. ${verdict.detail}',
     );
-  }
-}
 
-/// The mileage, set as the reading on an instrument.
-class _OdometerReading extends StatelessWidget {
-  const _OdometerReading({
-    required this.odometer,
-    this.plate,
-    this.today,
-    this.onTap,
-  });
+    final rows = <Widget>[
+      head,
+      for (final alert in alerts)
+        AlertRow(
+          alert: alert,
+          onTap: onAlertTap == null ? null : () => onAlertTap!(alert),
+        ),
+      ...quietRows,
+    ];
 
-  final DashboardOdometer odometer;
-  final String? plate;
-  final CivilDate? today;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final caption = odometerCaption(odometer.recordedOn, today);
-    final stale = odometerIsStale(odometer.recordedOn, today);
-
-    final reading = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // FittedBox rather than a smaller type ramp: seven digits at a 1.6
-        // text scale on a 360dp phone is wider than the column, and shrinking
-        // the one number that matters beats wrapping it onto two lines.
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text.rich(
-            TextSpan(
-              text: formatKmNumber(odometer.currentKm),
-              style: theme.textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: -1,
-                fontFeatures: AppTypography.tabular,
-              ),
-              children: [
-                TextSpan(
-                  text: ' km',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s4),
-        Row(
-          children: [
-            if (stale) ...[
-              Icon(Icons.update, size: 16, color: scheme.onSurfaceVariant),
-              const SizedBox(width: AppSpacing.s4),
-            ],
-            Flexible(
-              child: Text(
-                caption,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            if (plate != null && plate!.trim().isNotEmpty) ...[
-              const SizedBox(width: AppSpacing.s8),
-              _PlateChip(plate: plate!.trim()),
-            ],
-          ],
-        ),
+        Divider(height: 1, thickness: 1, color: tones.divider),
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0)
+            Divider(height: 1, thickness: 1, indent: 50, color: tones.divider),
+          rows[i],
+        ],
+        Divider(height: 1, thickness: 1, color: tones.divider),
       ],
     );
-
-    final padded = Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s12,
-      ),
-      child: Row(
-        children: [
-          Expanded(child: reading),
-          if (onTap != null)
-            Icon(Icons.edit_outlined, size: 20, color: scheme.outline),
-        ],
-      ),
-    );
-
-    if (onTap == null) {
-      return padded;
-    }
-
-    return Semantics(
-      button: true,
-      label:
-          '$caption. ${formatKm(odometer.currentKm)}. Atualizar quilometragem',
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(onTap: onTap, child: padded),
-      ),
-    );
   }
 }
 
-/// The plate, drawn as a plate.
+/// The two things someone opens the app to do, side by side and identical.
 ///
-/// One of the two outlines left in the app, and it earns it: a Brazilian
-/// plate is a physical object with a border, and the outline is what makes
-/// seven characters read as one at a glance.
-class _PlateChip extends StatelessWidget {
-  const _PlateChip({required this.plate});
-
-  final String plate;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s8,
-        vertical: 3,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.borderXs,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Text(
-        plate,
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          fontFeatures: AppTypography.tabular,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-}
-
-/// The two or three things someone opens the app to do, side by side.
-///
-/// Named, on the one screen where all of them are plausible, each going
-/// straight to its own form. Abastecer is absent — not disabled — on a
-/// vehicle that does not refuel.
+/// Abastecer is absent — not disabled — on a vehicle that does not refuel,
+/// and Registrar manutenção then takes the whole width.
 class _QuickActions extends StatelessWidget {
   const _QuickActions({
     this.onRegisterAbastecimento,
     this.onRegisterMaintenance,
-    this.onOdometerTap,
   });
 
   final VoidCallback? onRegisterAbastecimento;
   final VoidCallback? onRegisterMaintenance;
-  final VoidCallback? onOdometerTap;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final tiles = <Widget>[
-      if (onRegisterAbastecimento != null)
-        _QuickAction(
-          icon: Icons.local_gas_station_outlined,
-          label: 'Abastecer',
-          onTap: onRegisterAbastecimento,
-        ),
-      _QuickAction(
-        icon: Icons.build_outlined,
-        label: 'Manutenção',
-        onTap: onRegisterMaintenance,
+    final maintenance = AppQuickAction(
+      icon: Icons.build_outlined,
+      label: 'Registrar manutenção',
+      onTap: onRegisterMaintenance,
+      wide: onRegisterAbastecimento == null,
+    );
+    if (onRegisterAbastecimento == null) {
+      return maintenance;
+    }
+    // IntrinsicHeight so the two tiles are the same height whatever their
+    // labels wrap to; two children, so the second layout pass is nothing.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: AppQuickAction(
+              icon: Icons.local_gas_station_outlined,
+              label: 'Abastecer',
+              onTap: onRegisterAbastecimento,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(child: maintenance),
+        ],
       ),
-      _QuickAction(
-        icon: Icons.speed_outlined,
-        label: 'Atualizar km',
-        onTap: onOdometerTap,
-      ),
-    ];
+    );
+  }
+}
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: groupSurfaceColor(scheme),
-        borderRadius: AppRadius.borderM,
-      ),
-      child: IntrinsicHeight(
-        child: Row(
+/// One upcoming item: what it is, how far it is, and — when the figures
+/// allow it — how far along.
+class UpcomingCareCard extends StatelessWidget {
+  const UpcomingCareCard({
+    super.key,
+    required this.alert,
+    this.progress,
+    this.onTap,
+  });
+
+  final Alert alert;
+
+  /// 0 to 1, or null for no bar. Never estimated here.
+  final double? progress;
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final detail = alertDetailLine(alert);
+
+    return Semantics(
+      button: onTap != null,
+      label: detail == null ? alert.title : '${alert.title}. $detail',
+      excludeSemantics: true,
+      child: AppSurface(
+        variant: AppSurfaceVariant.grouped,
+        onTap: onTap,
+        padding: const EdgeInsets.all(AppSpacing.s16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            for (var i = 0; i < tiles.length; i++) ...[
-              if (i > 0)
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  indent: AppSpacing.s12,
-                  endIndent: AppSpacing.s12,
-                  color: scheme.outlineVariant.withValues(alpha: 0.45),
+            Row(
+              children: [
+                AppIconWell(
+                  icon: alertIconOf(alert.kind),
+                  size: AppIconWellSize.l,
                 ),
-              Expanded(child: tiles[i]),
+                const SizedBox(width: AppSpacing.s16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        alert.title,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (detail != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          detail,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: AppSpacing.s8),
+                  Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+                ],
+              ],
+            ),
+            if (progress != null) ...[
+              const SizedBox(height: AppSpacing.s16),
+              AppProgressBar(value: progress!),
             ],
           ],
         ),
@@ -799,134 +649,55 @@ class _QuickActions extends StatelessWidget {
   }
 }
 
-class _QuickAction extends StatelessWidget {
-  const _QuickAction({required this.icon, required this.label, this.onTap});
+/// The skeleton mirrors the real layout — the reading, a strip, two tiles, a
+/// list — because the shape of this screen is known before the data arrives.
+class DashboardSkeleton extends StatelessWidget {
+  const DashboardSkeleton({super.key, this.header});
 
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return Semantics(
-      button: true,
-      enabled: onTap != null,
-      label: label,
-      excludeSemantics: true,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: AppSpacing.minTapTarget,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.s8,
-                vertical: AppSpacing.s12,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, size: 24, color: scheme.primary),
-                  const SizedBox(height: AppSpacing.s8),
-                  Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// What the car has cost, as a figure inside its own group.
-///
-/// Only when there is something to report: a new car's "R$ 0,00" under a
-/// "custo registrado" label read like a finding rather than an empty page.
-/// The full breakdown is one tap away here and always one tab away in
-/// Histórico.
-class _CostsSection extends StatelessWidget {
-  const _CostsSection({required this.costs, this.onTap});
-
-  final DashboardCosts costs;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return AppGroup(
-      title: costPeriodLabel(costs.periodMonths),
-      footnote: includedCategoriesLine(costs.noteCategoryKeys),
-      dividerIndent: 0,
-      children: [
-        AppListRowShell(
-          onTap: onTap,
-          semanticLabel:
-              '${costPeriodLabel(costs.periodMonths)}. '
-              '${costs.totalCents.format()}',
-          child: Row(
-            children: [
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    costs.totalCents.format(),
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontFeatures: AppTypography.tabular,
-                    ),
-                  ),
-                ),
-              ),
-              if (onTap != null)
-                Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// The skeleton mirrors the real layout — a panel, a row of actions, a list —
-/// because the shape of this screen is known before the data arrives.
-class _DashboardSkeleton extends StatelessWidget {
-  const _DashboardSkeleton();
+  final Widget? header;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
+        AppSpacing.page,
         AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
+        AppSpacing.page,
+        AppSpacing.s40,
       ),
-      children: const [
-        AppSkeleton(width: double.infinity, height: 132),
-        SizedBox(height: appGroupGap),
-        AppSkeleton(width: double.infinity, height: 76),
-        SizedBox(height: appGroupGap),
-        AppSkeleton(width: 140, height: 14),
-        SizedBox(height: AppSpacing.s8),
-        AppSkeleton(width: double.infinity, height: 148),
+      children: [
+        if (header != null) ...[
+          header!,
+          const SizedBox(height: AppSpacing.block),
+        ] else ...[
+          const AppSkeleton(width: 96, height: 18),
+          const SizedBox(height: AppSpacing.s20),
+          const AppSkeleton(width: 180, height: 36),
+          const SizedBox(height: AppSpacing.s8),
+          const AppSkeleton(width: 220, height: 16),
+          const SizedBox(height: AppSpacing.block),
+        ],
+        const AppSkeleton(width: 150, height: 14),
+        const SizedBox(height: AppSpacing.s12),
+        const AppSkeleton(width: 240, height: 56),
+        const SizedBox(height: AppSpacing.s12),
+        const AppSkeleton(width: 190, height: 14),
+        const SizedBox(height: AppSpacing.block),
+        const AppSkeleton(width: double.infinity, height: 64),
+        const SizedBox(height: AppSpacing.block),
+        const Row(
+          children: [
+            Expanded(child: AppSkeleton(height: 112)),
+            SizedBox(width: AppSpacing.s12),
+            Expanded(child: AppSkeleton(height: 112)),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s32),
+        const AppSkeleton(width: 170, height: 18),
+        const SizedBox(height: AppSpacing.s12),
+        const AppSkeleton(width: double.infinity, height: 92),
+        const SizedBox(height: AppSpacing.s12),
+        const AppSkeleton(width: double.infinity, height: 92),
       ],
     );
   }

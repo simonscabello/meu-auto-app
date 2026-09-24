@@ -8,6 +8,10 @@ import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
+/// The mark while the session resolves.
+///
+/// Sits on the same page as everything else, so the hand-off from the native
+/// splash is one screen gaining content, not two screens.
 class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
@@ -19,7 +23,7 @@ class SplashScreen extends ConsumerWidget {
       return AppScaffold(
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.s24),
+            padding: const EdgeInsets.all(AppSpacing.page),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -43,7 +47,7 @@ class SplashScreen extends ConsumerWidget {
         return AppScaffold(
           body: Center(
             child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.s24),
+              padding: const EdgeInsets.all(AppSpacing.page),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -64,7 +68,7 @@ class SplashScreen extends ConsumerWidget {
     return const AppScaffold(
       body: Center(
         child: Padding(
-          padding: EdgeInsets.all(AppSpacing.s24),
+          padding: EdgeInsets.all(AppSpacing.page),
           child: _AppName(showSpinner: true),
         ),
       ),
@@ -84,8 +88,12 @@ class _AppName extends StatelessWidget {
       children: [
         const AppWordmark(size: AppWordmarkSize.large),
         if (showSpinner) ...[
-          const SizedBox(height: AppSpacing.s24),
-          const CircularProgressIndicator(),
+          const SizedBox(height: AppSpacing.s32),
+          const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
         ],
       ],
     );

@@ -2,18 +2,17 @@ import 'package:flutter/material.dart';
 
 /// Radius scale.
 ///
-/// Four steps, and each has a job: [xs] for indicators and bars, [s] for
-/// chips and inline controls, [m] for grouped surfaces, [l] for sheets. A
-/// container that is not one of those is using the wrong one.
+/// Four steps, and each has a job: [xs] for bars and small indicators, [s]
+/// for chips, badges and inline controls, [m] for cards, groups and fields,
+/// [l] for sheets, dialogs and the hero surfaces. Deliberately not rounder:
+/// a container that is a capsule reads as a toy, and this is an instrument.
 abstract final class AppRadius {
   static const double xs = 4;
-  static const double s = 8;
-  static const double m = 12;
-  static const double l = 16;
+  static const double s = 10;
+  static const double m = 16;
+  static const double l = 22;
 
-  /// Pills: segmented controls and filter chips. Deliberately not available
-  /// as a container radius — a pill-shaped card is how an interface starts
-  /// looking like a toy.
+  /// Pills: segmented controls, filter chips and status badges only.
   static const double pill = 999;
 
   static const BorderRadius borderXs = BorderRadius.all(Radius.circular(xs));

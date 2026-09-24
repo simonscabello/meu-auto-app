@@ -8,8 +8,13 @@ import 'package:meu_auto/features/maintenance/application/maintenance_item_provi
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -21,11 +26,8 @@ class PlanCreateSheet extends ConsumerStatefulWidget {
   final String vehicleId;
 
   static Future<void> show(BuildContext context, {required String vehicleId}) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<void>(
+      context,
       builder: (sheetContext) => PlanCreateSheet(vehicleId: vehicleId),
     );
   }
@@ -96,60 +98,49 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
     final plans = ref.watch(
       maintenancePlansWithHiddenProvider(widget.vehicleId),
     );
-    final height = MediaQuery.sizeOf(context).height * 0.85;
     final listed = plans.valueOrNull;
     final taken = <String>{
       if (listed != null)
         for (final plan in listed) plan.maintenanceItemId,
     };
 
-    return SizedBox(
-      height: height,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.s16,
-          0,
-          AppSpacing.s16,
-          AppSpacing.s16,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Novo plano', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s8),
-            Text(
-              'Vamos usar o intervalo sugerido, você pode ajustar depois.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+    return AppSheetFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AppSheetHeader(
+            title: 'Acompanhar outro item',
+            subtitle: 'Vamos usar o intervalo sugerido. Você ajusta depois.',
+            closable: false,
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          if (_banner != null) AuthFormBanner(message: _banner!),
+          TextField(
+            controller: _query,
+            enabled: !_submitting,
+            textInputAction: TextInputAction.search,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Buscar',
+              prefixIcon: Icon(Icons.search),
             ),
-            const SizedBox(height: AppSpacing.s12),
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            TextField(
-              controller: _query,
-              enabled: !_submitting,
-              textInputAction: TextInputAction.search,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Buscar',
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            Expanded(child: _body(catalogue, taken)),
-            const SizedBox(height: AppSpacing.s8),
-            AppButton(
-              label: _offline ? 'Tentar de novo' : 'Salvar',
-              loading: _submitting,
-              onPressed: _selected == null || _submitting ? null : _submit,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          Expanded(child: _body(catalogue, taken)),
+          const SizedBox(height: AppSpacing.s8),
+          AppButton(
+            label: _offline ? 'Tentar de novo' : 'Salvar',
+            loading: _submitting,
+            onPressed: _selected == null || _submitting ? null : _submit,
+            expanded: true,
+          ),
+        ],
       ),
     );
   }
 
   Widget _body(AsyncValue<List<MaintenanceItem>> catalogue, Set<String> taken) {
+    final theme = Theme.of(context);
     return catalogue.when(
       loading: () => const AppSkeletonList(count: 8, itemHeight: 56),
       error: (error, _) => AppErrorState.fromError(
@@ -168,6 +159,10 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
               _query.text.trim().isEmpty
                   ? 'Todos os itens do catálogo já têm um plano.'
                   : 'Nada com esse nome. Tente outra busca.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           );
         }
@@ -217,39 +212,63 @@ class _GroupedPicker extends StatelessWidget {
     return ListView(
       children: [
         if (maintenance.isNotEmpty) ...[
-          _SectionTitle(MaintenanceItemKind.maintenance.sectionTitle),
-          for (final item in maintenance) _tile(item),
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s8),
+            child: AppSectionHeader(
+              title: MaintenanceItemKind.maintenance.sectionTitle,
+            ),
+          ),
+          for (var i = 0; i < maintenance.length; i++) ...[
+            if (i > 0) const AppRowDivider(),
+            _tile(context, maintenance[i]),
+          ],
         ],
         if (care.isNotEmpty) ...[
-          _SectionTitle(MaintenanceItemKind.care.sectionTitle),
-          for (final item in care) _tile(item),
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s16),
+            child: AppSectionHeader(
+              title: MaintenanceItemKind.care.sectionTitle,
+            ),
+          ),
+          for (var i = 0; i < care.length; i++) ...[
+            if (i > 0) const AppRowDivider(),
+            _tile(context, care[i]),
+          ],
         ],
       ],
     );
   }
 
-  Widget _tile(MaintenanceItem item) {
+  Widget _tile(BuildContext context, MaintenanceItem item) {
+    final theme = Theme.of(context);
     final selected = selectedId == item.id;
-    return ListTile(
+    return Semantics(
+      button: true,
       selected: selected,
-      onTap: onSelect == null ? null : () => onSelect!(item),
-      leading: Icon(maintenanceIconFor(item.slug)),
-      title: Text(item.name),
-      trailing: selected ? const Icon(Icons.check) : null,
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, AppSpacing.s8, 0, AppSpacing.s4),
-      child: Text(label, style: Theme.of(context).textTheme.titleSmall),
+      label: item.name,
+      excludeSemantics: true,
+      child: AppListRowShell(
+        onTap: onSelect == null ? null : () => onSelect!(item),
+        child: Row(
+          children: [
+            AppIconWell(
+              icon: maintenanceIconFor(item.slug),
+              tone: selected ? AppIconWellTone.accent : AppIconWellTone.neutral,
+            ),
+            const SizedBox(width: AppSpacing.s12),
+            Expanded(
+              child: Text(
+                item.name,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check, size: 20, color: theme.colorScheme.primary),
+          ],
+        ),
+      ),
     );
   }
 }

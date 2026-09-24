@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
@@ -24,10 +23,12 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 class MaintenanceDetailScreen extends ConsumerStatefulWidget {
   const MaintenanceDetailScreen({super.key, required this.recordId});
@@ -52,8 +53,8 @@ class _MaintenanceDetailScreenState
       title: 'Manutenção',
       body: record.when(
         loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 4, itemHeight: 96),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 3, itemHeight: 120),
         ),
         error: (error, _) => AppErrorState.fromError(
           error: error,
@@ -77,11 +78,6 @@ class _MaintenanceDetailScreenState
   bool get _busy => _retracting || _addingItem;
 
   /// Names one more service that was done at the same time.
-  ///
-  /// The case it exists for: a revisão registered with five items, and the
-  /// brake fluid remembered afterwards. Before this the only ways out were to
-  /// leave the history wrong or to retract the whole record and type all six
-  /// lines again.
   ///
   /// Appending only, which is why the picker locks what is already on the
   /// record instead of letting it be unticked: removing a line means deciding
@@ -191,15 +187,10 @@ String _recordMileageLine(MaintenanceRecord record) {
 ///
 /// Nothing here derives anything: `warranty_until` and `warranty_until_km`
 /// arrive computed by the server on every read, and the totals arrive summed.
-/// The record as pure presentation.
 ///
-/// Nothing here derives anything: `warranty_until` and `warranty_until_km`
-/// arrive computed by the server on every read, and the totals arrive summed.
-///
-/// The lines were a stack of one card per item, which made a revisão of six
-/// services read as six separate events. They are one event, so they are one
-/// group — and the row that adds a forgotten one is the last row of it, where
-/// it reads as "and one more here".
+/// The lines are one event, so they are one group — and the row that adds a
+/// forgotten one is the last row of it, where it reads as "and one more
+/// here".
 class MaintenanceDetailContent extends StatelessWidget {
   const MaintenanceDetailContent({
     super.key,
@@ -226,24 +217,31 @@ class MaintenanceDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final meta = _recordMileageLine(record);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
+      padding: AppSpacing.screenHeaded,
       children: [
-        Text(
-          formatCivilDateLong(record.occurredOn),
-          style: theme.textTheme.titleLarge,
-        ),
-        const SizedBox(height: AppSpacing.s4),
-        Text(
-          _recordMileageLine(record),
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                formatCivilDateLong(record.occurredOn),
+                style: theme.textTheme.headlineSmall,
+              ),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.s4),
+                Text(
+                  meta,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         if (record.kind == MaintenanceRecordKind.declared) ...[
@@ -259,6 +257,7 @@ class MaintenanceDetailContent extends StatelessWidget {
             if (onAddItem != null)
               AppListRow(
                 icon: addingItem ? Icons.hourglass_empty : Icons.add,
+                iconTone: AppIconWellTone.accent,
                 title: 'Adicionar item que faltou',
                 subtitle: 'Um serviço feito junto e que ficou de fora',
                 onTap: addingItem ? null : onAddItem,
@@ -279,8 +278,9 @@ class MaintenanceDetailContent extends StatelessWidget {
                     ),
                     Text(
                       record.totalCostCents.format(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontFeatures: AppTypography.tabular,
+                      style: AppTypography.instrument(
+                        size: 22,
+                        color: scheme.onSurface,
                       ),
                     ),
                   ],
@@ -306,10 +306,12 @@ class MaintenanceDetailContent extends StatelessWidget {
         ],
         const SizedBox(height: appGroupGap),
         if (onEdit != null)
-          OutlinedButton.icon(
+          AppButton(
+            label: 'Editar',
+            icon: Icons.edit_outlined,
+            variant: AppButtonVariant.secondary,
             onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Editar'),
+            expanded: true,
           ),
         const SizedBox(height: AppSpacing.s8),
         if (onRetract != null)
@@ -318,6 +320,7 @@ class MaintenanceDetailContent extends StatelessWidget {
             variant: AppButtonVariant.destructive,
             loading: retracting,
             onPressed: onRetract,
+            expanded: true,
           ),
       ],
     );
@@ -331,13 +334,10 @@ class _DeclaredBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final visual = statusColors(AppStatus.semBaseline, theme.brightness);
-    return Container(
-      width: double.infinity,
+    return AppSurface(
+      variant: AppSurfaceVariant.grouped,
+      color: visual.background,
       padding: const EdgeInsets.all(AppSpacing.s12),
-      decoration: BoxDecoration(
-        color: visual.background,
-        borderRadius: AppRadius.borderM,
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -386,22 +386,20 @@ class _ItemRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Icon(
-                  maintenanceIconFor(item.itemSlug),
-                  size: 22,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
+              AppIconWell(icon: maintenanceIconFor(item.itemSlug)),
               const SizedBox(width: AppSpacing.s12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.itemName, style: theme.textTheme.bodyLarge),
+                    Text(
+                      item.itemName,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     if (detail.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
@@ -419,6 +417,7 @@ class _ItemRow extends StatelessWidget {
                 Text(
                   item.costCents!.format(),
                   style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                     fontFeatures: AppTypography.tabular,
                   ),
                 ),
@@ -439,9 +438,7 @@ class _ItemRow extends StatelessWidget {
 ///
 /// It says "até 20/08/2028", never "ativa" or "vencida". Deciding that would
 /// mean comparing to today, and whether a warranty is close to running out is
-/// a rule the server owns — it already answers it in `/alerts` with
-/// `kind: garantia`. Computing it here a second way is how a screen starts
-/// disagreeing with the alert list.
+/// a rule the server owns.
 class _WarrantyLine extends StatelessWidget {
   const _WarrantyLine({required this.item});
 
@@ -458,24 +455,27 @@ class _WarrantyLine extends StatelessWidget {
       if (untilKm != null) 'até ${formatKm(untilKm)}',
     ];
 
-    return Row(
-      children: [
-        Icon(
-          Icons.verified_user_outlined,
-          size: 18,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: AppSpacing.s8),
-        Expanded(
-          child: Text(
-            // "ou" and not "e": whichever comes first ends it.
-            'Garantia ${parts.join(' ou ')}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+    return Padding(
+      padding: const EdgeInsets.only(left: 50),
+      child: Row(
+        children: [
+          Icon(
+            Icons.verified_user_outlined,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.s8),
+          Expanded(
+            child: Text(
+              // "ou" and not "e": whichever comes first ends it.
+              'Garantia ${parts.join(' ou ')}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

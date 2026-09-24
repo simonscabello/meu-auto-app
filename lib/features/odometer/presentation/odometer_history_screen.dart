@@ -14,7 +14,9 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -62,8 +64,8 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
       title: 'Quilometragem',
       body: history.when(
         loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 5),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 4, itemHeight: 72),
         ),
         error: (error, _) => AppErrorState.fromError(
           error: error,
@@ -86,9 +88,6 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
 
   /// A reading the app did not create belongs to the event that did. Removing
   /// it alone would leave that maintenance record with no mileage behind it.
-  ///
-  /// The API does not enforce this — the guard is the app's, and it is
-  /// recorded in docs/DECISOES-EM-ABERTO.md as a candidate server-side rule.
   void _explainBlockedDelete(OdometerReading reading) {
     final origin = reading.source == OdometerSource.abastecimento
         ? 'um abastecimento'
@@ -162,64 +161,50 @@ class _HistoryList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.items.isEmpty) {
       return const AppEmptyState(
+        icon: Icons.speed_outlined,
         title: 'A quilometragem do seu carro começa aqui',
         message:
             'Toque em atualizar quilometragem para registrar a primeira leitura.',
       );
     }
 
-    final rows = _withMonthHeaders(state.items);
+    final months = _groupByMonth(state.items);
 
     return ListView.builder(
       controller: scroll,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
-      itemCount: rows.length + 1,
+      padding: AppSpacing.screen,
+      itemCount: months.length + 1,
       itemBuilder: (context, index) {
-        if (index == rows.length) {
+        if (index == months.length) {
           return _Footer(state: state, onRetry: onRetryPage);
         }
-        final row = rows[index];
-        return switch (row) {
-          _MonthHeader(:final label) => Padding(
-            padding: const EdgeInsets.only(
-              top: AppSpacing.s16,
-              bottom: AppSpacing.s8,
-            ),
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-          _ReadingRow(:final reading) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        final month = months[index];
+        return Padding(
+          padding: EdgeInsets.only(top: index == 0 ? 0 : appGroupGap),
+          child: AppGroup(
+            title: month.label,
             children: [
-              if (index > 0 && rows[index - 1] is _ReadingRow)
-                const AppRowDivider(indent: 0),
-              _ReadingTile(
-                reading: reading,
-                deleting: deletingId == reading.id,
-                onDelete: onDelete,
-                onBlockedDelete: onBlockedDelete,
-              ),
+              for (final reading in month.readings)
+                _ReadingTile(
+                  key: ValueKey(reading.id),
+                  reading: reading,
+                  deleting: deletingId == reading.id,
+                  onDelete: onDelete,
+                  onBlockedDelete: onBlockedDelete,
+                ),
             ],
           ),
-        };
+        );
       },
     );
   }
 
   /// Groups by month without a second pass over the data: the list already
-  /// arrives newest first, so a header goes in wherever the month changes.
-  List<_Row> _withMonthHeaders(List<OdometerReading> readings) {
-    final rows = <_Row>[];
+  /// arrives newest first, so a group closes wherever the month changes.
+  List<({String label, List<OdometerReading> readings})> _groupByMonth(
+    List<OdometerReading> readings,
+  ) {
+    final groups = <({String label, List<OdometerReading> readings})>[];
     int? year;
     int? month;
     for (final reading in readings) {
@@ -227,30 +212,20 @@ class _HistoryList extends StatelessWidget {
           reading.occurredOn.month != month) {
         year = reading.occurredOn.year;
         month = reading.occurredOn.month;
-        rows.add(_MonthHeader(formatCivilMonthHeader(reading.occurredOn)));
+        groups.add((
+          label: formatCivilMonthHeader(reading.occurredOn),
+          readings: <OdometerReading>[],
+        ));
       }
-      rows.add(_ReadingRow(reading));
+      groups.last.readings.add(reading);
     }
-    return rows;
+    return groups;
   }
-}
-
-sealed class _Row {
-  const _Row();
-}
-
-final class _MonthHeader extends _Row {
-  const _MonthHeader(this.label);
-  final String label;
-}
-
-final class _ReadingRow extends _Row {
-  const _ReadingRow(this.reading);
-  final OdometerReading reading;
 }
 
 class _ReadingTile extends StatelessWidget {
   const _ReadingTile({
+    super.key,
     required this.reading,
     required this.deleting,
     required this.onDelete,
@@ -265,6 +240,7 @@ class _ReadingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final origin = reading.source.originLabel;
     final canDelete = reading.source.isOwnEntry;
 
@@ -274,8 +250,16 @@ class _ReadingTile extends StatelessWidget {
 
     return AppListRowShell(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          AppIconWell(
+            icon: switch (reading.source) {
+              OdometerSource.abastecimento => Icons.local_gas_station_outlined,
+              OdometerSource.maintenance => Icons.build_outlined,
+              _ => Icons.speed_outlined,
+            },
+          ),
+          const SizedBox(width: AppSpacing.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,6 +267,7 @@ class _ReadingTile extends StatelessWidget {
                 Text(
                   formatKm(reading.mileageKm),
                   style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
                     fontFeatures: AppTypography.tabular,
                   ),
                 ),
@@ -290,7 +275,7 @@ class _ReadingTile extends StatelessWidget {
                 Text(
                   when,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
                 if (reading.notes != null && reading.notes!.isNotEmpty) ...[
@@ -315,7 +300,7 @@ class _ReadingTile extends StatelessWidget {
                   ? 'Apagar leitura'
                   : 'Por que não dá para apagar',
               icon: canDelete ? Icons.delete_outline : Icons.lock_outline,
-              color: theme.colorScheme.onSurfaceVariant,
+              color: scheme.onSurfaceVariant,
               onPressed: () =>
                   canDelete ? onDelete(reading) : onBlockedDelete(reading),
             ),

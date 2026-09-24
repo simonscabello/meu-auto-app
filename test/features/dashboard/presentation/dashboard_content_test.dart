@@ -7,6 +7,7 @@ import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 
 /// Complements the status-phrase and cost-label spec next door: the singular
 /// wordings, how an alert row reads, and whether the whole thing survives a
@@ -119,9 +120,37 @@ void main() {
         ),
       );
 
-      expect(find.text('Em seguida'), findsOneWidget);
-      expect(find.text('em 4.200 km ou faltam 30 dias'), findsOneWidget);
-      expect(find.text('em 20/01/2027'), findsOneWidget);
+      expect(find.text('Próximos cuidados'), findsOneWidget);
+      expect(find.text('Faltam 4.200 km ou 30 dias'), findsOneWidget);
+      expect(find.text('Em 20/01/2027'), findsOneWidget);
+      // No interval arrived for either, so no bar pretends to know.
+      expect(find.byType(AppProgressBar), findsNothing);
+    });
+
+    testWidgets('a bar appears only for an item whose fraction is known', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: DashboardContent(
+              dashboard: _dashboard(
+                upcoming: [
+                  _upcoming(title: 'Troca de óleo do motor', remainingKm: 4200),
+                  _upcoming(title: 'Pastilhas de freio', remainingKm: 18000),
+                ],
+              ),
+              progressByReference: const {
+                '33333333-3333-7333-8333-333333333333': 0.58,
+              },
+            ),
+          ),
+        ),
+      );
+      // Both upcoming items share the fixture's reference id, so both get
+      // the bar; the point is that the map, not the alert, decides.
+      expect(find.byType(AppProgressBar), findsNWidgets(2));
     });
 
     testWidgets('with something late, unknown items keep a quiet row', (
@@ -141,12 +170,42 @@ void main() {
     });
   });
 
-  group('costs', () {
-    // "R$ 0,00" under a cost label read like a finding on a brand-new car.
-    testWidgets('are left out while nothing was spent', (tester) async {
-      await _pump(tester, _dashboard(totalCents: 0));
+  // What the car cost lives on Histórico, where the question is the reason
+  // to open the tab. Início answers "now" and "next" and nothing else.
+  group('what is not on Início', () {
+    testWidgets('the costs block', (tester) async {
+      await _pump(tester, _dashboard(totalCents: 154000));
       expect(find.textContaining('Gastos registrados'), findsNothing);
-      expect(find.text('R\$ 0,00'), findsNothing);
+      expect(find.text('R\$ 1.540,00'), findsNothing);
+    });
+
+    testWidgets('the last fill, even on a car that refuels', (tester) async {
+      await _pump(
+        tester,
+        _dashboard(last: _lastFill()),
+        refuelingSupported: true,
+      );
+      expect(find.text('Último abastecimento'), findsNothing);
+    });
+
+    testWidgets('a third quick action for the mileage', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: DashboardContent(
+              dashboard: _dashboard(),
+              refuelingSupported: true,
+              onRegisterAbastecimento: () {},
+              onRegisterMaintenance: () {},
+              onOdometerTap: () {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Atualizar km'), findsNothing);
+      expect(find.text('Abastecer'), findsOneWidget);
+      expect(find.text('Registrar manutenção'), findsOneWidget);
     });
   });
 
@@ -171,55 +230,6 @@ void main() {
       );
       expect(odometerIsStale(const CivilDate(2026, 5, 20), today), isTrue);
       expect(odometerIsStale(const CivilDate(2026, 9, 1), today), isFalse);
-    });
-  });
-
-  group('cost categories', () {
-    testWidgets('a single category is not joined with "e"', (tester) async {
-      await _pump(tester, _dashboard(categories: ['manutencao']));
-      expect(find.text('Inclui manutenção'), findsOneWidget);
-    });
-
-    testWidgets('an unmapped category is shown rather than dropped', (
-      tester,
-    ) async {
-      await _pump(tester, _dashboard(categories: ['manutencao', 'pedagio']));
-      expect(find.text('Inclui manutenção e pedagio'), findsOneWidget);
-    });
-  });
-
-  group('last abastecimento', () {
-    testWidgets('sits after what needs attention and before the costs', (
-      tester,
-    ) async {
-      await _pump(
-        tester,
-        _dashboard(
-          dueSoon: 1,
-          items: [_alert(title: 'Bateria')],
-          last: _lastFill(),
-        ),
-        refuelingSupported: true,
-      );
-
-      expect(
-        tester.getTopLeft(find.text('Último abastecimento')).dy,
-        greaterThan(tester.getTopLeft(find.text('Precisa de atenção')).dy),
-      );
-      expect(
-        tester.getTopLeft(find.textContaining('Gastos registrados')).dy,
-        greaterThan(tester.getTopLeft(find.text('Último abastecimento')).dy),
-      );
-    });
-
-    testWidgets('an electric vehicle does not get the block', (tester) async {
-      await _pump(
-        tester,
-        _dashboard(last: _lastFill()),
-        refuelingSupported: false,
-      );
-
-      expect(find.text('Último abastecimento'), findsNothing);
     });
   });
 

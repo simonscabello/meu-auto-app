@@ -17,7 +17,9 @@ import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -77,9 +79,6 @@ class _AbastecimentoListScreenState
 
     return AppScaffold(
       title: 'Abastecimentos',
-      // In the app bar, not a floating button. Every screen in the app now
-      // puts its one action in the same place and names it, so "add" stops
-      // being a symbol the reader has to decode per screen.
       actions: [
         if (canRegister)
           AppIconButton(
@@ -90,8 +89,8 @@ class _AbastecimentoListScreenState
       ],
       body: history.when(
         loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 5, itemHeight: 56),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 4, itemHeight: 72),
         ),
         error: (error, _) => AppErrorState.fromError(
           error: error,
@@ -132,6 +131,7 @@ class AbastecimentoListContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.items.isEmpty) {
       return AppEmptyState(
+        icon: Icons.local_gas_station_outlined,
         title: abastecimentoEmptyTitle,
         message: abastecimentoEmptyMessage,
         actionLabel: onRegister == null ? null : abastecimentoRegisterLabel,
@@ -139,29 +139,55 @@ class AbastecimentoListContent extends StatelessWidget {
       );
     }
 
+    final months = _groupByMonth(state.items);
+
     return ListView.builder(
       controller: scroll,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
-      itemCount: state.items.length + 1,
+      padding: AppSpacing.screen,
+      itemCount: months.length + 1,
       itemBuilder: (context, index) {
-        if (index == state.items.length) {
+        if (index == months.length) {
           return _Footer(state: state, onRetry: onRetryPage);
         }
-        final fill = state.items[index];
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (index > 0) const AppRowDivider(),
-            _FillTile(fill: fill, onTap: () => onOpen?.call(fill)),
-          ],
+        final month = months[index];
+        return Padding(
+          padding: EdgeInsets.only(top: index == 0 ? 0 : appGroupGap),
+          child: AppGroup(
+            title: month.label,
+            children: [
+              for (final fill in month.fills)
+                _FillTile(
+                  key: ValueKey(fill.id),
+                  fill: fill,
+                  onTap: onOpen == null ? null : () => onOpen!(fill),
+                ),
+            ],
+          ),
         );
       },
     );
+  }
+
+  /// The list already arrives newest first, so a group closes wherever the
+  /// month changes — no sorting, no second pass.
+  List<({String label, List<Abastecimento> fills})> _groupByMonth(
+    List<Abastecimento> fills,
+  ) {
+    final groups = <({String label, List<Abastecimento> fills})>[];
+    int? year;
+    int? month;
+    for (final fill in fills) {
+      if (fill.occurredOn.year != year || fill.occurredOn.month != month) {
+        year = fill.occurredOn.year;
+        month = fill.occurredOn.month;
+        groups.add((
+          label: formatCivilMonthHeader(fill.occurredOn),
+          fills: <Abastecimento>[],
+        ));
+      }
+      groups.last.fills.add(fill);
+    }
+    return groups;
   }
 }
 
@@ -173,7 +199,7 @@ class AbastecimentoListContent extends StatelessWidget {
 /// A row that computed cleanly puts its km/L in the figures column instead,
 /// beside the amount, where the numbers line up down the page.
 class _FillTile extends StatelessWidget {
-  const _FillTile({required this.fill, this.onTap});
+  const _FillTile({super.key, required this.fill, this.onTap});
 
   final Abastecimento fill;
   final VoidCallback? onTap;
@@ -185,16 +211,9 @@ class _FillTile extends StatelessWidget {
     final kmPerLiter = consumptionValueText(fill.consumption);
 
     final body = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Icon(
-            Icons.local_gas_station_outlined,
-            size: 22,
-            color: scheme.onSurfaceVariant,
-          ),
-        ),
+        const AppIconWell(icon: Icons.local_gas_station_outlined),
         const SizedBox(width: AppSpacing.s12),
         Expanded(
           child: Column(
@@ -202,7 +221,9 @@ class _FillTile extends StatelessWidget {
             children: [
               Text(
                 formatCivilDate(fill.occurredOn),
-                style: theme.textTheme.bodyLarge,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
@@ -231,6 +252,7 @@ class _FillTile extends StatelessWidget {
             Text(
               fill.totalCostCents.format(),
               style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
                 fontFeatures: AppTypography.tabular,
               ),
             ),
@@ -244,6 +266,10 @@ class _FillTile extends StatelessWidget {
               ),
           ],
         ),
+        if (onTap != null) ...[
+          const SizedBox(width: AppSpacing.s8),
+          Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+        ],
       ],
     );
 

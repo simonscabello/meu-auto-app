@@ -11,6 +11,7 @@ import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -104,55 +105,6 @@ void main() {
     expect(find.textContaining('ainda não têm histórico'), findsNothing);
   });
 
-  testWidgets('cost card says registered cost and lists included categories', (
-    tester,
-  ) async {
-    await _pump(tester, _dashboard(periodMonths: 12));
-
-    expect(find.text('Gastos registrados · últimos 12 meses'), findsOneWidget);
-    expect(
-      find.text('Inclui manutenção, IPVA, licenciamento e seguro'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('custo total'), findsNothing);
-    expect(find.textContaining('Custo total'), findsNothing);
-    expect(find.textContaining('este mês'), findsNothing);
-  });
-
-  testWidgets('a one-month cost window is labelled as the last 30 days', (
-    tester,
-  ) async {
-    await _pump(tester, _dashboard(periodMonths: 1));
-
-    expect(find.text('Gastos registrados · últimos 30 dias'), findsOneWidget);
-    expect(find.textContaining('este mês'), findsNothing);
-  });
-
-  testWidgets('the cost card is the entry into the costs screen', (
-    tester,
-  ) async {
-    var opened = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: Scaffold(
-          body: DashboardContent(
-            dashboard: _dashboard(),
-            onCostsTap: () => opened = true,
-          ),
-        ),
-      ),
-    );
-
-    // The figure, not the label: the label is the group's name and now sits
-    // outside the surface the row is in, the same as every other section
-    // header in the app.
-    await tester.tap(find.text('R\$ 1.540,00'));
-    await tester.pump();
-
-    expect(opened, isTrue);
-  });
-
   testWidgets('DashboardView shows a skeleton while loading', (tester) async {
     final pending = Completer<Dashboard>();
     addTearDown(() {
@@ -165,6 +117,7 @@ void main() {
       ProviderScope(
         overrides: [
           dashboardProvider(_vehicleId).overrideWith((ref) => pending.future),
+          maintenancePlansProvider(_vehicleId).overrideWith((ref) async => []),
         ],
         child: const MaterialApp(
           home: Scaffold(body: DashboardView(vehicleId: _vehicleId)),
@@ -184,6 +137,7 @@ void main() {
           dashboardProvider(
             _vehicleId,
           ).overrideWith((ref) async => throw const ApiFailure.semConexao()),
+          maintenancePlansProvider(_vehicleId).overrideWith((ref) async => []),
         ],
         child: const MaterialApp(
           home: Scaffold(body: DashboardView(vehicleId: _vehicleId)),
@@ -205,6 +159,7 @@ void main() {
           dashboardProvider(
             _vehicleId,
           ).overrideWith((ref) async => _dashboard()),
+          maintenancePlansProvider(_vehicleId).overrideWith((ref) async => []),
         ],
         child: const MaterialApp(
           home: Scaffold(body: DashboardView(vehicleId: _vehicleId)),
@@ -235,17 +190,18 @@ void main() {
               refuelingSupported: true,
               onRegisterAbastecimento: () => tapped.add('abastecer'),
               onRegisterMaintenance: () => tapped.add('manutencao'),
-              onOdometerTap: () => tapped.add('km'),
             ),
           ),
         ),
       );
 
       await tester.tap(find.text('Abastecer'));
-      await tester.tap(find.text('Manutenção'));
-      await tester.tap(find.text('Atualizar km'));
+      await tester.tap(find.text('Registrar manutenção'));
 
-      expect(tapped, ['abastecer', 'manutencao', 'km']);
+      expect(tapped, ['abastecer', 'manutencao']);
+      // The mileage has one prominent way in — the pencil beside the
+      // reading — and the quick actions do not repeat it.
+      expect(find.text('Atualizar km'), findsNothing);
     });
 
     // Absent, not disabled: an electric car has nothing to fill, and a greyed
@@ -255,16 +211,14 @@ void main() {
     ) async {
       await _pump(tester, _dashboard());
       expect(find.text('Abastecer'), findsNothing);
-      expect(find.text('Manutenção'), findsOneWidget);
+      expect(find.text('Registrar manutenção'), findsOneWidget);
     });
   });
 
-  // The reading and the verdict are one object: this odometer, on this car, is
-  // or is not fine. They were two floating elements with a gap between them.
-  group('vehicle panel', () {
-    testWidgets('the verdict is part of the panel and opens the full list', (
-      tester,
-    ) async {
+  // The verdict is the head of the attention strip, and tapping it opens the
+  // full list when Início could not show all of it.
+  group('attention strip', () {
+    testWidgets('the verdict opens the full list', (tester) async {
       var opened = false;
       await tester.pumpWidget(
         MaterialApp(

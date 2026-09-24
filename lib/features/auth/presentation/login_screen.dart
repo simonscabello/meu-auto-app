@@ -5,15 +5,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
+import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/application/login_notice.dart';
-import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/auth/presentation/auth_password_field.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -43,9 +44,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       ref.read(loginNoticeProvider.notifier).state = null;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(notice)));
+      showAppSnackBar(ScaffoldMessenger.of(context), message: notice);
     });
   }
 
@@ -97,23 +96,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final theme = Theme.of(context);
     // No app bar. This is the front door, and an app bar reading "Entrar"
     // above a button reading "Entrar" is chrome saying the same word twice.
-    // Every screen reachable from here carries its own way back.
     return AppScaffold(
       body: AutofillGroup(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.s24),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.s48,
+            AppSpacing.page,
+            AppSpacing.s40,
+          ),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
-            const SizedBox(height: AppSpacing.s40),
             const AppWordmark(size: AppWordmarkSize.large),
-            const SizedBox(height: AppSpacing.s8),
+            const SizedBox(height: AppSpacing.s12),
             Text(
               'Manutenção, quilometragem e prazos do seu carro.',
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: AppSpacing.s40),
+            const SizedBox(height: AppSpacing.s48),
             if (_banner != null) AuthFormBanner(message: _banner!),
             TextField(
               controller: _emailController,
@@ -131,11 +133,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               },
               decoration: InputDecoration(
                 labelText: 'E-mail',
+                prefixIcon: const Icon(Icons.mail_outline),
                 errorText: _fieldErrors['email'],
-                errorMaxLines: 3,
               ),
             ),
-            const SizedBox(height: AppSpacing.s16),
+            const SizedBox(height: AppSpacing.s12),
             AuthPasswordField(
               controller: _passwordController,
               label: 'Senha',
@@ -164,21 +166,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.s8),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                label: _offline ? 'Tentar de novo' : 'Entrar',
-                loading: _submitting,
-                onPressed: _submit,
-              ),
+            AppButton(
+              label: _offline ? 'Tentar de novo' : 'Entrar',
+              loading: _submitting,
+              onPressed: _submit,
+              expanded: true,
             ),
             const SizedBox(height: AppSpacing.s12),
             AppButton(
               label: 'Criar conta',
-              variant: AppButtonVariant.tertiary,
+              variant: AppButtonVariant.secondary,
               onPressed: _submitting
                   ? null
                   : () => context.go(AppRoutes.register),
+              expanded: true,
             ),
           ],
         ),

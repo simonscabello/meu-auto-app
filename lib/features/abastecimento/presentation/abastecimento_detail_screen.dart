@@ -12,10 +12,15 @@ import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
+import 'package:meu_auto/shared/widgets/app_detail_header.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_fact_row.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_metric.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 class AbastecimentoDetailScreen extends ConsumerWidget {
   const AbastecimentoDetailScreen({super.key, required this.abastecimentoId});
@@ -30,8 +35,8 @@ class AbastecimentoDetailScreen extends ConsumerWidget {
       loading: () => const AppScaffold(
         title: 'Abastecimento',
         body: Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 4, itemHeight: 88),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 3, itemHeight: 110),
         ),
       ),
       error: (error, _) => AppScaffold(
@@ -94,6 +99,8 @@ Future<void> _delete(
   }
 }
 
+/// The fill as pure presentation: when, the three figures a person compares
+/// fill to fill, and the rest as facts.
 class AbastecimentoDetailContent extends StatelessWidget {
   const AbastecimentoDetailContent({
     super.key,
@@ -109,53 +116,124 @@ class AbastecimentoDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final station = fill.stationName?.trim();
     final notes = fill.notes?.trim();
+    final kmPerLiter = consumptionValueText(fill.consumption);
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: AppSpacing.screenHeaded,
       children: [
-        Text(
-          formatCivilDateLong(fill.occurredOn),
-          style: theme.textTheme.headlineSmall,
+        AppDetailHeader(
+          icon: Icons.local_gas_station_outlined,
+          title: formatCivilDateLong(fill.occurredOn),
+          subtitle:
+              '${abastecimentoFuelLabel(fill.fuel)} · ${formatKm(fill.mileageKm)}',
         ),
-        const SizedBox(height: AppSpacing.s8),
-        Text(
-          consumptionPhrase(fill.consumption),
-          style: theme.textTheme.bodyLarge,
+        const SizedBox(height: appGroupGap),
+        // The three figures, as readings.
+        AppSurface(
+          variant: AppSurfaceVariant.grouped,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: AppMetric(
+                    value: fill.totalCostCents.format(),
+                    label: 'Valor total',
+                    size: AppMetricSize.compact,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s12),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: AppMetric(
+                    value: litersTextFromVolumeMl(fill.volumeMl),
+                    unit: 'L',
+                    label: 'Litros',
+                    size: AppMetricSize.compact,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s12),
+              Expanded(
+                child: kmPerLiter == null
+                    ? Text(
+                        consumptionPhrase(fill.consumption),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      )
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: AppMetric(
+                          value: kmPerLiter,
+                          unit: 'km/L',
+                          label: 'Consumo',
+                          size: AppMetricSize.compact,
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.s24),
-        _Fact(label: 'Quilometragem', value: formatKm(fill.mileageKm)),
-        const SizedBox(height: AppSpacing.s16),
-        _Fact(
-          label: 'Litros',
-          value: '${litersTextFromVolumeMl(fill.volumeMl)} L',
-        ),
-        const SizedBox(height: AppSpacing.s16),
-        _Fact(label: 'Valor total', value: fill.totalCostCents.format()),
-        const SizedBox(height: AppSpacing.s16),
-        _Fact(
-          label: 'Preço por litro',
-          value: fill.pricePerLiterCents.format(),
-        ),
-        const SizedBox(height: AppSpacing.s16),
-        _Fact(label: 'Combustível', value: abastecimentoFuelLabel(fill.fuel)),
-        const SizedBox(height: AppSpacing.s16),
-        _Fact(label: 'Tanque cheio', value: fill.fullTank ? 'Sim' : 'Não'),
-        if (station != null && station.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Posto', value: station),
+        if (kmPerLiter == null) ...[
+          const SizedBox(height: AppSpacing.s8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+            child: Text(
+              consumptionPhrase(fill.consumption),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         ],
-        if (notes != null && notes.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Observação', value: notes),
-        ],
-        const SizedBox(height: AppSpacing.s32),
+        const SizedBox(height: appGroupGap),
+        AppGroup(
+          dividerIndent: 0,
+          children: [
+            AppFactRow(
+              label: 'Quilometragem',
+              value: formatKm(fill.mileageKm),
+              inline: true,
+            ),
+            AppFactRow(
+              label: 'Preço por litro',
+              value: fill.pricePerLiterCents.format(),
+              inline: true,
+            ),
+            AppFactRow(
+              label: 'Combustível',
+              value: abastecimentoFuelLabel(fill.fuel),
+              inline: true,
+            ),
+            AppFactRow(
+              label: 'Tanque cheio',
+              value: fill.fullTank ? 'Sim' : 'Não',
+              inline: true,
+            ),
+            if (station != null && station.isNotEmpty)
+              AppFactRow(label: 'Posto', value: station, inline: true),
+            if (notes != null && notes.isNotEmpty)
+              AppFactRow(label: 'Observação', value: notes),
+          ],
+        ),
+        const SizedBox(height: appGroupGap),
         if (onEdit != null) ...[
           AppButton(
             label: 'Editar',
+            icon: Icons.edit_outlined,
             variant: AppButtonVariant.secondary,
             onPressed: onEdit,
+            expanded: true,
           ),
           const SizedBox(height: AppSpacing.s8),
         ],
@@ -164,32 +242,8 @@ class AbastecimentoDetailContent extends StatelessWidget {
             label: 'Excluir',
             variant: AppButtonVariant.destructive,
             onPressed: onDelete,
+            expanded: true,
           ),
-      ],
-    );
-  }
-}
-
-class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s4),
-        Text(value, style: theme.textTheme.titleMedium),
       ],
     );
   }

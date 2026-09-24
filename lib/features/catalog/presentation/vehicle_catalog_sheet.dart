@@ -2,21 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/catalog/application/vehicle_catalog_provider.dart';
 import 'package:meu_auto/features/catalog/domain/vehicle_catalog.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_pressable.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 /// The progressive picker: brand, then model, then year.
 ///
 /// One sheet with three steps rather than three dropdowns, because a dropdown
 /// with 107 brands or 222 models is a scroll, not a choice — the list needs a
-/// search field, and that is what `ItemPickerSheet` already established for the
-/// maintenance catalogue.
+/// search field.
 ///
 /// Picking a year fetches the detail and pops with a [VehicleCatalogSelection].
 /// The form fills its own fields from that; this sheet writes nothing.
@@ -24,11 +28,8 @@ class VehicleCatalogSheet extends ConsumerStatefulWidget {
   const VehicleCatalogSheet({super.key});
 
   static Future<VehicleCatalogSelection?> show(BuildContext context) {
-    return showModalBottomSheet<VehicleCatalogSelection>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<VehicleCatalogSelection>(
+      context,
       builder: (sheetContext) => const VehicleCatalogSheet(),
     );
   }
@@ -87,8 +88,7 @@ class _VehicleCatalogSheetState extends ConsumerState<VehicleCatalogSheet> {
   ///
   /// A failure here does NOT close the sheet: the person is one tap from the
   /// answer they wanted, and dropping them back into an empty form would make
-  /// them redo all three steps. It shows the message inline and leaves the
-  /// list tappable again.
+  /// them redo all three steps.
   Future<void> _selectYear(VehicleModelYear year) async {
     setState(() {
       _resolving = true;
@@ -118,71 +118,64 @@ class _VehicleCatalogSheetState extends ConsumerState<VehicleCatalogSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final height = MediaQuery.sizeOf(context).height * 0.85;
 
-    return SizedBox(
-      height: height,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.s16,
-          0,
-          AppSpacing.s16,
-          AppSpacing.s16,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                if (_brand != null)
-                  AppIconButton(
-                    label: 'Voltar',
-                    icon: Icons.arrow_back,
-                    onPressed: _resolving ? null : _back,
-                  ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_title, style: theme.textTheme.titleLarge),
-                      if (_breadcrumb != null)
-                        Text(
-                          _breadcrumb!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
+    return AppSheetFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              if (_brand != null)
+                AppIconButton(
+                  label: 'Voltar',
+                  icon: Icons.arrow_back,
+                  onPressed: _resolving ? null : _back,
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            // The year list is short and already ordered; a search field there
-            // would be a control with nothing to do.
-            if (_model == null) ...[
-              TextField(
-                controller: _query,
-                enabled: !_resolving,
-                textInputAction: TextInputAction.search,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Buscar',
-                  prefixIcon: Icon(Icons.search),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _title,
+                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
+                    ),
+                    if (_breadcrumb != null)
+                      Text(
+                        _breadcrumb!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.s12),
             ],
-            if (_resolveError != null) ...[
-              _InlineError(message: _resolveError!),
-              const SizedBox(height: AppSpacing.s12),
-            ],
-            Expanded(child: _body()),
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          // The year list is short and already ordered; a search field there
+          // would be a control with nothing to do.
+          if (_model == null) ...[
+            TextField(
+              controller: _query,
+              enabled: !_resolving,
+              textInputAction: TextInputAction.search,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Buscar',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s12),
           ],
-        ),
+          if (_resolveError != null) ...[
+            _InlineError(message: _resolveError!),
+            const SizedBox(height: AppSpacing.s12),
+          ],
+          Expanded(child: _body()),
+        ],
       ),
     );
   }
@@ -237,12 +230,10 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
+    return AppSurface(
+      variant: AppSurfaceVariant.grouped,
+      color: theme.colorScheme.errorContainer,
       padding: const EdgeInsets.all(AppSpacing.s12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: AppRadius.borderS,
-      ),
       child: Text(
         message,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -264,7 +255,7 @@ class _BrandStep extends ConsumerWidget {
     return ref
         .watch(vehicleBrandsProvider)
         .when(
-          loading: () => const AppSkeletonList(count: 8, itemHeight: 56),
+          loading: () => const AppSkeletonList(count: 8, itemHeight: 52),
           error: (error, _) => AppErrorState(
             message: error is ApiFailure
                 ? _messageFor(error)
@@ -299,7 +290,7 @@ class _ModelStep extends ConsumerWidget {
     return ref
         .watch(vehicleModelsProvider(brandId))
         .when(
-          loading: () => const AppSkeletonList(count: 8, itemHeight: 56),
+          loading: () => const AppSkeletonList(count: 8, itemHeight: 52),
           error: (error, _) => AppErrorState(
             message: error is ApiFailure
                 ? _messageFor(error)
@@ -334,7 +325,7 @@ class _YearStep extends ConsumerWidget {
     return ref
         .watch(vehicleModelYearsProvider(modelId))
         .when(
-          loading: () => const AppSkeletonList(count: 6, itemHeight: 56),
+          loading: () => const AppSkeletonList(count: 6, itemHeight: 52),
           error: (error, _) => AppErrorState(
             message: error is ApiFailure
                 ? _messageFor(error)
@@ -365,25 +356,46 @@ class _NameList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (count == 0) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(AppSpacing.s24),
+          padding: const EdgeInsets.all(AppSpacing.s24),
           child: Text(
             'Nada com esse nome. Tente outra busca.',
             textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       );
     }
-    return ListView.builder(
+    return ListView.separated(
       itemCount: count,
+      separatorBuilder: (context, index) => const AppRowDivider(indent: 0),
       itemBuilder: (context, index) {
         final tap = onTapAt;
-        return ListTile(
-          title: Text(labelAt(index)),
-          trailing: const Icon(Icons.chevron_right),
+        return AppListRowShell(
           onTap: tap == null ? null : () => tap(index),
+          semanticLabel: labelAt(index),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  labelAt(index),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: theme.colorScheme.outline,
+              ),
+            ],
+          ),
         );
       },
     );
@@ -407,7 +419,7 @@ List<T> _filterByName<T>(
 ///
 /// It is where the FIPE valuation surfaces, and where the person confirms they
 /// picked the right car before saving. `fipe_price` being null is normal — the
-/// card simply says the value is unavailable rather than reading as an error.
+/// block simply says the value is unavailable rather than reading as an error.
 class VehicleCatalogSummary extends StatelessWidget {
   const VehicleCatalogSummary({
     super.key,
@@ -425,89 +437,102 @@ class VehicleCatalogSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final price = selection.fipePrice;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.s16),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.s16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.directions_car_outlined,
-                  size: 18,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: AppSpacing.s8),
-                // Expanded, not bare: at a 1.3 text scale on a 360px screen
-                // this label is wider than what is left beside the icon, and a
-                // Row does not wrap on its own.
-                Expanded(
-                  child: Text(
-                    'Selecionado da tabela FIPE',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+    return AppSurface(
+      variant: AppSurfaceVariant.grouped,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const AppIconWell(
+                icon: Icons.directions_car_outlined,
+                tone: AppIconWellTone.accent,
+              ),
+              const SizedBox(width: AppSpacing.s12),
+              // Expanded, not bare: at a 1.3 text scale on a 360px screen
+              // this label is wider than what is left beside the icon, and a
+              // Row does not wrap on its own.
+              Expanded(
+                child: Text(
+                  'Selecionado da tabela FIPE',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.s8),
-            Text(selection.brandName, style: theme.textTheme.bodyMedium),
-            Text(selection.modelName, style: theme.textTheme.titleMedium),
-            if (selection.modelYear != null)
-              Text('${selection.modelYear}', style: theme.textTheme.bodyMedium),
-            const SizedBox(height: AppSpacing.s12),
-            if (price != null) ...[
-              Text(price.price.format(), style: theme.textTheme.headlineSmall),
-              Text(
-                'Valor FIPE de ${price.referenceLabel}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
               ),
-            ] else
-              Text(
-                'Valor FIPE indisponível no momento.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            const SizedBox(height: AppSpacing.s8),
-            // Wrap rather than Row: two buttons fit side by side at the default
-            // text scale and stack at a large one, instead of overflowing.
-            Wrap(
-              spacing: AppSpacing.s8,
-              children: [
-                AppButton(
-                  label: 'Trocar',
-                  variant: AppButtonVariant.tertiary,
-                  onPressed: enabled ? onChange : null,
-                ),
-                AppButton(
-                  label: 'Remover',
-                  variant: AppButtonVariant.tertiary,
-                  onPressed: enabled ? onClear : null,
-                ),
-              ],
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          Text(
+            selection.brandName,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
             ),
-          ],
-        ),
+          ),
+          Text(selection.modelName, style: theme.textTheme.titleMedium),
+          if (selection.modelYear != null)
+            Text(
+              '${selection.modelYear}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          const SizedBox(height: AppSpacing.s12),
+          if (price != null) ...[
+            Text(
+              price.price.format(),
+              style: AppTypography.instrument(
+                size: 26,
+                color: scheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Valor FIPE de ${price.referenceLabel}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ] else
+            Text(
+              'Valor FIPE indisponível no momento.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          const SizedBox(height: AppSpacing.s8),
+          // Wrap rather than Row: two buttons fit side by side at the default
+          // text scale and stack at a large one, instead of overflowing.
+          Wrap(
+            spacing: AppSpacing.s8,
+            children: [
+              AppButton(
+                label: 'Trocar',
+                variant: AppButtonVariant.tertiary,
+                onPressed: enabled ? onChange : null,
+              ),
+              AppButton(
+                label: 'Remover',
+                variant: AppButtonVariant.tertiary,
+                onPressed: enabled ? onClear : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
 /// The affordance that opens the picker when no selection was made in this
-/// session.
+/// session: a raised tile, the same shape as a quick action.
 ///
 /// [alreadyLinked] is the edit case: the vehicle carries a catalogue link from
 /// when it was registered, but this form has not fetched it. Saying so costs
-/// nothing and is honest — the alternative is either a request on every form
-/// open or a screen that implies the vehicle was typed by hand.
+/// nothing and is honest.
 class VehicleCatalogPrompt extends StatelessWidget {
   const VehicleCatalogPrompt({
     super.key,
@@ -523,30 +548,58 @@ class VehicleCatalogPrompt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppButton(
-            label: alreadyLinked
-                ? 'Trocar na tabela FIPE'
-                : 'Buscar na tabela FIPE',
-            variant: AppButtonVariant.secondary,
-            onPressed: enabled ? onPressed : null,
+    final scheme = theme.colorScheme;
+    final title = alreadyLinked
+        ? 'Trocar na tabela FIPE'
+        : 'Buscar na tabela FIPE';
+    final help = alreadyLinked
+        ? 'Este veículo foi cadastrado pela tabela FIPE. Buscar de novo '
+              'substitui marca, modelo, ano e combustível.'
+        : 'Preenche marca, modelo, ano e combustível para você. Também dá '
+              'para digitar tudo à mão.';
+    final onTap = enabled ? onPressed : null;
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: '$title. $help',
+      excludeSemantics: true,
+      child: AppPressable(
+        onTap: onTap,
+        child: AppSurface(
+          variant: AppSurfaceVariant.raised,
+          onTap: onTap,
+          child: Row(
+            children: [
+              AppIconWell(
+                icon: Icons.search,
+                size: AppIconWellSize.l,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.s16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.labelLarge?.copyWith(fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      help,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s8),
+              Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+            ],
           ),
-          const SizedBox(height: AppSpacing.s8),
-          Text(
-            alreadyLinked
-                ? 'Este veículo foi cadastrado pela tabela FIPE. '
-                      'Buscar de novo substitui marca, modelo, ano e combustível.'
-                : 'Preenche marca, modelo, ano e combustível para você. '
-                      'Também dá para digitar tudo à mão.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

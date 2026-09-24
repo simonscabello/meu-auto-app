@@ -9,6 +9,37 @@ String costWindowLabel(int periodMonths) {
   return 'últimos $periodMonths meses';
 }
 
+/// The label over the registered-cost figure: what it is, and the window.
+String costPeriodLabel(int periodMonths) {
+  return 'Gastos registrados · ${costWindowLabel(periodMonths)}';
+}
+
+const _categoryLabels = {
+  'manutencao': 'manutenção',
+  'ipva': 'IPVA',
+  'licenciamento': 'licenciamento',
+  'seguro': 'seguro',
+  'obligations': 'IPVA e licenciamento',
+  'abastecimento': 'combustível',
+  'expenses': 'despesas',
+};
+
+/// Spells out what the total actually covers.
+///
+/// Required by the contract, and by honesty: without day-to-day expenses this
+/// figure is a partial sum, and presenting it as the cost of running the car
+/// would be a lie. An unmapped category is shown raw rather than dropped, so a
+/// category added later still appears.
+String? includedCategoriesLine(List<String> categories) {
+  if (categories.isEmpty) return null;
+  final labels = [
+    for (final category in categories) _categoryLabels[category] ?? category,
+  ];
+  if (labels.length == 1) return 'Inclui ${labels.single}';
+  final head = labels.sublist(0, labels.length - 1).join(', ');
+  return 'Inclui $head e ${labels.last}';
+}
+
 /// What the tracked total leaves out, inferred from the category keys the
 /// server says it counted — `categories[].key` on a current payload,
 /// `tracked_categories` on an older one.

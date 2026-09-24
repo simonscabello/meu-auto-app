@@ -15,10 +15,8 @@ import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 /// Everything on the car that needs attention, from every domain.
 ///
 /// The verdict on Início counts maintenance, IPVA, licenciamento, seguro and
-/// warranties together, but its "Ver todos" used to open the maintenance tab,
-/// which lists only maintenance: "2 itens vencidos" could open a list with
-/// one. This is the list the count is about, in the order the server
-/// ranked it.
+/// warranties together; this is the list the count is about, in the order
+/// the server ranked it.
 class AlertsScreen extends ConsumerWidget {
   const AlertsScreen({super.key, required this.vehicleId});
 
@@ -40,10 +38,8 @@ class AlertsScreen extends ConsumerWidget {
       },
       body: alerts.when(
         skipLoadingOnReload: true,
-        loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(),
-        ),
+        loading: () =>
+            const Padding(padding: AppSpacing.screen, child: AppSkeletonList()),
         error: (error, _) => AppErrorState.fromError(
           error: error,
           onRetry: () => ref.invalidate(alertsProvider(vehicleId)),
@@ -75,6 +71,7 @@ class AlertsContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (alerts.isEmpty) {
       return const AppEmptyState(
+        icon: Icons.check_circle_outline,
         title: 'Nada precisa de atenção agora',
         message: 'Quando algo vencer ou estiver perto, aparece aqui.',
       );
@@ -89,12 +86,7 @@ class AlertsContent extends StatelessWidget {
     ];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
+      padding: AppSpacing.screen,
       children: [
         if (overdue.isNotEmpty) ...[
           AppGroup(

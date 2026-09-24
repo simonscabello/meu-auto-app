@@ -4,19 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_fact_row.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_metric.dart';
+import 'package:meu_auto/shared/widgets/app_plate_chip.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 class VehicleDetailScreen extends ConsumerStatefulWidget {
   const VehicleDetailScreen({super.key, required this.vehicleId});
@@ -80,10 +82,7 @@ class _VehicleDetailScreenState extends ConsumerState<VehicleDetailScreen> {
     return list.when(
       loading: () => const AppScaffold(
         title: 'Veículo',
-        body: Padding(
-          padding: EdgeInsets.all(AppSpacing.s24),
-          child: AppSkeletonList(),
-        ),
+        body: Padding(padding: AppSpacing.screen, child: AppSkeletonList()),
       ),
       error: (error, _) => AppScaffold(
         title: 'Veículo',
@@ -136,26 +135,37 @@ class VehicleDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tones = AppTones.of(context);
+    final documentRows = _documentRows();
     return AppScaffold(
-      title: vehicle.displayName,
+      title: vehicle.shortName,
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.s24),
+        padding: AppSpacing.screenHeaded,
         children: [
           _MileageHeader(vehicle: vehicle),
-          const SizedBox(height: AppSpacing.s24),
-          const AppSectionHeader(title: 'Ficha do carro'),
-          const SizedBox(height: AppSpacing.s8),
-          ..._sheetRows(),
-          if (_documentRows().isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.s24),
-            const AppSectionHeader(title: 'Documento'),
-            const SizedBox(height: AppSpacing.s8),
-            ..._documentRows(),
+          const SizedBox(height: appGroupGap),
+          AppGroup(
+            title: 'Ficha do carro',
+            dividerIndent: 0,
+            children: _sheetRows(),
+          ),
+          if (documentRows.isNotEmpty) ...[
+            const SizedBox(height: appGroupGap),
+            AppGroup(
+              title: 'Documento',
+              dividerIndent: 0,
+              children: documentRows,
+            ),
           ],
-          const SizedBox(height: AppSpacing.s32),
-          AppButton(label: 'Editar', onPressed: deleting ? null : onEdit),
+          const SizedBox(height: appGroupGap),
+          AppButton(
+            label: 'Editar',
+            icon: Icons.edit_outlined,
+            onPressed: deleting ? null : onEdit,
+            expanded: true,
+          ),
           const SizedBox(height: AppSpacing.s40),
-          Divider(color: theme.colorScheme.outlineVariant),
+          Divider(color: tones.divider),
           const SizedBox(height: AppSpacing.s8),
           // Quiet, and below a rule, the way the account deletion sits in the
           // profile. A destructive action does not have to shout to be found,
@@ -179,22 +189,30 @@ class VehicleDetailContent extends StatelessWidget {
     final fuel = vehicle.fuelType;
     final showFuel = fuel != null && fuel != FuelType.desconhecido;
     return [
-      _Row(label: 'Marca e modelo', value: '${vehicle.brand} ${vehicle.model}'),
+      AppFactRow(
+        label: 'Marca e modelo',
+        value: '${vehicle.brand} ${vehicle.model}',
+        inline: true,
+      ),
       if (vehicle.version != null)
-        _Row(label: 'Versão', value: vehicle.version!),
-      if (_yearLabel() != null) _Row(label: 'Ano', value: _yearLabel()!),
-      if (showFuel) _Row(label: 'Combustível', value: fuel.label),
-      if (vehicle.color != null) _Row(label: 'Cor', value: vehicle.color!),
-      if (vehicle.plate != null) _Row(label: 'Placa', value: vehicle.plate!),
+        AppFactRow(label: 'Versão', value: vehicle.version!, inline: true),
+      if (_yearLabel() != null)
+        AppFactRow(label: 'Ano', value: _yearLabel()!, inline: true),
+      if (showFuel)
+        AppFactRow(label: 'Combustível', value: fuel.label, inline: true),
+      if (vehicle.color != null)
+        AppFactRow(label: 'Cor', value: vehicle.color!, inline: true),
+      if (vehicle.plate != null)
+        AppFactRow(label: 'Placa', value: vehicle.plate!, inline: true),
     ];
   }
 
   List<Widget> _documentRows() {
     return [
       if (vehicle.renavam != null)
-        _Row(label: 'Renavam', value: vehicle.renavam!),
+        AppFactRow(label: 'Renavam', value: vehicle.renavam!, inline: true),
       if (vehicle.chassis != null)
-        _Row(label: 'Chassi', value: vehicle.chassis!),
+        AppFactRow(label: 'Chassi', value: vehicle.chassis!, inline: true),
     ];
   }
 
@@ -219,80 +237,31 @@ class _MileageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final recordedOn = vehicle.currentMileageAt;
     final plate = vehicle.plate?.trim();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: AppMetric(
-            value: formatKmNumber(vehicle.currentMileageKm),
-            unit: 'km',
-            label: recordedOn == null
-                ? 'Quilometragem atual'
-                : 'Quilometragem em ${formatCivilDate(recordedOn)}',
-          ),
-        ),
-        if (plate != null && plate.isNotEmpty) ...[
-          const SizedBox(width: AppSpacing.s8),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.s8,
-              vertical: AppSpacing.s4,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.borderM,
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-            ),
-            child: Text(
-              plate,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontFeatures: AppTypography.tabular,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Label left, value right. Stacking the two turns a six-line sheet into a
-/// screen and a half of scrolling for no gain in legibility.
-class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
+    return AppSurface(
+      variant: AppSurfaceVariant.grouped,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: AppMetric(
+                value: formatKmNumber(vehicle.currentMileageKm),
+                unit: 'km',
+                label: recordedOn == null
+                    ? 'Quilometragem atual'
+                    : 'Quilometragem em ${formatCivilDate(recordedOn)}',
               ),
             ),
           ),
-          const SizedBox(width: AppSpacing.s16),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyLarge,
-              textAlign: TextAlign.end,
-            ),
-          ),
+          if (plate != null && plate.isNotEmpty) ...[
+            const SizedBox(width: AppSpacing.s12),
+            AppPlateChip(plate: plate),
+          ],
         ],
       ),
     );

@@ -9,23 +9,17 @@ import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_form_sheet.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 
 /// What kind of record to add, asked from the one screen where the question
 /// makes sense.
 ///
-/// This used to be the app's global "+", parked in the middle of the
-/// navigation bar. Three things were wrong with it and all three are fixed by
-/// moving it here rather than by restyling it: a control that opens a list of
-/// seven things cannot say what it does, it appeared on screens where none of
-/// the seven was the obvious next move, and it competed with the four
-/// destinations it sat between.
-///
 /// Histórico is where a choice among record types is the right question,
 /// because the history is exactly the place all of them land. Every other
-/// screen offers its own single action in its own words: Início updates the
-/// mileage, Cuidados adds an item to follow, Abastecimentos registers a fill.
+/// screen offers its own single action in its own words.
 ///
 /// "Adicionar veículo" is deliberately not here. A vehicle is not an event in
 /// a vehicle's history; it lives in the vehicle switcher and in Perfil.
@@ -33,9 +27,8 @@ class AddRecordSheet extends ConsumerWidget {
   const AddRecordSheet({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
+    return showAppSheet<void>(
+      context,
       builder: (sheetContext) => const AddRecordSheet(),
     );
   }
@@ -46,27 +39,21 @@ class AddRecordSheet extends ConsumerWidget {
     if (vehicle == null) {
       return const SafeArea(child: SizedBox.shrink());
     }
-    final theme = Theme.of(context);
 
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.s16,
+          AppSpacing.page,
           0,
-          AppSpacing.s16,
+          AppSpacing.page,
           AppSpacing.s16,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.s8),
-              child: Text(
-                'Adicionar registro',
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
+            const AppSheetHeader(title: 'Adicionar registro', closable: false),
+            const SizedBox(height: AppSpacing.s8),
             AppGroup(
               children: [
                 // Ordered by how often a person actually does each one, not
@@ -75,6 +62,7 @@ class AddRecordSheet extends ConsumerWidget {
                   AppListRow(
                     icon: Icons.local_gas_station_outlined,
                     title: 'Registrar abastecimento',
+                    showChevron: true,
                     onTap: () {
                       Navigator.pop(context);
                       final lastFuel = ref
@@ -94,6 +82,7 @@ class AddRecordSheet extends ConsumerWidget {
                 AppListRow(
                   icon: Icons.speed_outlined,
                   title: 'Atualizar quilometragem',
+                  showChevron: true,
                   onTap: () {
                     Navigator.pop(context);
                     OdometerSheet.show(
@@ -106,6 +95,7 @@ class AddRecordSheet extends ConsumerWidget {
                 AppListRow(
                   icon: Icons.build_outlined,
                   title: 'Registrar manutenção',
+                  showChevron: true,
                   onTap: () {
                     Navigator.pop(context);
                     context.push(AppRoutes.maintenanceNew);
@@ -114,6 +104,7 @@ class AddRecordSheet extends ConsumerWidget {
                 AppListRow(
                   icon: Icons.receipt_long_outlined,
                   title: 'Registrar IPVA',
+                  showChevron: true,
                   onTap: () {
                     Navigator.pop(context);
                     ObligationFormSheet.show(
@@ -126,6 +117,7 @@ class AddRecordSheet extends ConsumerWidget {
                 AppListRow(
                   icon: Icons.description_outlined,
                   title: 'Registrar licenciamento',
+                  showChevron: true,
                   onTap: () {
                     Navigator.pop(context);
                     ObligationFormSheet.show(
@@ -138,6 +130,7 @@ class AddRecordSheet extends ConsumerWidget {
                 AppListRow(
                   icon: Icons.shield_outlined,
                   title: 'Registrar seguro',
+                  showChevron: true,
                   onTap: () {
                     Navigator.pop(context);
                     context.push(AppRoutes.seguroNew);

@@ -12,6 +12,7 @@ import 'package:meu_auto/features/auth/data/auth_repository.dart';
 import 'package:meu_auto/features/auth/domain/password_reset_copy.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 
 class PasswordResetRequestScreen extends ConsumerStatefulWidget {
@@ -84,16 +85,22 @@ class _PasswordResetRequestScreenState
       );
     }
 
+    final theme = Theme.of(context);
     return AppScaffold(
       title: 'Redefinir senha',
       body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.s24),
+        padding: AppSpacing.screenHeaded,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           if (_banner != null) AuthFormBanner(message: _banner!),
-          Text(
-            PasswordResetCopy.linkLifetime,
-            style: Theme.of(context).textTheme.bodyMedium,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+            child: Text(
+              PasswordResetCopy.linkLifetime,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.s24),
           TextField(
@@ -117,18 +124,16 @@ class _PasswordResetRequestScreenState
             },
             decoration: InputDecoration(
               labelText: 'E-mail',
+              prefixIcon: const Icon(Icons.mail_outline),
               errorText: _fieldErrors['email'],
-              errorMaxLines: 3,
             ),
           ),
           const SizedBox(height: AppSpacing.s24),
-          SizedBox(
-            width: double.infinity,
-            child: AppButton(
-              label: _offline ? 'Tentar de novo' : 'Enviar link',
-              loading: _submitting,
-              onPressed: _submit,
-            ),
+          AppButton(
+            label: _offline ? 'Tentar de novo' : 'Enviar link',
+            loading: _submitting,
+            onPressed: _submit,
+            expanded: true,
           ),
           const SizedBox(height: AppSpacing.s12),
           AppButton(
@@ -149,21 +154,30 @@ class PasswordResetRequestSuccess extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AppScaffold(
       title: 'Redefinir senha',
-      body: Padding(
-        padding: const EdgeInsets.all(AppSpacing.s24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              PasswordResetCopy.requestAccepted,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: AppSpacing.s24),
-            AppButton(label: 'Voltar ao login', onPressed: onBackToLogin),
-          ],
-        ),
+      body: ListView(
+        padding: AppSpacing.screenHeaded,
+        children: [
+          const SizedBox(height: AppSpacing.s16),
+          const AppIconWell(
+            icon: Icons.mark_email_read_outlined,
+            size: AppIconWellSize.xl,
+            tone: AppIconWellTone.accent,
+          ),
+          const SizedBox(height: AppSpacing.s24),
+          Text(
+            PasswordResetCopy.requestAccepted,
+            style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+          ),
+          const SizedBox(height: AppSpacing.s32),
+          AppButton(
+            label: 'Voltar ao login',
+            onPressed: onBackToLogin,
+            expanded: true,
+          ),
+        ],
       ),
     );
   }

@@ -6,8 +6,8 @@ import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
@@ -15,10 +15,13 @@ import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dar
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
+import 'package:meu_auto/shared/widgets/app_status_chip.dart';
 
 class MaintenanceListScreen extends ConsumerStatefulWidget {
   const MaintenanceListScreen({super.key, required this.vehicleId});
@@ -70,8 +73,8 @@ class _MaintenanceListScreenState extends ConsumerState<MaintenanceListScreen> {
       ],
       body: records.when(
         loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 5, itemHeight: 88),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 4, itemHeight: 88),
         ),
         error: (error, _) => AppErrorState.fromError(
           error: error,
@@ -112,6 +115,7 @@ class _RecordList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (state.items.isEmpty) {
       return AppEmptyState(
+        icon: Icons.build_outlined,
         title: 'O histórico de serviços do seu carro começa aqui',
         message:
             'Cada serviço registrado vira o histórico que o carro leva na revenda.',
@@ -122,35 +126,29 @@ class _RecordList extends StatelessWidget {
 
     final months = _groupByMonth(state.items);
 
-    return CustomScrollView(
+    // One group per month, the month as its label. A service history is read
+    // by scanning for "when", and a bounded surface per month is what makes
+    // the boundaries between months visible while scrolling.
+    return ListView.builder(
       controller: scroll,
-      slivers: [
-        for (final month in months) ...[
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _MonthHeaderDelegate(label: month.label),
+      padding: AppSpacing.screen,
+      itemCount: months.length + 1,
+      itemBuilder: (context, index) {
+        if (index == months.length) {
+          return _Footer(state: state, onRetry: onRetryPage);
+        }
+        final month = months[index];
+        return Padding(
+          padding: EdgeInsets.only(top: index == 0 ? 0 : appGroupGap),
+          child: AppGroup(
+            title: month.label,
+            children: [
+              for (final record in month.records)
+                _RecordTile(record: record, onTap: () => onOpen(record)),
+            ],
           ),
-          SliverList.builder(
-            itemCount: month.records.length,
-            itemBuilder: (context, index) {
-              final record = month.records[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (index > 0) const AppRowDivider(),
-                    _RecordTile(record: record, onTap: () => onOpen(record)),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-        SliverToBoxAdapter(
-          child: _Footer(state: state, onRetry: onRetryPage),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -177,50 +175,6 @@ class _RecordList extends StatelessWidget {
   }
 }
 
-/// Pinned month header. A service history is read by scanning for "when", so
-/// the month has to stay on screen while its records scroll under it.
-class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _MonthHeaderDelegate({required this.label});
-
-  final String label;
-
-  @override
-  double get minExtent => 46;
-
-  @override
-  double get maxExtent => 46;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    final theme = Theme.of(context);
-    return Container(
-      color: theme.scaffoldBackgroundColor,
-      alignment: Alignment.bottomLeft,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s16,
-        AppSpacing.s4,
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-          letterSpacing: 0.4,
-        ),
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(_MonthHeaderDelegate oldDelegate) =>
-      oldDelegate.label != label;
-}
-
 class _RecordTile extends StatelessWidget {
   const _RecordTile({required this.record, required this.onTap});
 
@@ -236,14 +190,12 @@ class _RecordTile extends StatelessWidget {
       onTap: onTap,
       semanticLabel: '${record.itemsSummary}. ${_recordWhen(record)}',
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            maintenanceIconFor(
+          AppIconWell(
+            icon: maintenanceIconFor(
               record.items.isEmpty ? '' : record.items.first.itemSlug,
             ),
-            size: 22,
-            color: theme.colorScheme.onSurfaceVariant,
           ),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
@@ -252,7 +204,9 @@ class _RecordTile extends StatelessWidget {
               children: [
                 Text(
                   record.itemsSummary,
-                  style: theme.textTheme.bodyLarge,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -265,7 +219,13 @@ class _RecordTile extends StatelessWidget {
                 ),
                 if (record.kind == MaintenanceRecordKind.declared) ...[
                   const SizedBox(height: AppSpacing.s8),
-                  const _DeclaredChip(),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: AppStatusChip(
+                      status: AppStatus.semBaseline,
+                      label: 'Informado',
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -275,10 +235,13 @@ class _RecordTile extends StatelessWidget {
             Text(
               record.totalCostCents.format(),
               style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
                 fontFeatures: AppTypography.tabular,
               ),
             ),
           ],
+          const SizedBox(width: AppSpacing.s8),
+          Icon(Icons.chevron_right, size: 20, color: theme.colorScheme.outline),
         ],
       ),
     );
@@ -289,35 +252,6 @@ String _recordWhen(MaintenanceRecord record) {
   final km = record.mileageKm;
   if (km == null) return formatCivilDate(record.occurredOn);
   return '${formatCivilDate(record.occurredOn)} · ${formatKm(km)}';
-}
-
-/// Marks a record the owner entered from memory rather than from a receipt.
-///
-/// Deliberately quiet — it is a caveat, not a warning. The record is still
-/// history; it just carries less weight in a dispute.
-class _DeclaredChip extends StatelessWidget {
-  const _DeclaredChip();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s8,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: AppRadius.borderS,
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: Text(
-        'Informado',
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
 }
 
 class _Footer extends StatelessWidget {

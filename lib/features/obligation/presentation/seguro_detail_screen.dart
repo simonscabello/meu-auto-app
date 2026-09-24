@@ -10,13 +10,17 @@ import 'package:meu_auto/features/obligation/application/obligation_provider.dar
 import 'package:meu_auto/features/obligation/domain/obligation_copy.dart';
 import 'package:meu_auto/features/obligation/domain/seguro.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
+import 'package:meu_auto/shared/widgets/app_detail_header.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_fact_row.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_pressable.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
-import 'package:meu_auto/shared/widgets/app_status_chip.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SeguroDetailScreen extends ConsumerWidget {
@@ -32,8 +36,8 @@ class SeguroDetailScreen extends ConsumerWidget {
       loading: () => const AppScaffold(
         title: 'Seguro',
         body: Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 4, itemHeight: 88),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 3, itemHeight: 110),
         ),
       ),
       error: (error, _) => AppScaffold(
@@ -128,90 +132,62 @@ class SeguroDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final phrase = seguroStatusPhrase(seguro);
-    final emergency = seguro.emergencyPhone;
+    final emergency = seguro.emergencyPhone?.trim();
     final premium = seguro.premiumCents;
+    final policy = seguro.policyNumber?.trim();
+    final brokerName = seguro.brokerName?.trim();
+    final brokerPhone = seguro.brokerPhone?.trim();
+    final notes = seguro.notes?.trim();
+    final status = seguro.renewed
+        ? AppStatus.semPeriodicidade
+        : AppStatus.fromWire(seguro.status.wire);
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: AppSpacing.screenHeaded,
       children: [
-        Text(seguro.insurerName, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: AppSpacing.s8),
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSpacing.s8,
-          runSpacing: AppSpacing.s4,
+        AppDetailHeader(
+          icon: Icons.shield_outlined,
+          title: seguro.insurerName,
+          status: status,
+          phrase: phrase,
+        ),
+        if (emergency != null && emergency.isNotEmpty) ...[
+          const SizedBox(height: appGroupGap),
+          // The one thing on this screen that is needed at the roadside, and
+          // the only raised surface: a tap dials.
+          _EmergencyCall(phone: emergency, onTap: onEmergencyCall),
+        ],
+        const SizedBox(height: appGroupGap),
+        AppGroup(
+          dividerIndent: 0,
           children: [
-            AppStatusChip(status: AppStatus.fromWire(seguro.status.wire)),
-            if (phrase.isNotEmpty)
-              Text(
-                phrase,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+            AppFactRow(label: 'Vigência', value: seguroVigenciaPhrase(seguro)),
+            if (premium != null)
+              AppFactRow(label: 'Prêmio', value: premium.format()),
+            if (policy != null && policy.isNotEmpty)
+              AppFactRow(label: 'Apólice', value: policy),
+            if (brokerName != null && brokerName.isNotEmpty)
+              AppFactRow(label: 'Corretor', value: brokerName),
+            if (brokerPhone != null && brokerPhone.isNotEmpty)
+              AppFactRow(
+                label: 'Telefone do corretor',
+                value: brokerPhone,
+                onTap: onBrokerCall,
               ),
+            if (notes != null && notes.isNotEmpty)
+              AppFactRow(label: 'Observações', value: notes),
           ],
         ),
-        const SizedBox(height: AppSpacing.s24),
-        _Fact(label: 'Vigência', value: seguroVigenciaPhrase(seguro)),
-        if (premium != null) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Prêmio', value: premium.format()),
-        ],
-        if (emergency != null && emergency.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s24),
-          AppCard(
-            onTap: onEmergencyCall,
-            child: Row(
-              children: [
-                Icon(Icons.phone, color: theme.colorScheme.primary),
-                const SizedBox(width: AppSpacing.s12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Emergência',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.s4),
-                      Text(emergency, style: theme.textTheme.titleMedium),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        if (seguro.brokerName != null &&
-            seguro.brokerName!.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Corretor', value: seguro.brokerName!.trim()),
-        ],
-        if (seguro.brokerPhone != null &&
-            seguro.brokerPhone!.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(
-            label: 'Telefone do corretor',
-            value: seguro.brokerPhone!.trim(),
-            onTap: onBrokerCall,
-          ),
-        ],
-        if (seguro.policyNumber != null &&
-            seguro.policyNumber!.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Apólice', value: seguro.policyNumber!.trim()),
-        ],
-        if (seguro.notes != null && seguro.notes!.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Observações', value: seguro.notes!.trim()),
-        ],
-        const SizedBox(height: AppSpacing.s32),
+        const SizedBox(height: appGroupGap),
         if (onEdit != null) ...[
-          AppButton(label: 'Editar', onPressed: onEdit),
+          AppButton(
+            label: 'Editar',
+            icon: Icons.edit_outlined,
+            variant: AppButtonVariant.secondary,
+            onPressed: onEdit,
+            expanded: true,
+          ),
           const SizedBox(height: AppSpacing.s8),
         ],
         if (onDelete != null)
@@ -219,41 +195,67 @@ class SeguroDetailContent extends StatelessWidget {
             label: 'Excluir',
             variant: AppButtonVariant.destructive,
             onPressed: onDelete,
+            expanded: true,
           ),
       ],
     );
   }
 }
 
-class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value, this.onTap});
+class _EmergencyCall extends StatelessWidget {
+  const _EmergencyCall({required this.phone, this.onTap});
 
-  final String label;
-  final String value;
+  final String phone;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+    final scheme = theme.colorScheme;
+    return Semantics(
+      button: onTap != null,
+      label: 'Emergência. $phone. Ligar',
+      excludeSemantics: true,
+      child: AppPressable(
+        onTap: onTap,
+        child: AppSurface(
+          variant: AppSurfaceVariant.raised,
+          onTap: onTap,
+          child: Row(
+            children: [
+              const AppIconWell(
+                icon: Icons.phone_outlined,
+                size: AppIconWellSize.l,
+                tone: AppIconWellTone.accent,
+              ),
+              const SizedBox(width: AppSpacing.s16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Emergência',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      phone,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                Icon(Icons.call_outlined, size: 22, color: scheme.primary),
+            ],
           ),
         ),
-        const SizedBox(height: AppSpacing.s4),
-        Text(
-          value,
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: onTap == null ? null : theme.colorScheme.primary,
-          ),
-        ),
-      ],
+      ),
     );
-    if (onTap == null) return column;
-    return InkWell(onTap: onTap, child: column);
   }
 }

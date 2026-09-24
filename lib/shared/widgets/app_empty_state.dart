@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_centered_scroll.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 
+/// A screen with nothing on it yet: what this is, and the one thing to do.
+///
+/// Scrolls, and that is load-bearing: `RefreshIndicator` needs a scrollable
+/// child, so pull-to-refresh works here too.
 class AppEmptyState extends StatelessWidget {
   const AppEmptyState({
     super.key,
@@ -10,12 +15,17 @@ class AppEmptyState extends StatelessWidget {
     this.message,
     this.actionLabel,
     this.onAction,
+    this.icon,
   });
 
   final String title;
   final String? message;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// One glyph in a large well above the title. Optional: an empty state
+  /// inside a group does not want one.
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +36,10 @@ class AppEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (icon != null) ...[
+              AppIconWell(icon: icon!, size: AppIconWellSize.xl),
+              const SizedBox(height: AppSpacing.s20),
+            ],
             Text(
               title,
               style: theme.textTheme.titleLarge,
@@ -37,6 +51,7 @@ class AppEmptyState extends StatelessWidget {
                 message!,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),

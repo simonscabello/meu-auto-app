@@ -61,11 +61,7 @@ void main() {
     var pressed = 0;
     await pump(
       tester,
-      AppButton(
-        label: 'Salvar',
-        loading: true,
-        onPressed: () => pressed++,
-      ),
+      AppButton(label: 'Salvar', loading: true, onPressed: () => pressed++),
     );
 
     final button = tester.widget<FilledButton>(find.byType(FilledButton));
@@ -77,10 +73,7 @@ void main() {
   });
 
   testWidgets('disabled has no press handler and no spinner', (tester) async {
-    await pump(
-      tester,
-      const AppButton(label: 'Salvar', onPressed: null),
-    );
+    await pump(tester, const AppButton(label: 'Salvar', onPressed: null));
 
     final button = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(button.onPressed, isNull);

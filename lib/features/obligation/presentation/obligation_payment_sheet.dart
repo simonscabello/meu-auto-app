@@ -8,9 +8,11 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/obligation/application/obligation_provider.dart';
 import 'package:meu_auto/features/obligation/domain/obligation.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 class ObligationPaymentSheet extends ConsumerStatefulWidget {
@@ -22,11 +24,8 @@ class ObligationPaymentSheet extends ConsumerStatefulWidget {
     BuildContext context, {
     required Obligation obligation,
   }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<void>(
+      context,
       builder: (sheetContext) => ObligationPaymentSheet(obligation: obligation),
     );
   }
@@ -98,44 +97,35 @@ class _ObligationPaymentSheetState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.s16,
-        right: AppSpacing.s16,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s16,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Marcar como pago', style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s16),
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            AppDateField(
-              value: _paidOn,
-              onPick: _submitting ? () {} : _pickDate,
-              label: 'Data do pagamento',
-              enabled: !_submitting,
-              errorText: _fieldErrors['paid_on'],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppMoneyField(
-              controller: _amount,
-              label: 'Valor pago',
-              enabled: !_submitting,
-              errorText: _fieldErrors['paid_amount_cents'],
-            ),
-            const SizedBox(height: AppSpacing.s16),
-            AppButton(
-              label: _offline ? 'Tentar de novo' : 'Registrar pagamento',
-              loading: _submitting,
-              onPressed: _submitting ? null : _submit,
-            ),
-          ],
+    return AppSheetBody(
+      children: [
+        const AppSheetHeader(title: 'Marcar como pago', closable: false),
+        const SizedBox(height: AppSpacing.s16),
+        if (_banner != null) AuthFormBanner(message: _banner!),
+        AppDateField(
+          value: _paidOn,
+          onPick: _submitting ? () {} : _pickDate,
+          label: 'Data do pagamento',
+          enabled: !_submitting,
+          errorText: _fieldErrors['paid_on'],
         ),
-      ),
+        const SizedBox(height: AppSpacing.s12),
+        AppMoneyField(
+          controller: _amount,
+          label: 'Valor pago',
+          enabled: !_submitting,
+          errorText: _fieldErrors['paid_amount_cents'],
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submitting ? null : _submit(),
+        ),
+        const SizedBox(height: AppSpacing.s24),
+        AppButton(
+          label: _offline ? 'Tentar de novo' : 'Registrar pagamento',
+          loading: _submitting,
+          onPressed: _submitting ? null : _submit,
+          expanded: true,
+        ),
+      ],
     );
   }
 }

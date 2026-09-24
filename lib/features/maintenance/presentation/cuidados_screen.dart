@@ -7,9 +7,11 @@ import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/client_id.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
+import 'package:meu_auto/core/theme/app_motion.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_profile_provider.dart';
@@ -27,8 +29,10 @@ import 'package:meu_auto/features/maintenance/presentation/vehicle_profile_scree
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
@@ -160,20 +164,15 @@ class _CuidadosViewState extends ConsumerState<CuidadosView> {
       ),
       data: (list) {
         if (list.isEmpty) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.s16,
-              AppSpacing.s8,
-              AppSpacing.s16,
-              AppSpacing.s32,
-            ),
-            children: [
-              _PlansEmpty(
-                onCreate: () =>
-                    PlanCreateSheet.show(context, vehicleId: _vehicleId),
-              ),
-            ],
+          return AppEmptyState(
+            icon: Icons.build_outlined,
+            title: 'Os cuidados do seu carro começam aqui',
+            message:
+                'O cadastro costuma criar os planos sugeridos. '
+                'Você pode criar o primeiro agora.',
+            actionLabel: 'Criar plano',
+            onAction: () =>
+                PlanCreateSheet.show(context, vehicleId: _vehicleId),
           );
         }
         return CuidadosContent(
@@ -209,23 +208,9 @@ class _CuidadosViewState extends ConsumerState<CuidadosView> {
 /// has to deal with right now — what is on track, and what has already been
 /// answered — start collapsed.
 ///
-/// The rows themselves carry no border and no status chip: the group says
-/// which list a row is in, the row says the item and its state in one line,
-/// and the plan detail has the rest. What the group adds back is an edge —
-/// with rows sitting straight on the page, eighteen plans under four labels
-/// read as one undifferentiated column, and the labels stopped registering as
-/// labels at all.
-///
-/// The items with no date of their last service are one open group, "Sem data
-/// da última vez". They used to be two: the ones never asked about, open, and
-/// the ones answered "não sei", folded away under "Ainda sem registro" — which
-/// put the oil change and the revisão of an owner who did not remember out of
-/// sight, while Início said "Tudo em dia". Not knowing is the same problem
-/// either way; the row says which answer was given.
-///
-/// The one question about how the car is built (belt or chain) opens the
-/// screen when it is still open. It used to be reachable only through "O que
-/// o seu carro tem", and it is the one technical fact worth asking for.
+/// The rows carry no status chip: the group says which list a row is in, the
+/// row says the item and its state in one line, and the well is tinted only
+/// on the rows that are actually late or close.
 class CuidadosContent extends StatelessWidget {
   const CuidadosContent({
     super.key,
@@ -259,16 +244,10 @@ class CuidadosContent extends StatelessWidget {
     final groups = groupCuidadosPlans(plans);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
+      padding: AppSpacing.screen,
       children: [
         if (openQuestion != null) ...[
           const AppSectionHeader(title: 'Uma pergunta sobre o seu carro'),
-          const SizedBox(height: AppSpacing.s8),
           ProfileQuestionCard(
             question: openQuestion!,
             onAnswer: onAnswer == null
@@ -282,7 +261,11 @@ class CuidadosContent extends StatelessWidget {
           plans: groups.needAttention,
           urgent: true,
         ),
-        ..._openGroup(title: 'Vencem em breve', plans: groups.dueSoon),
+        ..._openGroup(
+          title: 'Vencem em breve',
+          plans: groups.dueSoon,
+          urgent: true,
+        ),
         if (_showEverydayCareEmpty(groups)) ...[
           const _EverydayCareEmpty(),
           const SizedBox(height: appGroupGap),
@@ -327,31 +310,26 @@ class CuidadosContent extends StatelessWidget {
           ),
           const SizedBox(height: appGroupGap),
         ],
-        if (onCreatePlan != null)
-          AppGroup(
-            children: [
+        AppGroup(
+          children: [
+            if (onCreatePlan != null)
               AppListRow(
                 icon: Icons.add,
+                iconTone: AppIconWellTone.accent,
                 title: 'Acompanhar outro item',
                 onTap: onCreatePlan,
                 showChevron: true,
               ),
-            ],
-          ),
-        if (onProfileTap != null) ...[
-          const SizedBox(height: appGroupGap),
-          AppGroup(
-            children: [
+            if (onProfileTap != null)
               AppListRow(
-                icon: Icons.tune,
+                icon: Icons.tune_outlined,
                 title: 'O que o seu carro tem',
                 subtitle: 'Itens que ele usa, e os que não usa',
                 onTap: onProfileTap,
                 showChevron: true,
               ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ],
     );
   }
@@ -415,35 +393,14 @@ class _EverydayCareEmpty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AppGroup(
+    return const AppGroup(
       title: 'Cuidados do dia a dia',
       children: [
-        AppListRowShell(
-          child: Row(
-            children: [
-              Icon(
-                Icons.check_circle_outline,
-                size: 20,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Tudo em dia', style: theme.textTheme.bodyLarge),
-                    Text(
-                      'Nenhum cuidado precisa da sua atenção agora.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        AppListRow(
+          icon: Icons.check_circle_outline,
+          iconTone: AppIconWellTone.accent,
+          title: 'Tudo em dia',
+          subtitle: 'Nenhum cuidado precisa da sua atenção agora.',
         ),
       ],
     );
@@ -452,10 +409,10 @@ class _EverydayCareEmpty extends StatelessWidget {
 
 /// One plan, as one line.
 ///
-/// [urgent] tints the icon and the state line. It is passed by the group
-/// rather than derived from the plan so that colour stays a property of
-/// "which list is this" — the thing a person reads first — instead of being
-/// sprinkled per row until it means nothing.
+/// [urgent] tints the well and the state line with the plan's own status.
+/// It is passed by the group rather than derived from the plan so that
+/// colour stays a property of "which list is this" — the thing a person
+/// reads first — instead of being sprinkled per row until it means nothing.
 class _PlanRow extends StatelessWidget {
   const _PlanRow({
     super.key,
@@ -480,18 +437,15 @@ class _PlanRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final visual = statusColors(
-      AppStatus.fromWire(plan.status.wire),
-      theme.brightness,
-    );
-
+    final status = AppStatus.fromWire(plan.status.wire);
+    final visual = statusColors(status, theme.brightness);
     final subtitle = justRecorded ? _recordedLine() : planListSubtitle(plan);
 
     return AppListRow(
       icon: maintenanceIconFor(plan.itemSlug),
       title: plan.itemName,
       subtitle: subtitle,
-      accent: urgent ? visual.foreground : null,
+      status: urgent && !justRecorded ? status : null,
       onTap: onTap,
       // Outlined, not filled: a list of habits can carry three or four of these
       // at once, and a column of solid buttons outshouted the overdue items
@@ -500,6 +454,7 @@ class _PlanRow extends StatelessWidget {
           ? AppButton(
               label: 'Feito',
               variant: AppButtonVariant.secondary,
+              compact: true,
               loading: submitting,
               onPressed: submitting ? null : () => onMarkDone!(plan),
             )
@@ -523,11 +478,10 @@ class _PlanRow extends StatelessWidget {
 /// A group that needs nothing from anyone right now: present, countable,
 /// folded.
 ///
-/// Replaces the stock `ExpansionTile`, which brought its own type scale, its
-/// own padding and a divider the rest of the screen does not use. The header
-/// is the same quiet label every other group has, with a count and a chevron;
-/// opening it reveals the same bounded surface the open groups already sit
-/// in, so folding something away does not change what it looks like.
+/// The header is the same quiet label every other group has, with a count
+/// and a chevron; opening it reveals the same bounded surface the open groups
+/// already sit in, so folding something away does not change what it looks
+/// like.
 class _CollapsedGroup extends StatefulWidget {
   const _CollapsedGroup({
     required this.title,
@@ -558,6 +512,7 @@ class _CollapsedGroupState extends State<_CollapsedGroup> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final tones = AppTones.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -572,101 +527,101 @@ class _CollapsedGroupState extends State<_CollapsedGroup> {
             child: InkWell(
               onTap: () => setState(() => _open = !_open),
               borderRadius: AppRadius.borderS,
+              highlightColor: tones.overlayPressed,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
                   minHeight: AppSpacing.minTapTarget,
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      // The count earns its place only when there is more
-                      // than one thing folded away: "Em dia · 1" is noise
-                      // where "Em dia · 12" is the reason not to open it.
-                      child: Text(
-                        widget.plans.length > 1
-                            ? '${widget.title} · ${widget.plans.length}'
-                            : widget.title,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          letterSpacing: 0.4,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s4,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        // The count earns its place only when there is more
+                        // than one thing folded away: "Em dia 1" is noise
+                        // where "Em dia 12" is the reason not to open it.
+                        child: Text.rich(
+                          TextSpan(
+                            text: widget.title,
+                            children: [
+                              if (widget.plans.length > 1)
+                                TextSpan(
+                                  text: '  ${widget.plans.length}',
+                                  style: theme.textTheme.labelLarge?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            letterSpacing: 0.2,
+                          ),
                         ),
                       ),
-                    ),
-                    Icon(
-                      _open ? Icons.expand_less : Icons.expand_more,
-                      size: 20,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ],
+                      AnimatedRotation(
+                        turns: _open ? 0.5 : 0,
+                        duration: AppMotion.of(context, AppMotion.short),
+                        curve: AppMotion.standard,
+                        child: Icon(
+                          Icons.expand_more,
+                          size: 20,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-        if (_open) ...[
-          if (widget.explanation != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.s8),
-              child: Text(
-                widget.explanation!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
+        AnimatedSize(
+          duration: AppMotion.of(context, AppMotion.medium),
+          curve: AppMotion.standard,
+          alignment: Alignment.topCenter,
+          child: !_open
+              ? const SizedBox(width: double.infinity)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (widget.explanation != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.s4,
+                          0,
+                          AppSpacing.s4,
+                          AppSpacing.s8,
+                        ),
+                        child: Text(
+                          widget.explanation!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    AppGroup(
+                      children: [
+                        for (final plan in widget.plans)
+                          _PlanRow(
+                            key: ValueKey(plan.id),
+                            plan: plan,
+                            onTap: widget.onTap(plan),
+                            onMarkDone: widget.onMarkDone,
+                            justRecorded: widget.justRecordedIds.contains(
+                              plan.id,
+                            ),
+                            submitting: widget.submittingIds.contains(plan.id),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          AppGroup(
-            children: [
-              for (final plan in widget.plans)
-                _PlanRow(
-                  key: ValueKey(plan.id),
-                  plan: plan,
-                  onTap: widget.onTap(plan),
-                  onMarkDone: widget.onMarkDone,
-                  justRecorded: widget.justRecordedIds.contains(plan.id),
-                  submitting: widget.submittingIds.contains(plan.id),
-                ),
-            ],
-          ),
-        ],
+        ),
       ],
-    );
-  }
-}
-
-class _PlansEmpty extends StatelessWidget {
-  const _PlansEmpty({this.onCreate});
-
-  final VoidCallback? onCreate;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Os cuidados do seu carro começam aqui',
-            style: theme.textTheme.titleLarge,
-          ),
-          const SizedBox(height: AppSpacing.s8),
-          Text(
-            'O cadastro costuma criar os planos sugeridos. '
-            'Você pode criar o primeiro agora.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          if (onCreate != null) ...[
-            const SizedBox(height: AppSpacing.s16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppButton(label: 'Criar plano', onPressed: onCreate),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -677,24 +632,19 @@ class _CuidadosSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
+      padding: AppSpacing.screen,
       children: const [
         AppSkeleton(width: 160, height: 14),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeletonList(count: 2, itemHeight: 44),
-        SizedBox(height: AppSpacing.s32),
+        SizedBox(height: AppSpacing.s12),
+        AppSkeleton(width: double.infinity, height: 124),
+        SizedBox(height: AppSpacing.block),
         AppSkeleton(width: 140, height: 14),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeletonList(count: 3, itemHeight: 44),
-        SizedBox(height: AppSpacing.s32),
+        SizedBox(height: AppSpacing.s12),
+        AppSkeleton(width: double.infinity, height: 186),
+        SizedBox(height: AppSpacing.block),
         AppSkeleton(width: 180, height: 14),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeletonList(count: 3, itemHeight: 44),
+        SizedBox(height: AppSpacing.s12),
+        AppSkeleton(width: double.infinity, height: 186),
       ],
     );
   }

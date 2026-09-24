@@ -10,7 +10,11 @@ import 'package:meu_auto/features/maintenance/application/maintenance_plan_provi
 import 'package:meu_auto/features/maintenance/domain/care_periodicity.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_choice_row.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 class CarePeriodicitySheet extends ConsumerStatefulWidget {
@@ -30,11 +34,8 @@ class CarePeriodicitySheet extends ConsumerStatefulWidget {
     required String vehicleId,
     required MaintenancePlan plan,
   }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<void>(
+      context,
       builder: (sheetContext) => Consumer(
         builder: (context, ref, _) {
           final items = ref.watch(maintenanceItemsProvider).asData?.value;
@@ -138,99 +139,72 @@ class _CarePeriodicitySheetState extends ConsumerState<CarePeriodicitySheet> {
     }
   }
 
+  void _choose(CarePeriodicityChoice choice) {
+    if (_submitting) return;
+    setState(() => _choice = choice);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.s24,
-        right: AppSpacing.s24,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final options = <(CarePeriodicityChoice, String)>[
+      (CarePeriodicityChoice.recommended, _recommendedLabel),
+      (CarePeriodicityChoice.weekly, 'Toda semana'),
+      (CarePeriodicityChoice.everyFifteenDays, 'A cada 15 dias'),
+      (CarePeriodicityChoice.monthly, 'Todo mês'),
+      (CarePeriodicityChoice.custom, 'Personalizado…'),
+      (CarePeriodicityChoice.dontRemind, 'Não lembrar'),
+    ];
+
+    return AppSheetBody(
+      children: [
+        AppSheetHeader(
+          title: widget.plan.itemName,
+          subtitle: 'De quanto em quanto tempo lembrar',
+          closable: false,
+        ),
+        const SizedBox(height: AppSpacing.s16),
+        if (_banner != null) AuthFormBanner(message: _banner!),
+        AppGroup(
+          dividerIndent: 0,
           children: [
-            Text(widget.plan.itemName, style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s8),
-            Text('Lembrar:', style: theme.textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.s8),
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            RadioGroup<CarePeriodicityChoice>(
-              groupValue: _choice,
-              onChanged: (choice) {
-                if (_submitting || choice == null) return;
-                setState(() => _choice = choice);
-              },
-              child: Column(
-                children: [
-                  RadioListTile<CarePeriodicityChoice>(
-                    value: CarePeriodicityChoice.recommended,
-                    title: Text(_recommendedLabel),
-                    contentPadding: EdgeInsets.zero,
-                    enabled: !_submitting,
-                  ),
-                  RadioListTile<CarePeriodicityChoice>(
-                    value: CarePeriodicityChoice.weekly,
-                    title: const Text('Toda semana'),
-                    contentPadding: EdgeInsets.zero,
-                    enabled: !_submitting,
-                  ),
-                  RadioListTile<CarePeriodicityChoice>(
-                    value: CarePeriodicityChoice.everyFifteenDays,
-                    title: const Text('A cada 15 dias'),
-                    contentPadding: EdgeInsets.zero,
-                    enabled: !_submitting,
-                  ),
-                  RadioListTile<CarePeriodicityChoice>(
-                    value: CarePeriodicityChoice.monthly,
-                    title: const Text('Todo mês'),
-                    contentPadding: EdgeInsets.zero,
-                    enabled: !_submitting,
-                  ),
-                  RadioListTile<CarePeriodicityChoice>(
-                    value: CarePeriodicityChoice.custom,
-                    title: const Text('Personalizado…'),
-                    contentPadding: EdgeInsets.zero,
-                    enabled: !_submitting,
-                  ),
-                  RadioListTile<CarePeriodicityChoice>(
-                    value: CarePeriodicityChoice.dontRemind,
-                    title: const Text('Não lembrar'),
-                    contentPadding: EdgeInsets.zero,
-                    enabled: !_submitting,
-                  ),
-                ],
-              ),
-            ),
-            if (_choice == CarePeriodicityChoice.custom) ...[
-              const SizedBox(height: AppSpacing.s8),
-              TextField(
-                controller: _custom,
+            for (final (choice, label) in options)
+              AppChoiceRow<CarePeriodicityChoice>(
+                value: choice,
+                groupValue: _choice,
+                label: label,
                 enabled: !_submitting,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                onSubmitted: _submitting ? null : (_) => _submit(),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  // The server takes up to 3650 days — ten years.
-                  LengthLimitingTextInputFormatter(4),
-                ],
-                decoration: const InputDecoration(
-                  labelText: 'A cada quantos dias',
-                ),
+                onChanged: _choose,
               ),
-            ],
-            const SizedBox(height: AppSpacing.s16),
-            AppButton(
-              label: _offline ? 'Tentar de novo' : 'Salvar',
-              loading: _submitting,
-              onPressed: _submitting ? null : _submit,
-            ),
           ],
         ),
-      ),
+        if (_choice == CarePeriodicityChoice.custom) ...[
+          const SizedBox(height: AppSpacing.s12),
+          TextField(
+            controller: _custom,
+            enabled: !_submitting,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            onSubmitted: _submitting ? null : (_) => _submit(),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              // The server takes up to 3650 days — ten years.
+              LengthLimitingTextInputFormatter(4),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'A cada quantos dias',
+              suffixText: 'dias',
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.s24),
+        AppButton(
+          label: _offline ? 'Tentar de novo' : 'Salvar',
+          loading: _submitting,
+          onPressed: _submitting ? null : _submit,
+          expanded: true,
+        ),
+      ],
     );
   }
 }

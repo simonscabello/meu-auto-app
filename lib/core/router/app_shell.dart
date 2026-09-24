@@ -1,24 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 
 /// The four top-level destinations, one per job the owner comes to do.
 ///
 /// Início is how the car is and what to do now. Manutenção is what the car
 /// needs and when. Documentos holds IPVA, licenciamento and seguro. Histórico
-/// is what was done and what it cost — one of the three things the product
-/// promises, and for a while reachable only from the last row of the
-/// maintenance list.
+/// is what was done and what it cost.
 ///
 /// Perfil is not a tab. It is the account — a name, a password, the theme,
 /// the list of cars — visited a few times a year, and it sits behind the
 /// account button on every tab's app bar, where the owner's other apps keep
-/// it. The tab it held is worth more as Histórico.
+/// it.
 ///
-/// There is no global add button. The one that used to sit in the middle of
-/// this bar opened a sheet of seven things, which made adding a two-step
-/// choice from a control that could not say what it would do; and it was
-/// present on screens where none of the seven was the obvious next move.
-/// Each screen now offers its own action, in its own words.
+/// There is no global add button. Each screen offers its own action, in its
+/// own words, and Início names the two that matter most.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -26,37 +22,47 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tones = AppTones.of(context);
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _goBranch,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.speed_outlined),
-            selectedIcon: Icon(Icons.speed),
-            label: 'Início',
-            tooltip: '',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.build_outlined),
-            selectedIcon: Icon(Icons.build),
-            label: 'Manutenção',
-            tooltip: '',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.description_outlined),
-            selectedIcon: Icon(Icons.description),
-            label: 'Documentos',
-            tooltip: '',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'Histórico',
-            tooltip: '',
-          ),
-        ],
+      // The bar is one step off the page with a hairline along its top: the
+      // same edge every grouped surface has, so it reads as part of the same
+      // instrument rather than as a strip stuck on.
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: tones.strokeStrong)),
+        ),
+        child: NavigationBar(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: _goBranch,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Início',
+              tooltip: '',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.build_outlined),
+              selectedIcon: Icon(Icons.build),
+              label: 'Manutenção',
+              tooltip: '',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.description_outlined),
+              selectedIcon: Icon(Icons.description),
+              label: 'Documentos',
+              tooltip: '',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.history_outlined),
+              selectedIcon: Icon(Icons.history),
+              label: 'Histórico',
+              tooltip: '',
+            ),
+          ],
+        ),
       ),
     );
   }

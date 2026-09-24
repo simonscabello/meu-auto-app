@@ -5,10 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
+import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
-import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/auth/presentation/auth_password_field.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
@@ -77,13 +77,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AppScaffold(
       title: 'Criar conta',
       body: AutofillGroup(
         child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.s24),
+          padding: AppSpacing.screenHeaded,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+              child: Text(
+                'Uma conta guarda os carros, o histórico e os prazos, e '
+                'funciona em qualquer aparelho.',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s24),
             if (_banner != null) AuthFormBanner(message: _banner!),
             TextField(
               controller: _nameController,
@@ -99,11 +111,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               },
               decoration: InputDecoration(
                 labelText: 'Nome',
+                prefixIcon: const Icon(Icons.person_outline),
                 errorText: _fieldErrors['name'],
-                errorMaxLines: 3,
               ),
             ),
-            const SizedBox(height: AppSpacing.s16),
+            const SizedBox(height: AppSpacing.s12),
             TextField(
               controller: _emailController,
               enabled: !_submitting,
@@ -120,11 +132,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               },
               decoration: InputDecoration(
                 labelText: 'E-mail',
+                prefixIcon: const Icon(Icons.mail_outline),
                 errorText: _fieldErrors['email'],
-                errorMaxLines: 3,
               ),
             ),
-            const SizedBox(height: AppSpacing.s16),
+            const SizedBox(height: AppSpacing.s12),
             AuthPasswordField(
               controller: _passwordController,
               label: 'Senha',
@@ -146,13 +158,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               },
             ),
             const SizedBox(height: AppSpacing.s24),
-            SizedBox(
-              width: double.infinity,
-              child: AppButton(
-                label: _offline ? 'Tentar de novo' : 'Criar conta',
-                loading: _submitting,
-                onPressed: _submit,
-              ),
+            AppButton(
+              label: _offline ? 'Tentar de novo' : 'Criar conta',
+              loading: _submitting,
+              onPressed: _submit,
+              expanded: true,
             ),
             const SizedBox(height: AppSpacing.s12),
             AppButton(

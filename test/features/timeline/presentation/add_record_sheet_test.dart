@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/timeline/presentation/add_record_sheet.dart';
@@ -64,8 +65,8 @@ void main() {
     final screenWidth =
         tester.view.physicalSize.width / tester.view.devicePixelRatio;
 
-    expect(groupRect.left, 16);
-    expect(groupRect.right, screenWidth - 16);
+    expect(groupRect.left, AppSpacing.page);
+    expect(groupRect.right, screenWidth - AppSpacing.page);
   });
 }
 

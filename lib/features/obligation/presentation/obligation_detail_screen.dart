@@ -12,11 +12,13 @@ import 'package:meu_auto/features/obligation/presentation/obligation_form_sheet.
 import 'package:meu_auto/features/obligation/presentation/obligation_payment_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
+import 'package:meu_auto/shared/widgets/app_detail_header.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_fact_row.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
-import 'package:meu_auto/shared/widgets/app_status_chip.dart';
 
 class ObligationDetailScreen extends ConsumerWidget {
   const ObligationDetailScreen({super.key, required this.obligationId});
@@ -31,8 +33,8 @@ class ObligationDetailScreen extends ConsumerWidget {
       loading: () => const AppScaffold(
         title: 'Prazo',
         body: Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 4, itemHeight: 88),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 3, itemHeight: 110),
         ),
       ),
       error: (error, _) => AppScaffold(
@@ -152,7 +154,6 @@ class ObligationDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final phrase = obligationStatusPhrase(obligation);
     final amount = obligation.amountCents;
     final paidAmount = obligation.paidAmountCents;
@@ -160,53 +161,44 @@ class ObligationDetailContent extends StatelessWidget {
         paidAmount != null && (amount == null || paidAmount != amount);
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: AppSpacing.screenHeaded,
       children: [
-        Text(obligationTitle(obligation), style: theme.textTheme.headlineSmall),
-        const SizedBox(height: AppSpacing.s8),
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSpacing.s8,
-          runSpacing: AppSpacing.s4,
+        AppDetailHeader(
+          icon: obligation.kind == ObligationKind.ipva
+              ? Icons.receipt_long_outlined
+              : Icons.description_outlined,
+          title: obligationTitle(obligation),
+          status: AppStatus.fromWire(obligation.status.wire),
+          phrase: phrase,
+        ),
+        const SizedBox(height: appGroupGap),
+        AppGroup(
+          dividerIndent: 0,
           children: [
-            AppStatusChip(status: AppStatus.fromWire(obligation.status.wire)),
-            if (phrase.isNotEmpty)
-              Text(
-                phrase,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+            AppFactRow(
+              label: 'Vencimento',
+              value: formatCivilDateLong(obligation.dueOn),
+            ),
+            if (amount != null)
+              AppFactRow(label: 'Valor', value: amount.format()),
+            if (obligation.paidOn != null)
+              AppFactRow(
+                label: 'Pago em',
+                value: formatCivilDateLong(obligation.paidOn!),
               ),
+            if (showPaidAmount)
+              AppFactRow(label: 'Valor pago', value: paidAmount.format()),
+            if (obligation.notes != null && obligation.notes!.trim().isNotEmpty)
+              AppFactRow(label: 'Observações', value: obligation.notes!.trim()),
           ],
         ),
-        const SizedBox(height: AppSpacing.s24),
-        _Fact(
-          label: 'Vencimento',
-          value: formatCivilDateLong(obligation.dueOn),
-        ),
-        if (amount != null) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Valor', value: amount.format()),
-        ],
-        if (obligation.paidOn != null) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(
-            label: 'Pago em',
-            value: formatCivilDateLong(obligation.paidOn!),
-          ),
-        ],
-        if (showPaidAmount) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Valor pago', value: paidAmount.format()),
-        ],
-        if (obligation.notes != null &&
-            obligation.notes!.trim().isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.s16),
-          _Fact(label: 'Observações', value: obligation.notes!.trim()),
-        ],
-        const SizedBox(height: AppSpacing.s32),
+        const SizedBox(height: appGroupGap),
         if (onMarkPaid != null) ...[
-          AppButton(label: 'Marcar como pago', onPressed: onMarkPaid),
+          AppButton(
+            label: 'Marcar como pago',
+            onPressed: onMarkPaid,
+            expanded: true,
+          ),
           const SizedBox(height: AppSpacing.s8),
         ],
         if (onUndoPayment != null) ...[
@@ -214,14 +206,17 @@ class ObligationDetailContent extends StatelessWidget {
             label: 'Desfazer pagamento',
             variant: AppButtonVariant.secondary,
             onPressed: onUndoPayment,
+            expanded: true,
           ),
           const SizedBox(height: AppSpacing.s8),
         ],
         if (onEdit != null) ...[
           AppButton(
             label: 'Editar',
+            icon: Icons.edit_outlined,
             variant: AppButtonVariant.secondary,
             onPressed: onEdit,
+            expanded: true,
           ),
           const SizedBox(height: AppSpacing.s8),
         ],
@@ -230,32 +225,8 @@ class ObligationDetailContent extends StatelessWidget {
             label: 'Excluir',
             variant: AppButtonVariant.destructive,
             onPressed: onDelete,
+            expanded: true,
           ),
-      ],
-    );
-  }
-}
-
-class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s4),
-        Text(value, style: theme.textTheme.titleMedium),
       ],
     );
   }

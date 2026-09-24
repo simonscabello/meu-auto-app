@@ -13,6 +13,7 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -30,8 +31,8 @@ class SeguroEditScreen extends ConsumerWidget {
       loading: () => const AppScaffold(
         title: 'Editar seguro',
         body: Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 6, itemHeight: 56),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 5, itemHeight: 56),
         ),
       ),
       error: (error, _) => AppScaffold(
@@ -266,124 +267,139 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
       message: 'O que você preencheu será perdido.',
       child: AppScaffold(
         title: _editing ? 'Editar seguro' : 'Registrar seguro',
-        body: ListView(
-          padding: const EdgeInsets.all(AppSpacing.s16),
+        body: Column(
           children: [
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            TextField(
-              controller: _insurer,
-              enabled: !_submitting,
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: 'Seguradora',
-                errorText: _fieldErrors['insurer_name'],
-                errorMaxLines: 3,
+            Expanded(
+              child: ListView(
+                padding: AppSpacing.screen,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                children: [
+                  if (_banner != null) AuthFormBanner(message: _banner!),
+                  AppFormSection(
+                    title: 'Apólice',
+                    children: [
+                      TextField(
+                        controller: _insurer,
+                        enabled: !_submitting,
+                        textCapitalization: TextCapitalization.words,
+                        textInputAction: TextInputAction.next,
+                        decoration: InputDecoration(
+                          labelText: 'Seguradora',
+                          errorText: _fieldErrors['insurer_name'],
+                        ),
+                      ),
+                      AppMoneyField(
+                        controller: _premium,
+                        label: 'Prêmio (opcional)',
+                        enabled: !_submitting,
+                        errorText: _fieldErrors['premium_cents'],
+                      ),
+                    ],
+                  ),
+                  const AppFormGap(),
+                  AppFormSection(
+                    title: 'Vigência',
+                    children: [
+                      AppDateField(
+                        value: _startsOn,
+                        onPick: _submitting ? () {} : _pickStartsOn,
+                        label: 'Início',
+                        emptyLabel: 'Escolher data',
+                        enabled: !_submitting,
+                        errorText: _fieldErrors['starts_on'],
+                      ),
+                      AppDateField(
+                        value: _endsOn,
+                        onPick: _submitting ? () {} : _pickEndsOn,
+                        label: 'Fim',
+                        emptyLabel: 'Escolher data',
+                        enabled: !_submitting,
+                        errorText: _fieldErrors['ends_on'],
+                      ),
+                    ],
+                  ),
+                  const AppFormGap(),
+                  if (_showDetails)
+                    AppFormSection(
+                      title: 'Contatos e detalhes',
+                      children: [
+                        TextField(
+                          controller: _emergency,
+                          enabled: !_submitting,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Telefone de emergência (opcional)',
+                            errorText: _fieldErrors['emergency_phone'],
+                          ),
+                        ),
+                        TextField(
+                          controller: _policy,
+                          enabled: !_submitting,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Número da apólice (opcional)',
+                            errorText: _fieldErrors['policy_number'],
+                          ),
+                        ),
+                        TextField(
+                          controller: _brokerName,
+                          enabled: !_submitting,
+                          textCapitalization: TextCapitalization.words,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Corretor (opcional)',
+                            errorText: _fieldErrors['broker_name'],
+                          ),
+                        ),
+                        TextField(
+                          controller: _brokerPhone,
+                          enabled: !_submitting,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Telefone do corretor (opcional)',
+                            errorText: _fieldErrors['broker_phone'],
+                          ),
+                        ),
+                        TextField(
+                          controller: _notes,
+                          enabled: !_submitting,
+                          minLines: 2,
+                          maxLines: 4,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: InputDecoration(
+                            labelText: 'Observações (opcional)',
+                            errorText: _fieldErrors['notes'],
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: AppButton(
+                        label: 'Contatos e detalhes',
+                        icon: Icons.add,
+                        variant: AppButtonVariant.tertiary,
+                        onPressed: _submitting
+                            ? null
+                            : () => setState(() => _showDetails = true),
+                      ),
+                    ),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.s12),
-            AppDateField(
-              value: _startsOn,
-              onPick: _submitting ? () {} : _pickStartsOn,
-              label: 'Início da vigência',
-              emptyLabel: 'Escolher data',
-              enabled: !_submitting,
-              errorText: _fieldErrors['starts_on'],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppDateField(
-              value: _endsOn,
-              onPick: _submitting ? () {} : _pickEndsOn,
-              label: 'Fim da vigência',
-              emptyLabel: 'Escolher data',
-              enabled: !_submitting,
-              errorText: _fieldErrors['ends_on'],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppMoneyField(
-              controller: _premium,
-              label: 'Prêmio (opcional)',
-              enabled: !_submitting,
-              errorText: _fieldErrors['premium_cents'],
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            if (_showDetails) ...[
-              TextField(
-                controller: _emergency,
-                enabled: !_submitting,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Telefone de emergência (opcional)',
-                  errorText: _fieldErrors['emergency_phone'],
-                  errorMaxLines: 3,
-                ),
+            AppFormFooter(
+              child: AppButton(
+                label: _offline
+                    ? 'Tentar de novo'
+                    : (_editing ? 'Salvar seguro' : 'Registrar seguro'),
+                loading: _submitting,
+                onPressed: _submitting ? null : _submit,
+                expanded: true,
               ),
-              const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _policy,
-                enabled: !_submitting,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Número da apólice (opcional)',
-                  errorText: _fieldErrors['policy_number'],
-                  errorMaxLines: 3,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _brokerName,
-                enabled: !_submitting,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Corretor (opcional)',
-                  errorText: _fieldErrors['broker_name'],
-                  errorMaxLines: 3,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _brokerPhone,
-                enabled: !_submitting,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Telefone do corretor (opcional)',
-                  errorText: _fieldErrors['broker_phone'],
-                  errorMaxLines: 3,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s12),
-              TextField(
-                controller: _notes,
-                enabled: !_submitting,
-                minLines: 2,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  labelText: 'Observações (opcional)',
-                  errorText: _fieldErrors['notes'],
-                  errorMaxLines: 3,
-                ),
-              ),
-            ] else
-              Align(
-                alignment: Alignment.centerLeft,
-                child: AppButton(
-                  label: 'Mais detalhes',
-                  variant: AppButtonVariant.tertiary,
-                  onPressed: _submitting
-                      ? null
-                      : () => setState(() => _showDetails = true),
-                ),
-              ),
-            const SizedBox(height: AppSpacing.s24),
-            AppButton(
-              label: _offline
-                  ? 'Tentar de novo'
-                  : (_editing ? 'Salvar seguro' : 'Registrar seguro'),
-              loading: _submitting,
-              onPressed: _submitting ? null : _submit,
             ),
           ],
         ),

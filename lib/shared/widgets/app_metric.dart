@@ -12,7 +12,7 @@ enum AppMetricSize {
   compact,
 }
 
-/// A number with its unit and its label.
+/// A number with its unit and its label, set in the instrument face.
 ///
 /// The unit is set in the label style and joined to the value in one
 /// [Text.rich], so "34,7 L" wraps and scales as one thing rather than as a
@@ -24,6 +24,7 @@ class AppMetric extends StatelessWidget {
     this.label = '',
     this.unit,
     this.size = AppMetricSize.hero,
+    this.color,
   });
 
   final String value;
@@ -31,21 +32,24 @@ class AppMetric extends StatelessWidget {
   final String? unit;
   final AppMetricSize size;
 
+  /// Overrides the figure's colour. A loud status passes its own.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final numberStyle =
-        (size == AppMetricSize.hero
-                ? theme.textTheme.headlineLarge
-                : theme.textTheme.titleLarge)
-            ?.copyWith(fontFeatures: AppTypography.tabular);
+    final scheme = theme.colorScheme;
+    final numberStyle = AppTypography.instrument(
+      size: size == AppMetricSize.hero ? 40 : 26,
+      color: color ?? scheme.onSurface,
+    );
     final unitStyle =
         (size == AppMetricSize.hero
                 ? theme.textTheme.titleMedium
                 : theme.textTheme.bodyMedium)
             ?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontFeatures: AppTypography.tabular,
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             );
 
     return Column(
@@ -66,7 +70,7 @@ class AppMetric extends StatelessWidget {
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],

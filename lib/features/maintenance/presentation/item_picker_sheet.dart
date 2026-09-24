@@ -3,13 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record_draft.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
+import 'package:meu_auto/shared/widgets/app_segmented.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
+import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 bool _never(String id) => false;
 
@@ -27,9 +35,7 @@ class ItemPickerSheet extends ConsumerStatefulWidget {
   final List<MaintenanceItem> selected;
 
   /// Items the car does not have — marked "não usa" on its profile, or ruled
-  /// out by its fuel. Left out of the list: offering an oil change to an
-  /// electric car in the form that records a service is the same false
-  /// suggestion the plan list was fixed to stop making.
+  /// out by its fuel. Left out of the list.
   final Set<String> hiddenItemIds;
 
   /// Items that are already on the record being added to: shown ticked, and
@@ -48,11 +54,8 @@ class ItemPickerSheet extends ConsumerStatefulWidget {
     String title = 'O que foi feito',
     Set<String> hiddenItemIds = const {},
   }) {
-    return showModalBottomSheet<List<MaintenanceItem>>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<List<MaintenanceItem>>(
+      context,
       builder: (sheetContext) => ItemPickerSheet(
         selected: selected,
         lockedItemIds: lockedItemIds,
@@ -100,8 +103,9 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
       return;
     }
     if (_selected.length >= MaintenanceRecordDraft.maxItems) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No máximo 20 itens por registro.')),
+      showAppSnackBar(
+        ScaffoldMessenger.of(context),
+        message: 'No máximo 20 itens por registro.',
       );
       return;
     }
@@ -120,47 +124,39 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final catalogue = ref.watch(maintenanceItemsProvider);
-    final height = MediaQuery.sizeOf(context).height * 0.85;
 
-    return SizedBox(
-      height: height,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.s16,
-          0,
-          AppSpacing.s16,
-          AppSpacing.s16,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s12),
-            TextField(
-              controller: _query,
-              textInputAction: TextInputAction.search,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Buscar',
-                prefixIcon: Icon(Icons.search),
-              ),
+    return AppSheetFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSheetHeader(title: widget.title, closable: false),
+          const SizedBox(height: AppSpacing.s12),
+          TextField(
+            controller: _query,
+            textInputAction: TextInputAction.search,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Buscar',
+              prefixIcon: Icon(Icons.search),
             ),
-            const SizedBox(height: AppSpacing.s12),
-            Expanded(child: _body(catalogue)),
-            const SizedBox(height: AppSpacing.s8),
-            AppButton(
-              label: 'Criar item personalizado',
-              variant: AppButtonVariant.tertiary,
-              onPressed: _createCustom,
-            ),
-            AppButton(
-              label: _selected.isEmpty
-                  ? 'Pronto'
-                  : 'Pronto (${_selected.length})',
-              onPressed: () => Navigator.of(context).pop(_selected),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          Expanded(child: _body(catalogue)),
+          const SizedBox(height: AppSpacing.s8),
+          AppButton(
+            label: 'Criar item personalizado',
+            icon: Icons.add,
+            variant: AppButtonVariant.tertiary,
+            onPressed: _createCustom,
+          ),
+          AppButton(
+            label: _selected.isEmpty
+                ? 'Pronto'
+                : 'Pronto (${_selected.length})',
+            onPressed: () => Navigator.of(context).pop(_selected),
+            expanded: true,
+          ),
+        ],
       ),
     );
   }
@@ -212,9 +208,15 @@ class _GroupedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (items.isEmpty) {
-      return const Center(
-        child: Text('Nada com esse nome. Tente outra busca.'),
+      return Center(
+        child: Text(
+          'Nada com esse nome. Tente outra busca.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       );
     }
 
@@ -230,41 +232,84 @@ class _GroupedList extends StatelessWidget {
     return ListView(
       children: [
         if (maintenance.isNotEmpty) ...[
-          _SectionTitle(MaintenanceItemKind.maintenance.sectionTitle),
-          for (final item in maintenance) _tile(item),
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s8),
+            child: AppSectionHeader(
+              title: MaintenanceItemKind.maintenance.sectionTitle,
+            ),
+          ),
+          for (var i = 0; i < maintenance.length; i++) ...[
+            if (i > 0) const AppRowDivider(),
+            _tile(context, maintenance[i]),
+          ],
         ],
         if (care.isNotEmpty) ...[
-          _SectionTitle(MaintenanceItemKind.care.sectionTitle),
-          for (final item in care) _tile(item),
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s16),
+            child: AppSectionHeader(
+              title: MaintenanceItemKind.care.sectionTitle,
+            ),
+          ),
+          for (var i = 0; i < care.length; i++) ...[
+            if (i > 0) const AppRowDivider(),
+            _tile(context, care[i]),
+          ],
         ],
       ],
     );
   }
 
-  Widget _tile(MaintenanceItem item) {
+  Widget _tile(BuildContext context, MaintenanceItem item) {
+    final theme = Theme.of(context);
     final locked = isLocked(item.id);
     final selected = locked || isSelected(item.id);
-    return CheckboxListTile(
-      value: selected,
-      onChanged: locked || (!selected && atCap) ? null : (_) => onToggle(item),
-      secondary: Icon(maintenanceIconFor(item.slug)),
-      title: Text(item.name),
-      subtitle: locked ? const Text('Já está neste registro') : null,
-      controlAffinity: ListTileControlAffinity.trailing,
-    );
-  }
-}
+    final enabled = !locked && (selected || !atCap);
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, AppSpacing.s8, 0, AppSpacing.s4),
-      child: Text(label, style: Theme.of(context).textTheme.titleSmall),
+    return Semantics(
+      checked: selected,
+      enabled: enabled,
+      label: locked ? '${item.name}. Já está neste registro' : item.name,
+      excludeSemantics: true,
+      child: AppListRowShell(
+        onTap: enabled ? () => onToggle(item) : null,
+        child: Row(
+          children: [
+            AppIconWell(
+              icon: maintenanceIconFor(item.slug),
+              tone: selected ? AppIconWellTone.accent : AppIconWellTone.neutral,
+            ),
+            const SizedBox(width: AppSpacing.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: enabled
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  if (locked)
+                    Text(
+                      'Já está neste registro',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s8),
+            Checkbox(
+              value: selected,
+              onChanged: enabled ? (_) => onToggle(item) : null,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -273,11 +318,8 @@ class _CustomItemSheet extends ConsumerStatefulWidget {
   const _CustomItemSheet();
 
   static Future<MaintenanceItem?> show(BuildContext context) {
-    return showModalBottomSheet<MaintenanceItem>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<MaintenanceItem>(
+      context,
       builder: (sheetContext) => const _CustomItemSheet(),
     );
   }
@@ -323,66 +365,53 @@ class _CustomItemSheetState extends ConsumerState<_CustomItemSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.s24,
-        right: AppSpacing.s24,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Item personalizado', style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s16),
-            if (_banner != null) ...[
-              Text(
-                _banner!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.error,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s12),
-            ],
-            TextField(
-              controller: _name,
-              enabled: !_submitting,
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _submitting ? null : _submit(),
-              maxLength: 120,
-              decoration: InputDecoration(
-                labelText: 'Nome',
-                counterText: '',
-                errorText: _fieldErrors['name'],
-                errorMaxLines: 3,
-              ),
+    return AppSheetBody(
+      children: [
+        const AppSheetHeader(
+          title: 'Item personalizado',
+          subtitle: 'Para algo que o catálogo não tem',
+          closable: false,
+        ),
+        const SizedBox(height: AppSpacing.s16),
+        if (_banner != null) AuthFormBanner(message: _banner!),
+        TextField(
+          controller: _name,
+          enabled: !_submitting,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _submitting ? null : _submit(),
+          maxLength: 120,
+          decoration: InputDecoration(
+            labelText: 'Nome',
+            counterText: '',
+            errorText: _fieldErrors['name'],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s12),
+        AppSegmented<MaintenanceItemKind>(
+          value: _kind,
+          enabled: !_submitting,
+          onChanged: (next) => setState(() => _kind = next),
+          options: const [
+            AppSegmentedOption(
+              value: MaintenanceItemKind.maintenance,
+              label: 'Manutenção',
             ),
-            const SizedBox(height: AppSpacing.s12),
-            SegmentedButton<MaintenanceItemKind>(
-              segments: const [
-                ButtonSegment(
-                  value: MaintenanceItemKind.maintenance,
-                  label: Text('Manutenção'),
-                ),
-                ButtonSegment(
-                  value: MaintenanceItemKind.care,
-                  label: Text('Cuidado'),
-                ),
-              ],
-              selected: {_kind},
-              onSelectionChanged: _submitting
-                  ? null
-                  : (next) => setState(() => _kind = next.first),
+            AppSegmentedOption(
+              value: MaintenanceItemKind.care,
+              label: 'Cuidado',
             ),
-            const SizedBox(height: AppSpacing.s16),
-            AppButton(label: 'Criar', loading: _submitting, onPressed: _submit),
           ],
         ),
-      ),
+        const SizedBox(height: AppSpacing.s24),
+        AppButton(
+          label: 'Criar',
+          loading: _submitting,
+          onPressed: _submit,
+          expanded: true,
+        ),
+      ],
     );
   }
 }

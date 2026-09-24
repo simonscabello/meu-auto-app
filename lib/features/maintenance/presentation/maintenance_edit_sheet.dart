@@ -6,15 +6,18 @@ import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
+import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
@@ -23,8 +26,7 @@ import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 ///
 /// Changing the lines from here would mean replacing the list, and removing
 /// one has to decide what happens to the clock it was keeping. Appending a
-/// line does not, so that is a separate action on the record itself — see
-/// `MaintenanceDetailContent.onAddItem`.
+/// line does not, so that is a separate action on the record itself.
 class MaintenanceEditSheet extends ConsumerStatefulWidget {
   const MaintenanceEditSheet({super.key, required this.record});
 
@@ -34,14 +36,9 @@ class MaintenanceEditSheet extends ConsumerStatefulWidget {
     BuildContext context, {
     required MaintenanceRecord record,
   }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      // A form: closes through its header or the back button, which both
-      // ask before discarding. See AppSheetHeader.
-      showDragHandle: false,
-      enableDrag: false,
-      useSafeArea: true,
+    return showAppSheet<void>(
+      context,
+      isForm: true,
       builder: (sheetContext) => MaintenanceEditSheet(record: record),
     );
   }
@@ -55,10 +52,6 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
   late final TextEditingController _mileage;
   late final TextEditingController _workshop;
   late final TextEditingController _notes;
-
-  /// Money fills from the cents up, the way a card machine takes it, and the
-  /// field wears `R$ 420,00` as it is typed. No decimal separator to get
-  /// wrong, and no double anywhere near the value.
   late final TextEditingController _cost;
 
   late CivilDate _occurredOn;
@@ -165,10 +158,6 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
       // produced, so the same rule applies and the same dialog answers it.
       final rollback = OdometerRollback.fromFailure(failure);
       if (rollback != null) {
-        // PATCH takes `source: correction` like the create does. The server no
-        // longer compares a record with its own reading, so this now fires only
-        // for a real conflict with another reading — and a swapped instrument
-        // panel is exactly when the owner needs to be able to confirm it.
         final override = await showOdometerRollbackDialog(
           context,
           rollback: rollback,
@@ -200,95 +189,78 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return AppDiscardGuard(
       listenable: Listenable.merge(_fields),
       isDirty: () => _isDirty,
       busy: _submitting,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: AppSpacing.s24,
-          right: AppSpacing.s24,
-          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s24,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const AppSheetHeader(title: 'Editar manutenção'),
-              const SizedBox(height: AppSpacing.s4),
-              Text(
+      child: AppSheetBody(
+        children: [
+          const AppSheetHeader(
+            title: 'Editar manutenção',
+            subtitle:
                 'Para acrescentar um serviço que ficou de fora, use '
                 'Adicionar item na tela da manutenção.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s16),
+          ),
+          const SizedBox(height: AppSpacing.s16),
+          if (_banner != null) AuthFormBanner(message: _banner!),
+          AppFormSection(
+            title: 'Quando',
+            children: [
               AppDateField(
                 value: _occurredOn,
                 onPick: _pickDate,
                 enabled: !_submitting,
               ),
-              const SizedBox(height: AppSpacing.s12),
               AppKmField(
                 controller: _mileage,
                 enabled: !_submitting,
                 errorText: _mileageError,
               ),
-              const SizedBox(height: AppSpacing.s12),
+            ],
+          ),
+          const AppFormGap(),
+          AppFormSection(
+            title: 'Onde e quanto',
+            children: [
               TextField(
                 controller: _workshop,
                 enabled: !_submitting,
                 maxLength: 120,
                 textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Oficina',
                   counterText: '',
                 ),
               ),
-              const SizedBox(height: AppSpacing.s12),
               AppMoneyField(
                 controller: _cost,
                 label: 'Valor total',
                 enabled: !_submitting,
               ),
-              const SizedBox(height: AppSpacing.s12),
               TextField(
                 controller: _notes,
                 enabled: !_submitting,
                 maxLength: 500,
                 maxLines: 2,
                 textInputAction: TextInputAction.done,
+                textCapitalization: TextCapitalization.sentences,
                 onSubmitted: (_) => _submitting ? null : _submit(),
                 decoration: const InputDecoration(
                   labelText: 'Observação',
                   counterText: '',
                 ),
               ),
-              if (_banner != null) ...[
-                const SizedBox(height: AppSpacing.s8),
-                Text(
-                  _banner!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.s16),
-              SizedBox(
-                width: double.infinity,
-                child: AppButton(
-                  label: _offline ? 'Tentar de novo' : 'Salvar',
-                  loading: _submitting,
-                  onPressed: _submit,
-                ),
-              ),
             ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.s24),
+          AppButton(
+            label: _offline ? 'Tentar de novo' : 'Salvar',
+            loading: _submitting,
+            onPressed: _submit,
+            expanded: true,
+          ),
+        ],
       ),
     );
   }

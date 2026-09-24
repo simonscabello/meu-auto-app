@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_motion.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 
 /// One choice out of a few, all visible, one tap away.
 ///
@@ -31,13 +32,15 @@ class AppSegmented<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final tones = AppTones.of(context);
     final active = enabled && onChanged != null;
 
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
+        color: scheme.surfaceContainerLow,
         borderRadius: AppRadius.borderS,
+        border: Border.all(color: tones.stroke),
       ),
       child: Row(
         children: [
@@ -54,13 +57,18 @@ class AppSegmented<T> extends StatelessWidget {
                   curve: AppMotion.standard,
                   decoration: BoxDecoration(
                     color: option.value == value
-                        ? scheme.surfaceContainerLowest
+                        ? tones.accentSoft
                         : Colors.transparent,
-                    borderRadius: AppRadius.borderXs,
+                    borderRadius: const BorderRadius.all(Radius.circular(7)),
+                    border: Border.all(
+                      color: option.value == value
+                          ? scheme.primary.withValues(alpha: 0.35)
+                          : Colors.transparent,
+                    ),
                   ),
                   child: Material(
                     color: Colors.transparent,
-                    borderRadius: AppRadius.borderXs,
+                    borderRadius: const BorderRadius.all(Radius.circular(7)),
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: active ? () => onChanged!(option.value) : null,
@@ -78,7 +86,7 @@ class AppSegmented<T> extends StatelessWidget {
                                 option.label,
                                 style: theme.textTheme.labelLarge?.copyWith(
                                   color: option.value == value
-                                      ? scheme.onSurface
+                                      ? scheme.primary
                                       : scheme.onSurfaceVariant,
                                 ),
                               ),

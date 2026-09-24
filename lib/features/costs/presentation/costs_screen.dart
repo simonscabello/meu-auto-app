@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/domain/money.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/costs/application/costs_provider.dart';
 import 'package:meu_auto/features/costs/domain/costs_copy.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_segmented.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
 const _periodOptions = [3, 6, 12, 24];
@@ -83,6 +85,7 @@ class CostsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final total = costs.totalCents.cents;
     final empty = total <= 0;
     final excluded = excludedCategoriesNote(costs.noteCategoryKeys);
@@ -90,76 +93,75 @@ class CostsContent extends StatelessWidget {
     final bars = costs.bars;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
+      padding: AppSpacing.screen,
       children: [
-        Wrap(
-          spacing: AppSpacing.s8,
-          runSpacing: AppSpacing.s8,
-          children: [
+        AppSegmented<int>(
+          value: selectedMonths,
+          onChanged: onPeriodSelected,
+          options: [
             for (final months in _periodOptions)
-              ChoiceChip(
-                label: Text('$months meses'),
-                selected: selectedMonths == months,
-                onSelected: onPeriodSelected == null
-                    ? null
-                    : (_) => onPeriodSelected!(months),
+              AppSegmentedOption(value: months, label: '$months meses'),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.block),
+        // The total is the screen, so it is set as the screen's own reading
+        // rather than boxed. A card here would put the one figure everything
+        // else is measured against on the same footing as the bars below it.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Custo registrado',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  costs.totalCents.format(),
+                  style: AppTypography.instrument(
+                    size: 48,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s8),
+              Text(
+                window,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              if (empty) ...[
+                const SizedBox(height: AppSpacing.s12),
+                Text(
+                  emptyPeriodPhrase(costs.periodMonths),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.block),
+        AppGroup(
+          title: 'Por categoria',
+          dividerIndent: 0,
+          footnote: excluded,
+          children: [
+            for (final bar in bars)
+              _CategoryBar(
+                label: bar.label,
+                amount: bar.cents,
+                trackedCents: total,
               ),
           ],
         ),
-        const SizedBox(height: AppSpacing.s24),
-        // The total is the screen, so it is set as the screen's own heading
-        // rather than boxed. A card here would put the one figure everything
-        // else is measured against on the same footing as the bars below it.
-        const AppSectionHeader(title: 'Custo registrado'),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            costs.totalCents.format(),
-            style: theme.textTheme.displaySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              letterSpacing: -1,
-              fontFeatures: AppTypography.tabular,
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s4),
-        Text(
-          window,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        if (empty) ...[
-          const SizedBox(height: AppSpacing.s12),
-          Text(
-            emptyPeriodPhrase(costs.periodMonths),
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
-        const SizedBox(height: AppSpacing.s24),
-        for (var i = 0; i < bars.length; i++) ...[
-          if (i > 0) const SizedBox(height: AppSpacing.s16),
-          _CategoryBar(
-            label: bars[i].label,
-            amount: bars[i].cents,
-            trackedCents: total,
-          ),
-        ],
-        if (excluded != null) ...[
-          const SizedBox(height: AppSpacing.s24),
-          Text(
-            excluded,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -183,62 +185,52 @@ class _CategoryBar extends StatelessWidget {
     final fraction = _barFraction(cents, trackedCents);
     final percent = _percent(cents, trackedCents);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.titleSmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+    return AppListRowShell(
+      semanticLabel: '$label. ${amount.format()}. $percent por cento',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
             ),
-            Text(
-              amount.format(),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontFeatures: AppTypography.tabular,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s8),
-            Text(
-              '$percent%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontFeatures: AppTypography.tabular,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.s8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            return SizedBox(
-              height: 8,
-              width: constraints.maxWidth,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: AppRadius.borderS,
-                ),
-                child: Align(
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          // The figure and its share on a line of their own, so a long
+          // category name at a large text scale never pushes them off the
+          // edge.
+          Row(
+            children: [
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: constraints.maxWidth * fraction,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: AppRadius.borderS,
+                  child: Text(
+                    amount.format(),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: AppTypography.tabular,
                     ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
-      ],
+              const SizedBox(width: AppSpacing.s8),
+              Text(
+                '$percent%',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontFeatures: AppTypography.tabular,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          AppProgressBar(value: fraction, height: 6),
+        ],
+      ),
     );
   }
 }
@@ -265,17 +257,15 @@ class _CostsSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      padding: AppSpacing.screen,
       children: const [
-        AppSkeleton(width: double.infinity, height: 40),
-        SizedBox(height: AppSpacing.s24),
-        AppSkeleton(width: double.infinity, height: 112),
-        SizedBox(height: AppSpacing.s24),
-        AppSkeleton(width: double.infinity, height: 40),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeleton(width: double.infinity, height: 40),
-        SizedBox(height: AppSpacing.s16),
-        AppSkeleton(width: double.infinity, height: 40),
+        AppSkeleton(width: double.infinity, height: 46),
+        SizedBox(height: AppSpacing.block),
+        AppSkeleton(width: 140, height: 14),
+        SizedBox(height: AppSpacing.s12),
+        AppSkeleton(width: 220, height: 48),
+        SizedBox(height: AppSpacing.block),
+        AppSkeleton(width: double.infinity, height: 220),
       ],
     );
   }

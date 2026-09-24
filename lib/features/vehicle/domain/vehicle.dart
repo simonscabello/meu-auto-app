@@ -184,6 +184,30 @@ final class Vehicle {
     return short.isEmpty ? brand : '$brand $short';
   }
 
+  /// The name at the head of Início: the nickname, or the model without the
+  /// brand — "Prius", not "Toyota Prius" — because the brand is the first
+  /// word of [metaParts], right under it.
+  String get headlineName {
+    final nick = nickname?.trim();
+    if (nick != null && nick.isNotEmpty) {
+      return nick;
+    }
+    final short = shortModelName(model);
+    return short.isEmpty ? brand : short;
+  }
+
+  /// What tells two of the owner's cars apart, under the name: the brand,
+  /// the year and the plate, whichever are known.
+  List<String> get metaParts {
+    final year = modelYear ?? manufactureYear;
+    final plateText = plate?.trim();
+    return [
+      brand,
+      if (year != null) '$year',
+      if (plateText != null && plateText.isNotEmpty) plateText,
+    ];
+  }
+
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
       id: json['id'] as String,

@@ -25,7 +25,9 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -33,8 +35,7 @@ import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 /// with permission.
 ///
 /// The first screen is a single yes/no. Somebody who taps "Depois" is on the
-/// dashboard in one tap, which is the point: the old flow put five date-and-
-/// mileage forms between registering a car and seeing it.
+/// dashboard in one tap.
 ///
 /// Which questions get asked, and how they are worded, comes from the server.
 /// Nothing here knows what a timing belt is.
@@ -73,10 +74,8 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   void initState() {
     super.initState();
     // Empty, not today's reading. Every answer here is about the past, and a
-    // field prefilled with the current mileage was accepted as-is: an oil
-    // change "eight months ago" went in at today's kilometres, and every due
-    // point measured from it came out late. The current reading stays as the
-    // helper line, for reference.
+    // field prefilled with the current mileage was accepted as-is. The
+    // current reading stays as the helper line, for reference.
     _mileage = TextEditingController();
   }
 
@@ -157,8 +156,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   ///
   /// It records that the owner was asked and does not remember — which is what
   /// stops the question coming back. It deliberately does NOT create a service
-  /// record: a record asserts a date and a mileage, and somebody who does not
-  /// remember has neither.
+  /// record.
   Future<void> _dontKnow() async {
     final questions = _questions;
     if (questions == null || _index >= questions.length) return;
@@ -325,6 +323,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     final plan = questions[_index];
     return CalibrarQuestionContent(
       progressLabel: '${_index + 1} de ${questions.length}',
+      progress: (_index + 1) / questions.length,
       title: calibrarQuestionTitle(plan),
       occurredOn: _occurredOn,
       mileage: _mileage,
@@ -391,10 +390,16 @@ class CalibrarIntroContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s24),
+      padding: AppSpacing.screenHeaded,
       children: [
+        const SizedBox(height: AppSpacing.s16),
+        const AppIconWell(
+          icon: Icons.check_circle_outline,
+          size: AppIconWellSize.xl,
+          tone: AppIconWellTone.accent,
+        ),
         const SizedBox(height: AppSpacing.s24),
-        Text('Carro cadastrado', style: theme.textTheme.headlineSmall),
+        Text('Carro cadastrado', style: theme.textTheme.headlineMedium),
         const SizedBox(height: AppSpacing.s12),
         Text(
           'Se você souber quando algumas coisas foram feitas, o Meu Auto já '
@@ -402,15 +407,17 @@ class CalibrarIntroContent extends StatelessWidget {
           'e dá para responder depois.',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
+            height: 1.5,
           ),
         ),
-        const SizedBox(height: AppSpacing.s32),
-        AppButton(label: 'Contar agora', onPressed: onStart),
+        const SizedBox(height: AppSpacing.s40),
+        AppButton(label: 'Contar agora', onPressed: onStart, expanded: true),
         const SizedBox(height: AppSpacing.s8),
         AppButton(
           label: 'Depois',
           variant: AppButtonVariant.secondary,
           onPressed: onLater,
+          expanded: true,
         ),
       ],
     );
@@ -431,12 +438,18 @@ class CalibrarQuestionContent extends StatelessWidget {
     required this.onDontKnow,
     required this.onSkipAll,
     required this.currentMileageKm,
+    this.progress,
     this.banner,
     this.dateError,
     this.mileageError,
   });
 
   final String progressLabel;
+
+  /// Which question this is, over how many. A real count, so the bar is
+  /// honest.
+  final double? progress;
+
   final String title;
   final CivilDate? occurredOn;
   final TextEditingController mileage;
@@ -455,16 +468,26 @@ class CalibrarQuestionContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s24),
+      padding: AppSpacing.screenHeaded,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
-        Text(
-          progressLabel,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: progress == null
+                  ? const SizedBox.shrink()
+                  : AppProgressBar(value: progress!),
+            ),
+            const SizedBox(width: AppSpacing.s12),
+            Text(
+              progressLabel,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.s16),
+        const SizedBox(height: AppSpacing.s24),
         Text(title, style: theme.textTheme.headlineSmall),
         const SizedBox(height: AppSpacing.s8),
         Text(
@@ -484,7 +507,7 @@ class CalibrarQuestionContent extends StatelessWidget {
           enabled: !submitting,
           errorText: dateError,
         ),
-        const SizedBox(height: AppSpacing.s16),
+        const SizedBox(height: AppSpacing.s12),
         AppKmField(
           controller: mileage,
           enabled: !submitting,
@@ -501,17 +524,26 @@ class CalibrarQuestionContent extends StatelessWidget {
           label: offline ? 'Tentar de novo' : 'Registrar',
           loading: submitting,
           onPressed: onConfirm,
+          expanded: true,
         ),
         const SizedBox(height: AppSpacing.s8),
-        AppButton(
-          label: 'Não sei',
-          variant: AppButtonVariant.tertiary,
-          onPressed: submitting ? null : onDontKnow,
-        ),
-        AppButton(
-          label: 'Pular tudo',
-          variant: AppButtonVariant.tertiary,
-          onPressed: submitting ? null : onSkipAll,
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: 'Não sei',
+                variant: AppButtonVariant.tertiary,
+                onPressed: submitting ? null : onDontKnow,
+              ),
+            ),
+            Expanded(
+              child: AppButton(
+                label: 'Pular tudo',
+                variant: AppButtonVariant.tertiary,
+                onPressed: submitting ? null : onSkipAll,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -532,14 +564,24 @@ class CalibrarDoneContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.s24),
+      padding: AppSpacing.screenHeaded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Spacer(),
+          AppIconWell(
+            icon: configured == 0
+                ? Icons.schedule_outlined
+                : Icons.check_circle_outline,
+            size: AppIconWellSize.xl,
+            tone: configured == 0
+                ? AppIconWellTone.neutral
+                : AppIconWellTone.accent,
+          ),
+          const SizedBox(height: AppSpacing.s24),
           Text(
             configured == 0 ? 'Tudo bem' : 'Pronto',
-            style: theme.textTheme.headlineSmall,
+            style: theme.textTheme.headlineMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.s12),
@@ -547,11 +589,16 @@ class CalibrarDoneContent extends StatelessWidget {
             _doneBody(configured),
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
+              height: 1.5,
             ),
             textAlign: TextAlign.center,
           ),
           const Spacer(),
-          AppButton(label: 'Ver meu carro', onPressed: onSeeCar),
+          AppButton(
+            label: 'Ver meu carro',
+            onPressed: onSeeCar,
+            expanded: true,
+          ),
         ],
       ),
     );
@@ -578,7 +625,7 @@ class _CalibrarSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.all(AppSpacing.s24),
+      padding: AppSpacing.screenHeaded,
       child: AppSkeletonList(count: 4, itemHeight: 72),
     );
   }

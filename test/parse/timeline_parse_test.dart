@@ -35,10 +35,7 @@ void main() {
     });
 
     test('unknown kind falls back without throwing', () {
-      final entry = TimelineEntry.fromJson({
-        ...complete,
-        'kind': 'multa',
-      });
+      final entry = TimelineEntry.fromJson({...complete, 'kind': 'multa'});
       expect(entry.kind, TimelineEntryKind.desconhecido);
     });
 

@@ -32,9 +32,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _loggingOut = false;
 
   /// Opens the name sheet, and owns what happens after it closes.
-  ///
-  /// The confirmation and the undo live here rather than in the sheet because
-  /// by the time either is worth showing, the sheet has been dismissed.
   Future<void> _editName(User user) async {
     final saved = await NameEditSheet.show(context, user.name);
     if (saved == null || !mounted) return;
@@ -81,15 +78,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
     final themeMode =
-        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.system;
+        ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.dark;
 
     return AppScaffold(
       title: 'Perfil',
       body: auth.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.s24),
-          child: AppSkeletonList(),
-        ),
+        loading: () =>
+            const Padding(padding: AppSpacing.screen, child: AppSkeletonList()),
         error: (error, _) => AppErrorState.fromError(
           error: error,
           onRetry: () => ref.invalidate(authControllerProvider),
@@ -97,7 +92,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         data: (status) {
           if (status is! AuthLoggedIn) {
             return const Padding(
-              padding: EdgeInsets.all(AppSpacing.s24),
+              padding: AppSpacing.screen,
               child: AppSkeletonList(),
             );
           }
@@ -120,18 +115,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-/// Perfil as a settings screen, which is what it always was.
-///
-/// It used to open with a text field and a "Salvar nome" button that were on
-/// screen whether or not anyone wanted to rename themselves, followed by
-/// three loose radio tiles and a full-width "Sair" in the middle of the page.
-/// A settings screen is a list of what is set and a way to change each thing,
-/// grouped, with the dangerous rows kept apart from the ordinary ones.
+/// Perfil as a settings screen: a list of what is set and a way to change
+/// each thing, grouped, with the dangerous rows kept apart from the ordinary
+/// ones.
 ///
 /// Nothing here is invented. There is no version row and no privacy link
 /// because the app has neither yet — a settings screen that lies about what
-/// it can do is worse than a short one. The sections are laid out so both
-/// drop in without moving anything else.
+/// it can do is worse than a short one.
 class ProfileContent extends StatelessWidget {
   const ProfileContent({
     super.key,
@@ -161,28 +151,24 @@ class ProfileContent extends StatelessWidget {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
-      // Grouped like every other list in the app: the label outside and quiet,
-      // the rows inside one surface. The rows used to sit straight on the page
-      // with loose dividers, the one screen left that read as "um site sem
-      // CSS".
+      padding: AppSpacing.screen,
       children: [
         AppGroup(
           title: 'Conta',
-          dividerIndent: 0,
+          dividerIndent: 44,
           footnote: ProfileCopy.emailExplanation,
           children: [
             AppSettingRow(
               label: 'Nome',
+              icon: Icons.badge_outlined,
               value: user.name,
               onTap: loggingOut ? null : onEditName,
             ),
-            AppSettingRow(label: 'E-mail', value: user.email),
+            AppSettingRow(
+              label: 'E-mail',
+              icon: Icons.mail_outline,
+              value: user.email,
+            ),
             AppSettingRow(
               label: 'Alterar senha',
               icon: Icons.lock_outline,
@@ -193,7 +179,7 @@ class ProfileContent extends StatelessWidget {
         const SizedBox(height: appGroupGap),
         AppGroup(
           title: 'Veículos',
-          dividerIndent: 0,
+          dividerIndent: 44,
           children: [
             AppSettingRow(
               label: 'Meus veículos',
@@ -208,54 +194,52 @@ class ProfileContent extends StatelessWidget {
           dividerIndent: 0,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
-              child: Row(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Text('Tema', style: theme.textTheme.bodyLarge),
-                  ),
-                  const SizedBox(width: AppSpacing.s16),
-                  // Constrained rather than Expanded: at a large text scale the
-                  // three labels need room, but the control must never grow wide
-                  // enough to push the label off a 360dp screen.
-                  SizedBox(
-                    width: 210,
-                    child: AppSegmented<ThemeMode>(
-                      value: themeMode,
-                      enabled: !loggingOut,
-                      onChanged: onThemeMode,
-                      options: const [
-                        AppSegmentedOption(
-                          value: ThemeMode.light,
-                          label: 'Claro',
-                        ),
-                        AppSegmentedOption(
-                          value: ThemeMode.dark,
-                          label: 'Escuro',
-                        ),
-                        AppSegmentedOption(
-                          value: ThemeMode.system,
-                          label: 'Sistema',
-                        ),
-                      ],
+                  Text(
+                    'Tema',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.s12),
+                  AppSegmented<ThemeMode>(
+                    value: themeMode,
+                    enabled: !loggingOut,
+                    onChanged: onThemeMode,
+                    options: const [
+                      AppSegmentedOption(
+                        value: ThemeMode.dark,
+                        label: 'Escuro',
+                      ),
+                      AppSegmentedOption(
+                        value: ThemeMode.light,
+                        label: 'Claro',
+                      ),
+                      AppSegmentedOption(
+                        value: ThemeMode.system,
+                        label: 'Sistema',
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.s32),
+        const SizedBox(height: AppSpacing.s40),
         // Kept apart, and last. Signing out and deleting an account are not
         // settings; they are exits, and they must not sit a thumb's width
         // from the theme picker.
         AppGroup(
           title: 'Sessão',
-          dividerIndent: 0,
+          dividerIndent: 44,
           children: [
             AppSettingRow(
               label: 'Sair',
-              icon: Icons.logout,
+              icon: Icons.logout_outlined,
               onTap: onLogout,
               trailing: loggingOut
                   ? const SizedBox(

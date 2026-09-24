@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
-import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
 class PlanIntervalSheet extends ConsumerStatefulWidget {
@@ -28,11 +31,8 @@ class PlanIntervalSheet extends ConsumerStatefulWidget {
     required String vehicleId,
     required MaintenancePlan plan,
   }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      useSafeArea: true,
+    return showAppSheet<void>(
+      context,
       builder: (sheetContext) =>
           PlanIntervalSheet(vehicleId: vehicleId, plan: plan),
     );
@@ -126,88 +126,85 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.s24,
-        right: AppSpacing.s24,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Ajustar intervalo', style: theme.textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.s8),
-            Text(
+    return AppSheetBody(
+      children: [
+        const AppSheetHeader(
+          title: 'Ajustar intervalo',
+          subtitle:
               'Os intervalos sugeridos são padrões genéricos de mercado, '
               'não a especificação do fabricante do seu carro.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s16),
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            _kmField(
+          closable: false,
+        ),
+        const SizedBox(height: AppSpacing.s16),
+        if (_banner != null) AuthFormBanner(message: _banner!),
+        AppFormSection(
+          title: 'A cada',
+          children: [
+            AppKmField(
               controller: _km,
-              label: 'A cada quantos km',
-              fieldKey: 'interval_km',
-            ),
-            _numberField(
-              controller: _months,
-              label: 'A cada quantos meses',
-              fieldKey: 'interval_months',
-            ),
-            _numberField(
-              controller: _days,
-              label: 'A cada quantos dias',
-              fieldKey: 'interval_days',
-            ),
-            const SizedBox(height: AppSpacing.s8),
-            Text(
-              'Avisar com antecedência de',
-              style: theme.textTheme.titleSmall,
-            ),
-            const SizedBox(height: AppSpacing.s8),
-            _kmField(
-              controller: _alertKm,
               label: 'Quilômetros',
-              fieldKey: 'alert_km',
+              enabled: !_submitting,
+              errorText: _fieldErrors['interval_km'],
             ),
-            _numberField(
-              controller: _alertDays,
-              label: 'Dias',
-              fieldKey: 'alert_days',
-              textInputAction: TextInputAction.done,
-              onSubmitted: _submitting ? null : _submit,
-            ),
-            AppButton(
-              label: _offline ? 'Tentar de novo' : 'Salvar',
-              loading: _submitting,
-              onPressed: _submitting ? null : _submit,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _numberField(
+                    controller: _months,
+                    label: 'Meses',
+                    fieldKey: 'interval_months',
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s12),
+                Expanded(
+                  child: _numberField(
+                    controller: _days,
+                    label: 'Dias',
+                    fieldKey: 'interval_days',
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Kilometres, masked like every other kilometre the app shows. Months and
-  /// days stay plain: a two-digit number has no thousands to group.
-  Widget _kmField({
-    required TextEditingController controller,
-    required String label,
-    required String fieldKey,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s12),
-      child: AppKmField(
-        controller: controller,
-        label: label,
-        enabled: !_submitting,
-        errorText: _fieldErrors[fieldKey],
-      ),
+        const AppFormGap(),
+        AppFormSection(
+          title: 'Avisar com antecedência de',
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: AppKmField(
+                    controller: _alertKm,
+                    label: 'Quilômetros',
+                    enabled: !_submitting,
+                    errorText: _fieldErrors['alert_km'],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s12),
+                Expanded(
+                  child: _numberField(
+                    controller: _alertDays,
+                    label: 'Dias',
+                    fieldKey: 'alert_days',
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: _submitting ? null : _submit,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s24),
+        AppButton(
+          label: _offline ? 'Tentar de novo' : 'Salvar',
+          loading: _submitting,
+          onPressed: _submitting ? null : _submit,
+          expanded: true,
+        ),
+      ],
     );
   }
 
@@ -218,23 +215,19 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
     TextInputAction textInputAction = TextInputAction.next,
     VoidCallback? onSubmitted,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s12),
-      child: TextField(
-        controller: controller,
-        enabled: !_submitting,
-        keyboardType: TextInputType.number,
-        textInputAction: textInputAction,
-        onSubmitted: onSubmitted == null ? null : (_) => onSubmitted(),
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(7),
-        ],
-        decoration: InputDecoration(
-          labelText: label,
-          errorText: _fieldErrors[fieldKey],
-          errorMaxLines: 3,
-        ),
+    return TextField(
+      controller: controller,
+      enabled: !_submitting,
+      keyboardType: TextInputType.number,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted == null ? null : (_) => onSubmitted(),
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(7),
+      ],
+      decoration: InputDecoration(
+        labelText: label,
+        errorText: _fieldErrors[fieldKey],
       ),
     );
   }

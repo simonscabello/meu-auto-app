@@ -15,6 +15,7 @@ import 'package:meu_auto/features/maintenance/application/maintenance_record_pro
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
+import 'package:meu_auto/features/maintenance/domain/plan_progress.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/maintenance/presentation/plan_periodicity.dart';
@@ -22,13 +23,17 @@ import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_fact_row.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 import 'package:meu_auto/shared/widgets/app_status_chip.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 class PlanDetailScreen extends ConsumerWidget {
   const PlanDetailScreen({super.key, required this.planId});
@@ -51,8 +56,8 @@ class PlanDetailScreen extends ConsumerWidget {
       loading: () => const AppScaffold(
         title: 'Manutenção',
         body: Padding(
-          padding: EdgeInsets.all(AppSpacing.s16),
-          child: AppSkeletonList(count: 4, itemHeight: 96),
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 3, itemHeight: 120),
         ),
       ),
       error: (error, _) {
@@ -170,10 +175,7 @@ Future<void> _clearIntervals(
 /// "Meu carro não tem isso."
 ///
 /// A correction, not a deletion: the plan stays, keeps its interval and can be
-/// brought back from the profile screen. Deactivating would look similar and
-/// mean something else — "I do not want to track this" is not "this does not
-/// exist on my car", and only the second one should teach the app about the
-/// vehicle.
+/// brought back from the profile screen.
 Future<void> _markNotApplicable(
   BuildContext context,
   WidgetRef ref,
@@ -217,8 +219,7 @@ Future<void> _markNotApplicable(
 ///
 /// Neither writes a maintenance record. A record asserts a date and a mileage,
 /// and both of these answers exist precisely because the owner does not have
-/// them — inventing one would put a fabricated fact into the history whose whole
-/// value is being trustworthy.
+/// them.
 Future<void> _setHistory(
   BuildContext context,
   WidgetRef ref,
@@ -284,10 +285,9 @@ Future<void> _deactivate(
 
 /// The plan's rarer choices, out of the way of the common one.
 ///
-/// The detail used to end in seven stacked buttons, three of which meant
-/// "stop reminding me" in different ways. What someone opens this screen to
-/// do is register the service or change how often it comes due; the rest is a
-/// correction made once, and belongs in a menu.
+/// What someone opens this screen to do is register the service or change
+/// how often it comes due; the rest is a correction made once, and belongs
+/// in a menu.
 class PlanDetailMenu extends StatelessWidget {
   const PlanDetailMenu({
     super.key,
@@ -332,6 +332,8 @@ class PlanDetailMenu extends StatelessWidget {
   }
 }
 
+/// The plan as pure presentation: the state at the top, the facts as one
+/// group, the one thing to do, and the item's own history.
 class PlanDetailContent extends StatelessWidget {
   const PlanDetailContent({
     super.key,
@@ -360,6 +362,8 @@ class PlanDetailContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final status = AppStatus.fromWire(plan.status.wire);
+    final visual = statusColors(status, theme.brightness);
     final last = lastDonePhrase(
       occurredOn: plan.lastOccurredOn,
       mileageKm: plan.lastMileageKm,
@@ -373,6 +377,7 @@ class PlanDetailContent extends StatelessWidget {
     final howItWorks = strategyExplanation(plan);
     final noBaseline = plan.status == MaintenanceStatus.semBaseline;
     final headline = planDetailHeadline(plan);
+    final progress = planProgress(plan);
     // One rule, one place. The two answers about the past make sense only while
     // there is nothing to measure from AND nobody has answered yet: once a
     // service is recorded the record IS the answer, and once somebody has said
@@ -392,46 +397,75 @@ class PlanDetailContent extends StatelessWidget {
     };
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s16,
-        AppSpacing.s8,
-        AppSpacing.s16,
-        AppSpacing.s32,
-      ),
+      padding: AppSpacing.screen,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              maintenanceIconFor(plan.itemSlug),
-              color: scheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: AppSpacing.s12),
-            Expanded(
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppSpacing.s8,
-                runSpacing: AppSpacing.s4,
+        // The state, as one surface: the glyph, the chip, the sentence, and
+        // the bar when the figures allow one.
+        AppSurface(
+          variant: AppSurfaceVariant.grouped,
+          padding: const EdgeInsets.all(AppSpacing.s16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  AppStatusChip(status: AppStatus.fromWire(plan.status.wire)),
-                  if (headline.isNotEmpty)
-                    Text(headline, style: theme.textTheme.bodyLarge),
+                  AppIconWell(
+                    icon: maintenanceIconFor(plan.itemSlug),
+                    size: AppIconWellSize.l,
+                    tone: status.isLoud
+                        ? AppIconWellTone.status
+                        : AppIconWellTone.neutral,
+                    status: status,
+                  ),
+                  const SizedBox(width: AppSpacing.s16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: AppStatusChip(status: status),
+                        ),
+                        if (headline.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.s8),
+                          Text(
+                            headline,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: status.isLoud
+                                  ? visual.foreground
+                                  : scheme.onSurface,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
+              if (progress != null) ...[
+                const SizedBox(height: AppSpacing.s16),
+                AppProgressBar(
+                  value: progress,
+                  color: status.isLoud ? visual.foreground : null,
+                ),
+              ],
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.s16),
+        const SizedBox(height: appGroupGap),
         // The facts are one object — this item on this car — so they share one
         // surface, the same grouped list the rest of the app uses.
         AppGroup(
           dividerIndent: 0,
           footnote: howItWorks,
           children: [
-            _PlanFact(label: 'Última vez', value: lastValue),
-            if (next != null) _PlanFact(label: 'Próxima', value: next),
+            AppFactRow(label: 'Última vez', value: lastValue),
+            if (next != null) AppFactRow(label: 'Próxima', value: next),
             if (interval != null)
-              _PlanFact(
+              AppFactRow(
                 label: 'Intervalo',
                 value: interval,
                 onTap: onAdjustInterval,
@@ -440,19 +474,21 @@ class PlanDetailContent extends StatelessWidget {
         ),
         if (plan.notes != null) ...[
           const SizedBox(height: AppSpacing.s8),
-          Text(
-            plan.notes!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+            child: Text(
+              plan.notes!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
-        const SizedBox(height: AppSpacing.s24),
+        const SizedBox(height: appGroupGap),
         if (noBaseline) ...[
           // Without a date the item cannot come due, so the question the screen
           // asks first is when it was last done — with the two honest ways of
-          // not knowing right under it, instead of at the foot of a list of
-          // seven buttons.
+          // not knowing right under it.
           Text('Quando foi a última vez?', style: theme.textTheme.titleMedium),
           const SizedBox(height: AppSpacing.s4),
           Text(
@@ -462,36 +498,52 @@ class PlanDetailContent extends StatelessWidget {
               color: scheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: AppSpacing.s12),
-          AppButton(label: 'Informar a última vez', onPressed: onRegister),
+          const SizedBox(height: AppSpacing.s16),
+          AppButton(
+            label: 'Informar a última vez',
+            onPressed: onRegister,
+            expanded: true,
+          ),
           if (canAnswerHistory) ...[
-            const SizedBox(height: AppSpacing.s4),
-            AppButton(
-              label: 'Não sei quando foi',
-              variant: AppButtonVariant.tertiary,
-              onPressed: () =>
-                  onHistoryUnknown!(MaintenanceHistoryStatus.unknown),
-            ),
-            AppButton(
-              label: 'Nunca foi feito',
-              variant: AppButtonVariant.tertiary,
-              onPressed: () =>
-                  onHistoryUnknown!(MaintenanceHistoryStatus.never),
+            const SizedBox(height: AppSpacing.s8),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: 'Não sei quando foi',
+                    variant: AppButtonVariant.tertiary,
+                    onPressed: () =>
+                        onHistoryUnknown!(MaintenanceHistoryStatus.unknown),
+                  ),
+                ),
+                Expanded(
+                  child: AppButton(
+                    label: 'Nunca foi feito',
+                    variant: AppButtonVariant.tertiary,
+                    onPressed: () =>
+                        onHistoryUnknown!(MaintenanceHistoryStatus.never),
+                  ),
+                ),
+              ],
             ),
           ],
         ] else ...[
-          AppButton(label: 'Registrar serviço', onPressed: onRegister),
+          AppButton(
+            label: 'Registrar serviço',
+            onPressed: onRegister,
+            expanded: true,
+          ),
           const SizedBox(height: AppSpacing.s8),
           AppButton(
             label: 'Ajustar intervalo',
             variant: AppButtonVariant.secondary,
             onPressed: onAdjustInterval,
+            expanded: true,
           ),
         ],
         const SizedBox(height: appGroupGap),
         if (historyLoading) ...[
           const AppSectionHeader(title: 'Histórico deste item'),
-          const SizedBox(height: AppSpacing.s8),
           const AppSkeleton(width: double.infinity, height: 72),
         ] else if (history.isEmpty)
           const AppGroup(
@@ -518,12 +570,16 @@ class PlanDetailContent extends StatelessWidget {
           ),
         if (plan.origin == MaintenancePlanOrigin.suggested) ...[
           const SizedBox(height: AppSpacing.s16),
-          Text(
-            'O intervalo sugerido é uma referência de mercado, não a '
-            'recomendação do fabricante do seu carro. Se o manual disser outra '
-            'coisa, ajuste o intervalo e os avisos passam a seguir o seu.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+            child: Text(
+              'O intervalo sugerido é uma referência de mercado, não a '
+              'recomendação do fabricante do seu carro. Se o manual disser '
+              'outra coisa, ajuste o intervalo e os avisos passam a seguir o '
+              'seu.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -561,7 +617,12 @@ class _HistoryTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: theme.textTheme.bodyLarge),
+                Text(
+                  title,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 if (delta != null)
                   Text(
                     delta,
@@ -578,51 +639,6 @@ class _HistoryTile extends StatelessWidget {
               size: 20,
               color: theme.colorScheme.outline,
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A label and its value, as one row of the facts group.
-///
-/// Tappable only when there is something to change — the interval opens its
-/// sheet; "15 de julho" is not somewhere to go.
-class _PlanFact extends StatelessWidget {
-  const _PlanFact({required this.label, required this.value, this.onTap});
-
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-
-    return AppListRowShell(
-      onTap: onTap,
-      semanticLabel: '$label. $value',
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(value, style: theme.textTheme.bodyLarge),
-              ],
-            ),
-          ),
-          if (onTap != null)
-            Icon(Icons.chevron_right, size: 20, color: scheme.outline),
         ],
       ),
     );

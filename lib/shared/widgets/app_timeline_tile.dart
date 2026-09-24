@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 
 /// One event on the vehicle's timeline: a node on a rail, not a card.
 ///
@@ -41,12 +42,13 @@ class AppTimelineTile extends StatelessWidget {
   /// land on the cap height of [title] at the default text scale, and the
   /// node stays near the first line as the scale grows because the padding
   /// above it is fixed.
-  static const double _nodeTop = 15;
+  static const double _nodeTop = 16;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final tones = AppTones.of(context);
     final railColor = scheme.outlineVariant;
     final nodeColor = accent ?? scheme.primary;
 
@@ -72,7 +74,9 @@ class AppTimelineTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: theme.textTheme.bodyLarge,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -111,15 +115,26 @@ class AppTimelineTile extends StatelessWidget {
     final stacked = Stack(
       children: [
         railed,
+        // The node, with a soft ring so it reads as a light on the rail and
+        // not as a bullet.
         Positioned(
-          left: _railX + 0.75 - _nodeSize / 2,
-          top: _nodeTop,
+          left: _railX + 0.75 - _nodeSize / 2 - 3,
+          top: _nodeTop - 3,
           child: Container(
-            width: _nodeSize,
-            height: _nodeSize,
+            width: _nodeSize + 6,
+            height: _nodeSize + 6,
             decoration: BoxDecoration(
-              color: nodeColor,
+              color: nodeColor.withValues(alpha: 0.22),
               shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Container(
+              width: _nodeSize,
+              height: _nodeSize,
+              decoration: BoxDecoration(
+                color: nodeColor,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
         ),
@@ -139,6 +154,7 @@ class AppTimelineTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: AppRadius.borderS,
+          highlightColor: tones.overlayPressed,
           child: stacked,
         ),
       ),

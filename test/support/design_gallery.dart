@@ -1,28 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/theme/app_colors.dart';
 import 'package:meu_auto/core/theme/app_motion.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
-import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_card.dart';
+import 'package:meu_auto/shared/widgets/app_choice_row.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
+import 'package:meu_auto/shared/widgets/app_detail_header.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_fact_row.dart';
+import 'package:meu_auto/shared/widgets/app_folded_section.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_metric.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_plate_chip.dart';
+import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
+import 'package:meu_auto/shared/widgets/app_quick_action.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
-import 'package:meu_auto/shared/widgets/app_skeleton.dart';
-import 'package:meu_auto/shared/widgets/app_status_chip.dart';
-import 'package:meu_auto/shared/widgets/app_list_row.dart';
-import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_segmented.dart';
 import 'package:meu_auto/shared/widgets/app_setting_row.dart';
+import 'package:meu_auto/shared/widgets/app_skeleton.dart';
+import 'package:meu_auto/shared/widgets/app_status_chip.dart';
 import 'package:meu_auto/shared/widgets/app_surface.dart';
+import 'package:meu_auto/shared/widgets/app_switch_row.dart';
 import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
 import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
@@ -40,9 +50,11 @@ class DesignGallery extends StatefulWidget {
 }
 
 class _DesignGalleryState extends State<DesignGallery> {
-  bool _dark = false;
+  bool _dark = true;
   bool _loadingButton = true;
+  bool _switch = true;
   int _segment = 2;
+  int _choice = 1;
   final _money = TextEditingController(text: 'R\$ 420,00');
   late final TextEditingController _km = kmController(98450);
   final _liters = TextEditingController(text: '34,7');
@@ -82,23 +94,22 @@ class _DesignGalleryState extends State<DesignGallery> {
               label: 'Início',
             ),
             NavigationDestination(
-              icon: Icon(Icons.directions_car_outlined),
-              selectedIcon: Icon(Icons.directions_car),
-              label: 'Veículos',
+              icon: Icon(Icons.build_outlined),
+              selectedIcon: Icon(Icons.build),
+              label: 'Manutenção',
             ),
             NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Conta',
+              icon: Icon(Icons.history_outlined),
+              selectedIcon: Icon(Icons.history),
+              label: 'Histórico',
             ),
           ],
         ),
         body: ListView(
-          padding: const EdgeInsets.all(AppSpacing.s16),
+          padding: AppSpacing.screen,
           children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Tema escuro'),
+            AppSwitchRow(
+              title: 'Tema escuro',
               value: _dark,
               onChanged: (value) => setState(() => _dark = value),
             ),
@@ -119,12 +130,58 @@ class _DesignGalleryState extends State<DesignGallery> {
             const _RadiusScale(),
             const _SectionTitle('Tipografia'),
             const _TypeScale(),
-            const _SectionTitle('Números tabulares'),
+            const _SectionTitle('Instrumento'),
+            Text(
+              '139.011',
+              style: AppTypography.instrument(
+                size: 56,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s8),
             Text(
               '48.320 km   R\$ 1.234,56',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontFeatures: AppTypography.tabular,
               ),
+            ),
+            const _SectionTitle('Poços de ícone'),
+            const Wrap(
+              spacing: AppSpacing.s12,
+              runSpacing: AppSpacing.s12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                AppIconWell(
+                  icon: Icons.build_outlined,
+                  size: AppIconWellSize.s,
+                ),
+                AppIconWell(icon: Icons.build_outlined),
+                AppIconWell(
+                  icon: Icons.build_outlined,
+                  size: AppIconWellSize.l,
+                ),
+                AppIconWell(
+                  icon: Icons.check_circle_outline,
+                  size: AppIconWellSize.l,
+                  tone: AppIconWellTone.accent,
+                ),
+                AppIconWell(
+                  icon: Icons.error_outline,
+                  size: AppIconWellSize.l,
+                  tone: AppIconWellTone.status,
+                  status: AppStatus.vencido,
+                ),
+                AppIconWell(
+                  icon: Icons.schedule_outlined,
+                  size: AppIconWellSize.l,
+                  tone: AppIconWellTone.status,
+                  status: AppStatus.venceEmBreve,
+                ),
+                AppIconWell(
+                  icon: Icons.history_outlined,
+                  size: AppIconWellSize.xl,
+                ),
+              ],
             ),
             const _SectionTitle('Botões'),
             Wrap(
@@ -148,6 +205,12 @@ class _DesignGalleryState extends State<DesignGallery> {
                   onPressed: () {},
                 ),
                 AppButton(
+                  label: 'Com ícone',
+                  icon: Icons.add,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: () {},
+                ),
+                AppButton(
                   label: 'Salvando',
                   loading: _loadingButton,
                   onPressed: () {},
@@ -159,6 +222,53 @@ class _DesignGalleryState extends State<DesignGallery> {
                       setState(() => _loadingButton = !_loadingButton),
                 ),
               ],
+            ),
+            const _SectionTitle('Ações rápidas'),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: AppQuickAction(
+                      icon: Icons.local_gas_station_outlined,
+                      label: 'Abastecer',
+                      onTap: () {},
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.s12),
+                  Expanded(
+                    child: AppQuickAction(
+                      icon: Icons.build_outlined,
+                      label: 'Registrar manutenção',
+                      onTap: () {},
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            AppQuickAction(
+              icon: Icons.build_outlined,
+              label: 'Registrar manutenção',
+              wide: true,
+              onTap: () {},
+            ),
+            const _SectionTitle('Progresso'),
+            const AppProgressBar(value: 0.62),
+            const SizedBox(height: AppSpacing.s8),
+            AppProgressBar(
+              value: 1,
+              color: statusColors(
+                AppStatus.vencido,
+                theme.brightness,
+              ).foreground,
+            ),
+            const _SectionTitle('Cabeçalho de detalhe'),
+            const AppDetailHeader(
+              icon: Icons.receipt_long_outlined,
+              title: 'IPVA 2026',
+              status: AppStatus.venceEmBreve,
+              phrase: 'faltam 12 dias',
             ),
             const _SectionTitle('Card e métrica'),
             const AppCard(
@@ -176,41 +286,56 @@ class _DesignGalleryState extends State<DesignGallery> {
                     child: AppMetric(
                       value: 'R\$ 1.280,00',
                       label: 'Custo registrado',
+                      size: AppMetricSize.compact,
                     ),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: AppSpacing.s12),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: AppPlateChip(plate: 'QAF5G33'),
+            ),
             const _SectionTitle('Cabeçalho de seção'),
             AppSectionHeader(
+              title: 'Próximos cuidados',
+              emphasis: AppSectionEmphasis.title,
+              actionLabel: 'Ver todos',
+              onAction: () {},
+            ),
+            AppSectionHeader(
               title: 'Manutenção',
+              count: 3,
               actionLabel: 'Ver tudo',
               onAction: () {},
             ),
             const _SectionTitle('Linhas de lista'),
             const AppListRow(
-              icon: Icons.oil_barrel,
+              icon: Icons.oil_barrel_outlined,
               title: 'Troca de óleo do motor',
               subtitle: 'Em dia · próxima em 11 set',
             ),
             const AppRowDivider(),
             AppListRow(
-              icon: Icons.settings,
+              icon: Icons.settings_outlined,
               title: 'Correia dentada',
               subtitle: 'venceu há 40 dias · passou 1.200 km',
-              accent: statusColors(
-                AppStatus.vencido,
-                theme.brightness,
-              ).foreground,
+              status: AppStatus.vencido,
               onTap: () {},
               showChevron: true,
             ),
             const AppRowDivider(),
             AppListRow(
-              icon: Icons.tire_repair,
+              icon: Icons.tire_repair_outlined,
               title: 'Calibrar os pneus',
               subtitle: 'Está na hora de verificar.',
-              trailing: AppButton(label: 'Feito', onPressed: () {}),
+              status: AppStatus.venceEmBreve,
+              trailing: AppButton(
+                label: 'Feito',
+                variant: AppButtonVariant.secondary,
+                onPressed: () {},
+              ),
             ),
             const _SectionTitle('Grupos'),
             AppGroup(
@@ -233,8 +358,29 @@ class _DesignGalleryState extends State<DesignGallery> {
                 ),
                 AppListRow(
                   icon: Icons.add,
+                  iconTone: AppIconWellTone.accent,
                   title: 'Registrar seguro',
                   onTap: () {},
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s16),
+            AppGroup(
+              dividerIndent: 0,
+              children: [
+                const AppFactRow(
+                  label: 'Última vez',
+                  value: '12/02/2026 · 98.450 km',
+                ),
+                AppFactRow(
+                  label: 'Intervalo',
+                  value: 'a cada 10.000 km ou 12 meses',
+                  onTap: () {},
+                ),
+                const AppFactRow(
+                  label: 'Placa',
+                  value: 'QAF5G33',
+                  inline: true,
                 ),
               ],
             ),
@@ -252,17 +398,29 @@ class _DesignGalleryState extends State<DesignGallery> {
               isLast: true,
             ),
             const _SectionTitle('Configurações'),
-            AppSettingRow(label: 'Nome', value: 'Simon Scabello', onTap: () {}),
-            const AppRowDivider(indent: 0),
-            const AppSettingRow(label: 'E-mail', value: 'simon@example.com'),
-            const AppRowDivider(indent: 0),
-            AppSettingRow(
-              label: 'Sair',
-              icon: Icons.logout,
-              destructive: true,
-              onTap: () {},
+            AppGroup(
+              dividerIndent: 44,
+              children: [
+                AppSettingRow(
+                  label: 'Nome',
+                  icon: Icons.badge_outlined,
+                  value: 'Simon Scabello',
+                  onTap: () {},
+                ),
+                const AppSettingRow(
+                  label: 'E-mail',
+                  icon: Icons.mail_outline,
+                  value: 'simon@example.com',
+                ),
+                AppSettingRow(
+                  label: 'Sair',
+                  icon: Icons.logout_outlined,
+                  destructive: true,
+                  onTap: () {},
+                ),
+              ],
             ),
-            const _SectionTitle('Segmentado'),
+            const _SectionTitle('Segmentado e escolha'),
             AppSegmented<int>(
               value: _segment,
               onChanged: (value) => setState(() => _segment = value),
@@ -271,6 +429,37 @@ class _DesignGalleryState extends State<DesignGallery> {
                 AppSegmentedOption(value: 1, label: 'Escuro'),
                 AppSegmentedOption(value: 2, label: 'Sistema'),
               ],
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            AppGroup(
+              dividerIndent: 0,
+              children: [
+                AppChoiceRow<int>(
+                  value: 0,
+                  groupValue: _choice,
+                  label: 'Toda semana',
+                  onChanged: (value) => setState(() => _choice = value),
+                ),
+                AppChoiceRow<int>(
+                  value: 1,
+                  groupValue: _choice,
+                  label: 'A cada 15 dias',
+                  onChanged: (value) => setState(() => _choice = value),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            AppSwitchRow(
+              title: 'Tanque cheio',
+              subtitle: 'É o que permite calcular o consumo',
+              value: _switch,
+              onChanged: (value) => setState(() => _switch = value),
+            ),
+            const _SectionTitle('Seção dobrada'),
+            const AppFoldedSection(
+              title: 'Dados do documento',
+              subtitle: 'Renavam e chassi, se você tiver o CRLV à mão.',
+              children: [Text('conteúdo')],
             ),
             const _SectionTitle('Superfícies'),
             const AppSurface(
@@ -283,6 +472,11 @@ class _DesignGalleryState extends State<DesignGallery> {
               child: Text('raised'),
             ),
             const _SectionTitle('Marca'),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: AppWordmark(size: AppWordmarkSize.small),
+            ),
+            const SizedBox(height: AppSpacing.s12),
             const Align(alignment: Alignment.centerLeft, child: AppWordmark()),
             const SizedBox(height: AppSpacing.s12),
             const Align(
@@ -339,6 +533,7 @@ class _DesignGalleryState extends State<DesignGallery> {
             const SizedBox(height: AppSpacing.s24),
             const AppCard(
               child: AppEmptyState(
+                icon: Icons.directions_car_outlined,
                 title: 'Cadastre seu primeiro veículo',
                 message:
                     'Com o carro cadastrado, os prazos e o histórico ficam neste app.',
@@ -388,13 +583,19 @@ class _ColorSwatches extends StatelessWidget {
     final scheme = Theme.of(context).brightness == Brightness.dark
         ? AppColors.dark
         : AppColors.light;
+    final tones = AppTones.of(context);
     final entries = <(String, Color, Color)>[
       ('primary', scheme.primary, scheme.onPrimary),
       ('primaryContainer', scheme.primaryContainer, scheme.onPrimaryContainer),
       ('secondary', scheme.secondary, scheme.onSecondary),
+      ('tertiary', scheme.tertiary, scheme.onTertiary),
       ('surface', scheme.surface, scheme.onSurface),
-      ('surfaceContainer', scheme.surfaceContainer, scheme.onSurface),
+      ('surfaceContainerLow', scheme.surfaceContainerLow, scheme.onSurface),
+      ('surfaceContainerHigh', scheme.surfaceContainerHigh, scheme.onSurface),
       ('error', scheme.error, scheme.onError),
+      ('errorContainer', scheme.errorContainer, scheme.onErrorContainer),
+      ('pageTop', tones.pageTop, scheme.onSurface),
+      ('glow', tones.glow, scheme.onPrimary),
       ('outline', scheme.outline, scheme.surface),
     ];
     return Wrap(
@@ -422,7 +623,7 @@ class _Swatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 140,
+      width: 150,
       padding: const EdgeInsets.all(AppSpacing.s8),
       decoration: BoxDecoration(
         color: background,

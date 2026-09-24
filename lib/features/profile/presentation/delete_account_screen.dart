@@ -3,12 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/application/login_notice.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/auth/presentation/auth_password_field.dart';
 import 'package:meu_auto/features/profile/domain/delete_account_copy.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 
 class DeleteAccountScreen extends ConsumerStatefulWidget {
@@ -123,25 +127,58 @@ class DeleteAccountContent extends StatelessWidget {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.s24),
+      padding: AppSpacing.screenHeaded,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       children: [
-        Text(DeleteAccountCopy.irreversible, style: theme.textTheme.bodyLarge),
-        const SizedBox(height: AppSpacing.s24),
-        Text('O que será apagado', style: theme.textTheme.titleMedium),
-        const SizedBox(height: AppSpacing.s12),
-        for (final item in DeleteAccountCopy.whatIsErased)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.s8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('•  '),
-                Expanded(child: Text(item, style: theme.textTheme.bodyLarge)),
-              ],
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppIconWell(
+                icon: Icons.delete_outline,
+                size: AppIconWellSize.l,
+                tone: AppIconWellTone.status,
+                status: AppStatus.vencido,
+              ),
+              const SizedBox(width: AppSpacing.s16),
+              Expanded(
+                child: Text(
+                  DeleteAccountCopy.irreversible,
+                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+                ),
+              ),
+            ],
           ),
-        const SizedBox(height: AppSpacing.s16),
+        ),
+        const SizedBox(height: appGroupGap),
+        AppGroup(
+          title: 'O que será apagado',
+          dividerIndent: 0,
+          children: [
+            for (final item in DeleteAccountCopy.whatIsErased)
+              AppListRowShell(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Icon(
+                        Icons.remove,
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.s12),
+                    Expanded(
+                      child: Text(item, style: theme.textTheme.bodyLarge),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: appGroupGap),
         if (banner != null) AuthFormBanner(message: banner!),
         AuthPasswordField(
           controller: passwordController,
@@ -153,14 +190,12 @@ class DeleteAccountContent extends StatelessWidget {
           onChanged: (_) => onPasswordChanged(),
         ),
         const SizedBox(height: AppSpacing.s24),
-        SizedBox(
-          width: double.infinity,
-          child: AppButton(
-            label: offline ? 'Tentar de novo' : 'Excluir minha conta',
-            variant: AppButtonVariant.destructive,
-            loading: submitting,
-            onPressed: hasPassword && !submitting ? onSubmit : null,
-          ),
+        AppButton(
+          label: offline ? 'Tentar de novo' : 'Excluir minha conta',
+          variant: AppButtonVariant.destructive,
+          loading: submitting,
+          onPressed: hasPassword && !submitting ? onSubmit : null,
+          expanded: true,
         ),
       ],
     );

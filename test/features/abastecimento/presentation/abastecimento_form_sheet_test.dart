@@ -40,10 +40,7 @@ void main() {
   ) async {
     await _open(tester, adapter);
 
-    expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-      isTrue,
-    );
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
     expect(find.text('Hoje'), findsOneWidget);
   });
 
@@ -54,6 +51,7 @@ void main() {
     expect(find.text('Observação (opcional)'), findsNothing);
     expect(find.text('Mais detalhes'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Mais detalhes'));
     await tester.tap(find.text('Mais detalhes'));
     await tester.pumpAndSettle();
 
@@ -88,6 +86,9 @@ void main() {
   testWidgets('saving posts volume_ml from a comma decimal', (tester) async {
     await _open(tester, adapter);
     await _fillRequired(tester);
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
+    );
     await tester.tap(
       find.widgetWithText(FilledButton, 'Registrar abastecimento'),
     );
@@ -109,6 +110,9 @@ void main() {
     adapter.rejectFirstPost = true;
     await _open(tester, adapter);
     await _fillRequired(tester);
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
+    );
     await tester.tap(
       find.widgetWithText(FilledButton, 'Registrar abastecimento'),
     );
@@ -127,6 +131,9 @@ void main() {
     adapter.rejectFirstPost = true;
     await _open(tester, adapter);
     await _fillRequired(tester);
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
+    );
     await tester.tap(
       find.widgetWithText(FilledButton, 'Registrar abastecimento'),
     );

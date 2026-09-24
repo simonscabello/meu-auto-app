@@ -67,10 +67,10 @@ String formatCivilWeekdayShort(CivilDate date) {
   final anchor = DateTime(date.year, date.month, date.day);
   // pt-BR abbreviations arrive with a trailing dot ("qui."), which reads as an
   // abbreviation inside a sentence and as noise inside a header.
-  return DateFormat('EEE', 'pt_BR')
-      .format(anchor)
-      .replaceAll('.', '')
-      .toLowerCase();
+  return DateFormat(
+    'EEE',
+    'pt_BR',
+  ).format(anchor).replaceAll('.', '').toLowerCase();
 }
 
 const _shortMonths = [

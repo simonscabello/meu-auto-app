@@ -33,6 +33,10 @@ enum AppStatus {
       _ => AppStatus.semPeriodicidade,
     };
   }
+
+  /// Late or nearly late. The only two states that are allowed to paint a
+  /// row, an icon or a line in a status colour.
+  bool get isLoud => this == vencido || this == venceEmBreve;
 }
 
 /// Foreground + background plus the icon and label that make the pair
@@ -51,74 +55,77 @@ final class StatusVisual {
   final String label;
 }
 
+/// One rule for the whole app: red is late, amber is close, the electric blue
+/// is fine, and everything else is a quiet blue-grey.
 ///
-/// Overdue is rust/orange, due-soon is amber, on-track is teal — not red
-/// versus green. [AppStatus.semBaseline] is an informational slate: pending
-/// configuration, not an alert.
+/// Red and amber are the only warm tones on a cold interface, which is what
+/// makes them register. A green would compete with the accent and give the
+/// colour-blind two states that look alike; blue for "fine" keeps late
+/// distinct from on track for everyone.
 StatusVisual statusColors(AppStatus status, Brightness brightness) {
   final dark = brightness == Brightness.dark;
   return switch (status) {
     AppStatus.vencido => StatusVisual(
-      foreground: dark ? const Color(0xFFFECBA1) : const Color(0xFF9A3412),
-      background: dark ? const Color(0xFF3B1A0A) : const Color(0xFFFFF1E6),
-      icon: Icons.error,
+      foreground: dark ? const Color(0xFFFF6B6B) : const Color(0xFFA32020),
+      background: dark ? const Color(0xFF3A1414) : const Color(0xFFFFE3E1),
+      icon: Icons.error_outline,
       label: 'Vencido',
     ),
     AppStatus.venceEmBreve => StatusVisual(
-      foreground: dark ? const Color(0xFFFDE68A) : const Color(0xFF854D0E),
-      background: dark ? const Color(0xFF3D2A08) : const Color(0xFFFEF6DC),
-      icon: Icons.schedule,
+      foreground: dark ? const Color(0xFFFFC857) : const Color(0xFF7A4B00),
+      background: dark ? const Color(0xFF3A2A0A) : const Color(0xFFFFF0C7),
+      icon: Icons.schedule_outlined,
       label: 'Vence em breve',
     ),
     AppStatus.emDia => StatusVisual(
-      foreground: dark ? const Color(0xFF99F6E4) : const Color(0xFF115E59),
-      background: dark ? const Color(0xFF0A2F2C) : const Color(0xFFE6F4F2),
-      icon: Icons.check_circle,
+      foreground: dark ? const Color(0xFF4CC2FF) : const Color(0xFF0A5AA8),
+      background: dark ? const Color(0xFF0C2E4E) : const Color(0xFFDCEEFF),
+      icon: Icons.check_circle_outline,
       label: 'Em dia',
     ),
     AppStatus.semBaseline => StatusVisual(
-      foreground: dark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
-      background: dark ? const Color(0xFF1E293B) : const Color(0xFFE8EEF4),
-      icon: Icons.info,
+      foreground: dark ? const Color(0xFFB9C8DA) : const Color(0xFF3B4F66),
+      background: dark ? const Color(0xFF1B2A3D) : const Color(0xFFE4EBF3),
+      icon: Icons.info_outline,
       label: 'Sem registro',
     ),
     AppStatus.semPeriodicidade => StatusVisual(
-      foreground: dark ? const Color(0xFFC5D0D0) : const Color(0xFF3F4C4E),
-      background: dark ? const Color(0xFF252A2A) : const Color(0xFFEEF0F1),
-      icon: Icons.history,
+      foreground: dark ? const Color(0xFFA9B8CB) : const Color(0xFF46596D),
+      background: dark ? const Color(0xFF16273A) : const Color(0xFFE6ECF2),
+      icon: Icons.history_outlined,
       label: 'Só histórico',
     ),
     // Only ever seen on the configuration screen: everywhere else an item the
     // vehicle does not have is absent, not greyed out. Muted, and not an alarm
     // colour — nothing is wrong.
     AppStatus.naoSeAplica => StatusVisual(
-      foreground: dark ? const Color(0xFFC5D0D0) : const Color(0xFF3F4C4E),
-      background: dark ? const Color(0xFF252A2A) : const Color(0xFFEEF0F1),
-      icon: Icons.remove_circle,
+      foreground: dark ? const Color(0xFFA9B8CB) : const Color(0xFF46596D),
+      background: dark ? const Color(0xFF16273A) : const Color(0xFFE6ECF2),
+      icon: Icons.remove_circle_outline,
       label: 'Não usa',
     ),
     AppStatus.pago => StatusVisual(
-      foreground: dark ? const Color(0xFF99F6E4) : const Color(0xFF115E59),
-      background: dark ? const Color(0xFF0A2F2C) : const Color(0xFFE6F4F2),
-      icon: Icons.check_circle,
+      foreground: dark ? const Color(0xFF4CC2FF) : const Color(0xFF0A5AA8),
+      background: dark ? const Color(0xFF0C2E4E) : const Color(0xFFDCEEFF),
+      icon: Icons.check_circle_outline,
       label: 'Pago',
     ),
     AppStatus.pendente => StatusVisual(
-      foreground: dark ? const Color(0xFFC5D0D0) : const Color(0xFF3F4C4E),
-      background: dark ? const Color(0xFF252A2A) : const Color(0xFFEEF0F1),
-      icon: Icons.event_note,
+      foreground: dark ? const Color(0xFFA9B8CB) : const Color(0xFF46596D),
+      background: dark ? const Color(0xFF16273A) : const Color(0xFFE6ECF2),
+      icon: Icons.event_note_outlined,
       label: 'Pendente',
     ),
     AppStatus.futuro => StatusVisual(
-      foreground: dark ? const Color(0xFFC7D2FE) : const Color(0xFF1E3A5F),
-      background: dark ? const Color(0xFF1E1B4B) : const Color(0xFFE8EEF8),
-      icon: Icons.event,
+      foreground: dark ? const Color(0xFFB9C6FF) : const Color(0xFF2E3F86),
+      background: dark ? const Color(0xFF1E2550) : const Color(0xFFE3E7FF),
+      icon: Icons.event_outlined,
       label: 'Futuro',
     ),
     AppStatus.vigente => StatusVisual(
-      foreground: dark ? const Color(0xFF99F6E4) : const Color(0xFF115E59),
-      background: dark ? const Color(0xFF0A2F2C) : const Color(0xFFE6F4F2),
-      icon: Icons.verified,
+      foreground: dark ? const Color(0xFF4CC2FF) : const Color(0xFF0A5AA8),
+      background: dark ? const Color(0xFF0C2E4E) : const Color(0xFFDCEEFF),
+      icon: Icons.verified_outlined,
       label: 'Vigente',
     ),
   };

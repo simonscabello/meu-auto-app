@@ -10,9 +10,11 @@ import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/obligation/application/obligation_provider.dart';
 import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/domain/obligation_copy.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
+import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
@@ -35,14 +37,9 @@ class ObligationFormSheet extends ConsumerStatefulWidget {
     required ObligationKind kind,
     Obligation? existing,
   }) {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      // A form: closes through its header or the back button, which both
-      // ask before discarding. See AppSheetHeader.
-      showDragHandle: false,
-      enableDrag: false,
-      useSafeArea: true,
+    return showAppSheet<void>(
+      context,
+      isForm: true,
       builder: (sheetContext) => ObligationFormSheet(
         vehicleId: vehicleId,
         kind: kind,
@@ -194,7 +191,6 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final kindLabel = obligationKindLabel(widget.kind);
     final title = _editing ? 'Editar $kindLabel' : 'Registrar $kindLabel';
 
@@ -202,21 +198,15 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
       listenable: Listenable.merge(_fields),
       isDirty: () => _isDirty,
       busy: _submitting,
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: AppSpacing.s16,
-          right: AppSpacing.s16,
-          bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.s16,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: AppSheetBody(
+        children: [
+          AppSheetHeader(title: title),
+          const SizedBox(height: AppSpacing.s16),
+          if (_banner != null) AuthFormBanner(message: _banner!),
+          AppFormSection(
+            title: 'Prazo',
             children: [
-              AppSheetHeader(title: title),
-              const SizedBox(height: AppSpacing.s8),
-              if (_banner != null) AuthFormBanner(message: _banner!),
-              if (!_editing) ...[
+              if (!_editing)
                 TextField(
                   controller: _year,
                   enabled: !_submitting,
@@ -225,11 +215,8 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
                   decoration: InputDecoration(
                     labelText: 'Ano de referência',
                     errorText: _fieldErrors['reference_year'],
-                    errorMaxLines: 3,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.s12),
-              ],
               AppDateField(
                 value: _dueOn,
                 onPick: _submitting ? () {} : _pickDueOn,
@@ -238,44 +225,51 @@ class _ObligationFormSheetState extends ConsumerState<ObligationFormSheet> {
                 enabled: !_submitting,
                 errorText: _fieldErrors['due_on'],
               ),
-              const SizedBox(height: AppSpacing.s8),
-              Text(
-                'A data varia por estado e pelo final da placa.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+                child: Text(
+                  'A data varia por estado e pelo final da placa.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.s12),
+            ],
+          ),
+          const AppFormGap(),
+          AppFormSection(
+            title: 'Valor e observações',
+            children: [
               AppMoneyField(
                 controller: _amount,
                 label: 'Valor (opcional)',
                 enabled: !_submitting,
                 errorText: _fieldErrors['amount_cents'],
               ),
-              const SizedBox(height: AppSpacing.s12),
               TextField(
                 controller: _notes,
                 enabled: !_submitting,
                 minLines: 2,
                 maxLines: 4,
                 textInputAction: TextInputAction.newline,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   labelText: 'Observações (opcional)',
                   errorText: _fieldErrors['notes'],
-                  errorMaxLines: 3,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.s16),
-              AppButton(
-                label: _offline
-                    ? 'Tentar de novo'
-                    : (_editing ? 'Salvar $kindLabel' : 'Registrar $kindLabel'),
-                loading: _submitting,
-                onPressed: _submitting ? null : _submit,
               ),
             ],
           ),
-        ),
+          const SizedBox(height: AppSpacing.s24),
+          AppButton(
+            label: _offline
+                ? 'Tentar de novo'
+                : (_editing ? 'Salvar $kindLabel' : 'Registrar $kindLabel'),
+            loading: _submitting,
+            onPressed: _submitting ? null : _submit,
+            expanded: true,
+          ),
+        ],
       ),
     );
   }

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 
 /// A settings line: what it is on the left, what it is set to on the right.
 ///
-/// The pattern the Perfil screen was missing. A permanent text field with a
-/// "Salvar nome" button beside it is a form, and a form is what a settings
-/// screen stops being the moment it has more than one thing in it. This shows
-/// the current value and opens somewhere to change it.
+/// It shows the current value and opens somewhere to change it. A permanent
+/// text field with a "Salvar" button beside it is a form, and a form is what
+/// a settings screen stops being the moment it has more than one thing in it.
 class AppSettingRow extends StatelessWidget {
   const AppSettingRow({
     super.key,
@@ -40,22 +41,26 @@ class AppSettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final tones = AppTones.of(context);
     final labelColor = destructive ? scheme.error : scheme.onSurface;
 
     final row = Row(
       children: [
         if (icon != null) ...[
-          Icon(
-            icon,
-            size: 22,
-            color: destructive ? scheme.error : scheme.onSurfaceVariant,
+          AppIconWell(
+            icon: icon!,
+            size: AppIconWellSize.s,
+            color: destructive ? scheme.error : null,
           ),
-          const SizedBox(width: AppSpacing.s16),
+          const SizedBox(width: AppSpacing.s12),
         ],
         Expanded(
           child: Text(
             label,
-            style: theme.textTheme.bodyLarge?.copyWith(color: labelColor),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: labelColor,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         if (trailing != null)
@@ -98,6 +103,7 @@ class AppSettingRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: AppRadius.borderS,
+          highlightColor: tones.overlayPressed,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               minHeight: AppSpacing.minTapTarget,

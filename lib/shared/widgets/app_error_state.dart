@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_centered_scroll.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 
+/// Something did not load: what happened, in words the person can act on,
+/// and a way to try again.
+///
+/// Offline is not an error in the person's eyes — nothing is wrong with the
+/// app — so it gets a neutral glyph and its own title. Everything else gets
+/// the red well, because red is reserved for something that actually failed.
 class AppErrorState extends StatelessWidget {
   const AppErrorState({
     super.key,
@@ -52,15 +60,14 @@ class AppErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              offline ? Icons.wifi_off : Icons.error_outline,
-              size: 32,
-              color: offline
-                  ? theme.colorScheme.onSurfaceVariant
-                  : theme.colorScheme.error,
+            AppIconWell(
+              icon: offline ? Icons.wifi_off_outlined : Icons.error_outline,
+              size: AppIconWellSize.xl,
+              tone: offline ? AppIconWellTone.neutral : AppIconWellTone.status,
+              status: AppStatus.vencido,
             ),
             if (offline) ...[
-              const SizedBox(height: AppSpacing.s12),
+              const SizedBox(height: AppSpacing.s20),
               Text(
                 offlineTitle,
                 style: theme.textTheme.titleLarge,
@@ -70,7 +77,11 @@ class AppErrorState extends StatelessWidget {
             const SizedBox(height: AppSpacing.s12),
             Text(
               message,
-              style: theme.textTheme.bodyLarge,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: offline
+                    ? theme.colorScheme.onSurfaceVariant
+                    : theme.colorScheme.onSurface,
+              ),
               textAlign: TextAlign.center,
             ),
             if (reference != null && reference.isNotEmpty) ...[
@@ -84,7 +95,11 @@ class AppErrorState extends StatelessWidget {
               ),
             ],
             const SizedBox(height: AppSpacing.s24),
-            AppButton(label: 'Tentar de novo', onPressed: onRetry),
+            AppButton(
+              label: 'Tentar de novo',
+              variant: AppButtonVariant.secondary,
+              onPressed: onRetry,
+            ),
           ],
         ),
       ),
