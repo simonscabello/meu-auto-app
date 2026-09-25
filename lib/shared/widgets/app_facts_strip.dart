@@ -38,7 +38,7 @@ class AppFactsStrip extends StatelessWidget {
   final List<AppFact> facts;
 
   /// The text scale from which the facts are read down instead of across.
-  static const double stackAbove = 1.3;
+  static const double stackAbove = AppTypography.largeTextScale;
 
   @override
   Widget build(BuildContext context) {
@@ -58,28 +58,25 @@ class AppFactsStrip extends StatelessWidget {
                 excludeSemantics: true,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
-                  child: Row(
+                  // The label over the value, both the full width: side by
+                  // side, half a 360dp line broke "21/03/2026" after "202".
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          facts[i].label,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                      Text(
+                        facts[i].label,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.s12),
-                      Flexible(
-                        child: Text(
-                          facts[i].unit == null
-                              ? facts[i].value
-                              : '${facts[i].value} ${facts[i].unit}',
-                          textAlign: TextAlign.end,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontFeatures: AppTypography.tabular,
-                          ),
+                      const SizedBox(height: 2),
+                      Text(
+                        facts[i].unit == null
+                            ? facts[i].value
+                            : '${facts[i].value} ${facts[i].unit}',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: AppTypography.tabular,
                         ),
                       ),
                     ],

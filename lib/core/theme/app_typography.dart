@@ -29,6 +29,18 @@ const String kAppFontFamily = 'Inter';
 abstract final class AppTypography {
   static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
 
+  /// The system text scale past which two things stop sharing a line.
+  ///
+  /// At 1.6 on a 360dp phone a name and an amount side by side leave the
+  /// name a column narrow enough to break "Gastos" into "Gasto / s". Past
+  /// this scale a row's value, a row's button and a fact's figure go under
+  /// the words instead of beside them, and the two quick actions stack.
+  static const double largeTextScale = 1.3;
+
+  /// Whether the text is enlarged past [largeTextScale].
+  static bool isLargeText(BuildContext context) =>
+      MediaQuery.textScalerOf(context).scale(1) > largeTextScale;
+
   /// A number meant to be read as a reading: the odometer, a total, the
   /// figures of a fill. Tabular, tight, and one line high.
   static TextStyle figure({

@@ -226,6 +226,15 @@ class AbastecimentoRow extends StatelessWidget with GroupedRow {
       ?consumption,
     ].join(' · ');
 
+    // With the text enlarged the amount goes under the words, as it does
+    // in every row (see [AppTypography.isLargeText]).
+    final large = AppTypography.isLargeText(context);
+    final cost = Text(
+      fill.totalCostCents.format(),
+      style: theme.textTheme.titleSmall?.copyWith(
+        fontFeatures: AppTypography.tabular,
+      ),
+    );
     return AppListRowShell(
       onTap: onTap,
       semanticLabel: '$title. $detail. ${fill.totalCostCents.format()}',
@@ -241,16 +250,11 @@ class AbastecimentoRow extends StatelessWidget with GroupedRow {
                 Text(title, style: theme.textTheme.titleSmall),
                 const SizedBox(height: 2),
                 Text(detail, style: theme.textTheme.bodySmall),
+                if (large) ...[const SizedBox(height: AppSpacing.s4), cost],
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.s12),
-          Text(
-            fill.totalCostCents.format(),
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontFeatures: AppTypography.tabular,
-            ),
-          ),
+          if (!large) ...[const SizedBox(width: AppSpacing.s12), cost],
           if (onTap != null) ...[
             const SizedBox(width: AppSpacing.s4),
             Icon(

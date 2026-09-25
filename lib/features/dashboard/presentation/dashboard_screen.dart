@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
@@ -472,14 +473,33 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Past 1.3 two tiles side by side cut "Registrar manutenção" at
+    // "manute…"; each becomes a full-width row instead, still equal in
+    // weight, one above the other.
+    final stacked = AppTypography.isLargeText(context);
     final maintenance = AppQuickAction(
       icon: Icons.build_outlined,
       label: 'Registrar manutenção',
       onTap: onRegisterMaintenance,
-      wide: onRegisterAbastecimento == null,
+      wide: onRegisterAbastecimento == null || stacked,
     );
     if (onRegisterAbastecimento == null) {
       return maintenance;
+    }
+    if (stacked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppQuickAction(
+            icon: Icons.local_gas_station_outlined,
+            label: 'Abastecer',
+            onTap: onRegisterAbastecimento,
+            wide: true,
+          ),
+          const SizedBox(height: AppSpacing.s12),
+          maintenance,
+        ],
+      );
     }
     // IntrinsicHeight so the two tiles are the same height whatever their
     // labels wrap to; two children, so the second layout pass is nothing.

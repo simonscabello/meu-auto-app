@@ -33,35 +33,43 @@ class AppShell extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: tones.stroke)),
         ),
-        child: NavigationBar(
-          selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: _goBranch,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'Início',
-              tooltip: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.build_outlined),
-              selectedIcon: Icon(Icons.build),
-              label: 'Manutenção',
-              tooltip: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.description_outlined),
-              selectedIcon: Icon(Icons.description),
-              label: 'Documentos',
-              tooltip: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.history_outlined),
-              selectedIcon: Icon(Icons.history),
-              label: 'Histórico',
-              tooltip: '',
-            ),
-          ],
+        // The labels keep their size: four destinations share 360dp, and at
+        // a larger scale "Manutenção" broke into "Manutençã / o". The icons
+        // carry the bar at any size, the tab's own title says where you are
+        // in the size the person chose, and the platforms' own tab bars do
+        // the same.
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1,
+          child: NavigationBar(
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: _goBranch,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home),
+                label: 'Início',
+                tooltip: '',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.build_outlined),
+                selectedIcon: Icon(Icons.build),
+                label: 'Manutenção',
+                tooltip: '',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.description_outlined),
+                selectedIcon: Icon(Icons.description),
+                label: 'Documentos',
+                tooltip: '',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.history_outlined),
+                selectedIcon: Icon(Icons.history),
+                label: 'Histórico',
+                tooltip: '',
+              ),
+            ],
+          ),
         ),
       ),
     );

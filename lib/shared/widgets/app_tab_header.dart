@@ -121,11 +121,16 @@ class AppTabHeader extends StatelessWidget {
                   padding: const EdgeInsets.only(top: AppSpacing.s4),
                   child: Semantics(
                     header: true,
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.headlineMedium,
+                    // Scaled down, never cut: at a 1.6 text scale "Manuten…"
+                    // beside the "+" and the avatar was not a title.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        style: theme.textTheme.headlineMedium,
+                      ),
                     ),
                   ),
                 ),

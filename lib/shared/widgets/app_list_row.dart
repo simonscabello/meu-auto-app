@@ -93,6 +93,13 @@ class AppListRow extends StatelessWidget with GroupedRow {
     final isAdd = iconTone == AppIconWellTone.accent;
     final inset = AppGroupScope.paddingOf(context);
 
+    final large = AppTypography.isLargeText(context);
+    final valueStyle = strongValue
+        ? theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontFeatures: AppTypography.tabular,
+          )
+        : theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant);
     final main = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -132,10 +139,14 @@ class AppListRow extends StatelessWidget with GroupedRow {
                   ),
                 ),
               ],
+              if (value != null && large) ...[
+                const SizedBox(height: AppSpacing.s4),
+                Text(value!, style: valueStyle),
+              ],
             ],
           ),
         ),
-        if (value != null) ...[
+        if (value != null && !large) ...[
           const SizedBox(width: AppSpacing.s12),
           // At most a little under half the line: a long amount or a phrase
           // like "Sem consumo ainda" wraps inside its column instead of
@@ -144,18 +155,7 @@ class AppListRow extends StatelessWidget with GroupedRow {
             constraints: BoxConstraints(
               maxWidth: MediaQuery.sizeOf(context).width * 0.4,
             ),
-            child: Text(
-              value!,
-              textAlign: TextAlign.end,
-              style: strongValue
-                  ? theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: AppTypography.tabular,
-                    )
-                  : theme.textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-            ),
+            child: Text(value!, textAlign: TextAlign.end, style: valueStyle),
           ),
         ],
         if (showChevron) ...[
@@ -218,6 +218,27 @@ class AppListRow extends StatelessWidget with GroupedRow {
 
     if (trailing == null) {
       return tappable;
+    }
+
+    if (large) {
+      // Beside the words, a "Feito" left the name a column wide enough for
+      // "arrefeciment / o". Under them, on the text's own edge, it keeps
+      // its size and the name keeps the line.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          tappable,
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              inset.left + (icon == null ? 0 : AppSpacing.rowTextIndent),
+              0,
+              inset.right,
+              AppSpacing.s12,
+            ),
+            child: trailing,
+          ),
+        ],
+      );
     }
 
     return Row(

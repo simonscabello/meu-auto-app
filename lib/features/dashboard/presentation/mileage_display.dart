@@ -79,6 +79,22 @@ class MileageDisplay extends StatelessWidget {
       ],
     );
 
+    final tappableReading = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: reading,
+    );
+    final update = onTap == null
+        ? null
+        : TextButton.icon(
+            onPressed: onTap,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Atualizar'),
+          );
+    // Past 1.3 the action beside the reading squeezed the number down to
+    // fit; under it, the reading keeps the whole line.
+    final stacked = AppTypography.isLargeText(context);
+
     return Semantics(
       button: onTap != null,
       label:
@@ -86,31 +102,35 @@ class MileageDisplay extends StatelessWidget {
           '${onTap == null ? '' : ' Atualizar quilometragem'}',
       excludeSemantics: true,
       onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onTap,
-              child: reading,
+      child: stacked
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                tappableReading,
+                if (update != null)
+                  Transform.translate(
+                    // The icon, not the ink, lines up with the gutter.
+                    offset: const Offset(-AppSpacing.s12, 0),
+                    child: update,
+                  ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: tappableReading),
+                if (update != null) ...[
+                  const SizedBox(width: AppSpacing.s12),
+                  Transform.translate(
+                    // The text button's padding overhangs the gutter so its
+                    // label, not its ink, lines up with the edge of the
+                    // cards below.
+                    offset: const Offset(AppSpacing.s12, 0),
+                    child: update,
+                  ),
+                ],
+              ],
             ),
-          ),
-          if (onTap != null) ...[
-            const SizedBox(width: AppSpacing.s12),
-            Transform.translate(
-              // The text button's padding overhangs the gutter so its label,
-              // not its ink, lines up with the edge of the cards below.
-              offset: const Offset(AppSpacing.s12, 0),
-              child: TextButton.icon(
-                onPressed: onTap,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Atualizar'),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

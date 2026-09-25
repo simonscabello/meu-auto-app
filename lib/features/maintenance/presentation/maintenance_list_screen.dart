@@ -205,6 +205,15 @@ class MaintenanceRecordRow extends StatelessWidget with GroupedRow {
     final scheme = theme.colorScheme;
     final showCost = record.totalCostCents.cents > 0;
     final when = maintenanceRecordWhen(record);
+    // With the text enlarged the cost goes under the words, as it does in
+    // every row (see [AppTypography.isLargeText]).
+    final large = AppTypography.isLargeText(context);
+    final cost = Text(
+      record.totalCostCents.format(),
+      style: theme.textTheme.titleSmall?.copyWith(
+        fontFeatures: AppTypography.tabular,
+      ),
+    );
 
     return AppListRowShell(
       onTap: onTap,
@@ -234,17 +243,16 @@ class MaintenanceRecordRow extends StatelessWidget with GroupedRow {
                 ),
                 const SizedBox(height: 2),
                 Text(when, style: theme.textTheme.bodySmall),
+                if (showCost && large) ...[
+                  const SizedBox(height: AppSpacing.s4),
+                  cost,
+                ],
               ],
             ),
           ),
-          if (showCost) ...[
+          if (showCost && !large) ...[
             const SizedBox(width: AppSpacing.s12),
-            Text(
-              record.totalCostCents.format(),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontFeatures: AppTypography.tabular,
-              ),
-            ),
+            cost,
           ],
           if (onTap != null) ...[
             const SizedBox(width: AppSpacing.s4),

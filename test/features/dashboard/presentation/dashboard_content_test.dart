@@ -39,9 +39,7 @@ void main() {
   // only "1 item vencido", which made the owner tap to learn *what* — and then
   // read the same item again on the next page.
   group('alert rows', () {
-    testWidgets('name the late item and how late, not a count', (
-      tester,
-    ) async {
+    testWidgets('name the late item and how late, not a count', (tester) async {
       await _pump(
         tester,
         _dashboard(
@@ -215,9 +213,7 @@ void main() {
 
     // A gauge on every row was a metric added because the data existed. The
     // fraction lives on the plan's own screen.
-    testWidgets('Início draws no progress bars', (
-      tester,
-    ) async {
+    testWidgets('Início draws no progress bars', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark,

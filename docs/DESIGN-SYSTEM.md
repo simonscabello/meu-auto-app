@@ -139,6 +139,24 @@ dias", "Faltam 2.000 km", "Pago em 12 jan", "Vigente até 28/12/2026",
 sempre `dueInDaysPhrase` (`core/domain/phrases.dart`) — a mesma frase no
 Início e na aba do item.
 
+## Texto grande
+
+Acima de `AppTypography.largeTextScale` (1,3) duas coisas deixam de dividir
+a linha — `AppTypography.isLargeText(context)` é a pergunta, uma só:
+
+- o valor de uma linha (`AppListRow.value`, o custo de um registro, o preço
+  de um item) e o botão da linha ("Feito") vão **para baixo** do nome, na
+  borda do texto. Lado a lado, a 1,6 num telefone de 360dp, "Gastos em 12
+  meses" quebrava em "Gasto / s em / 12 / mese / s";
+- `AppFactsStrip` e `AppFactRow(inline: true)` empilham rótulo sobre valor;
+- os dois atalhos do Início viram duas linhas de largura total, ainda com
+  o mesmo peso; "Atualizar" desce para baixo da quilometragem;
+- o título da aba encolhe para caber (`FittedBox`), nunca é cortado.
+
+Os rótulos da barra de navegação não crescem: quatro destinos dividem 360dp
+e "Manutenção" quebrava em "Manutençã / o". Os ícones carregam a barra, e o
+título da aba diz onde se está no tamanho escolhido.
+
 ## Iconografia
 
 Material Icons, variante `_outlined`, na cor do texto de apoio. Colorido só

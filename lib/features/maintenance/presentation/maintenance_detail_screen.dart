@@ -337,6 +337,18 @@ class _ItemRow extends StatelessWidget with GroupedRow {
     ].join(' · ');
     final warranty = _warrantyLine(item);
     final cost = item.costCents;
+    // With the text enlarged the price goes under the words, as it does in
+    // every row (see [AppTypography.isLargeText]).
+    final large = AppTypography.isLargeText(context);
+    final price = cost == null
+        ? null
+        : Text(
+            cost.format(),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFeatures: AppTypography.tabular,
+            ),
+          );
 
     return AppListRowShell(
       semanticLabel: [
@@ -363,18 +375,16 @@ class _ItemRow extends StatelessWidget with GroupedRow {
                   const SizedBox(height: 2),
                   Text(warranty, style: theme.textTheme.bodySmall),
                 ],
+                if (price != null && large) ...[
+                  const SizedBox(height: AppSpacing.s4),
+                  price,
+                ],
               ],
             ),
           ),
-          if (cost != null) ...[
+          if (price != null && !large) ...[
             const SizedBox(width: AppSpacing.s12),
-            Text(
-              cost.format(),
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontFeatures: AppTypography.tabular,
-              ),
-            ),
+            price,
           ],
         ],
       ),

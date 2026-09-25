@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
 /// A label and its value, as one row of a facts group on a detail screen.
@@ -34,6 +35,9 @@ class AppFactRow extends StatelessWidget with GroupedRow {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    // With the text enlarged an inline fact stacks like the others: a third
+    // of a 360dp line broke "Preço por litro" over two lines beside "R$ 6,19".
+    final inline = this.inline && !AppTypography.isLargeText(context);
     final labelStyle = inline
         ? theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)
         : theme.textTheme.labelMedium;
