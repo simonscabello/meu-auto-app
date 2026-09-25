@@ -30,6 +30,35 @@ void main() {
     expect(find.byType(PlanIntervalSheet), findsOneWidget);
     expect(find.byType(CarePeriodicitySheet), findsNothing);
   });
+
+  testWidgets('the interval sheet closes untouched without asking', (
+    tester,
+  ) async {
+    await _open(tester, _plan(kind: MaintenanceItemKind.maintenance));
+    await tester.tap(find.text('Ajustar'));
+    await tester.pumpAndSettle();
+
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PlanIntervalSheet), findsNothing);
+  });
+
+  testWidgets('the interval sheet asks before discarding a typed interval', (
+    tester,
+  ) async {
+    await _open(tester, _plan(kind: MaintenanceItemKind.maintenance));
+    await tester.tap(find.text('Ajustar'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, '15.000');
+    await tester.pump();
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Descartar o que você preencheu?'), findsOneWidget);
+    expect(find.byType(PlanIntervalSheet), findsOneWidget);
+  });
 }
 
 Future<void> _open(WidgetTester tester, MaintenancePlan plan) async {

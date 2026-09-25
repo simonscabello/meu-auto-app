@@ -11,6 +11,7 @@ import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
 import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
@@ -54,6 +55,26 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
   String? _banner;
   Map<String, String> _fieldErrors = {};
 
+  /// What each field held when the sheet opened, so closing it after
+  /// typing asks first — and closing it untouched does not.
+  late final List<String> _openedWith;
+
+  List<TextEditingController> get _fields => [
+    _km,
+    _months,
+    _days,
+    _alertKm,
+    _alertDays,
+  ];
+
+  bool get _isDirty {
+    final fields = _fields;
+    for (var i = 0; i < fields.length; i++) {
+      if (fields[i].text != _openedWith[i]) return true;
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +84,7 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
     _days = TextEditingController(text: _digits(plan.intervalDays));
     _alertKm = TextEditingController(text: formatKmNumber(plan.alertKm));
     _alertDays = TextEditingController(text: plan.alertDays.toString());
+    _openedWith = [for (final field in _fields) field.text];
   }
 
   @override
@@ -126,85 +148,90 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return AppSheetBody(
-      children: [
-        // Where a suggested interval came from is said on the plan itself,
-        // under its details; here the sheet only names what is being edited.
-        AppSheetHeader(
-          title: 'Editar intervalo',
-          subtitle: widget.plan.itemName,
-          closable: false,
-        ),
-        const SizedBox(height: AppSpacing.s16),
-        if (_banner != null) AuthFormBanner(message: _banner!),
-        AppFormSection(
-          title: 'A cada',
-          children: [
-            AppKmField(
-              controller: _km,
-              label: 'Quilômetros',
-              enabled: !_submitting,
-              errorText: _fieldErrors['interval_km'],
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _numberField(
-                    controller: _months,
-                    label: 'Meses',
-                    fieldKey: 'interval_months',
+    return AppDiscardGuard(
+      listenable: Listenable.merge(_fields),
+      isDirty: () => _isDirty,
+      busy: _submitting,
+      child: AppSheetBody(
+        children: [
+          // Where a suggested interval came from is said on the plan itself,
+          // under its details; here the sheet only names what is being edited.
+          AppSheetHeader(
+            title: 'Editar intervalo',
+            subtitle: widget.plan.itemName,
+            closable: false,
+          ),
+          const SizedBox(height: AppSpacing.s16),
+          if (_banner != null) AuthFormBanner(message: _banner!),
+          AppFormSection(
+            title: 'A cada',
+            children: [
+              AppKmField(
+                controller: _km,
+                label: 'Quilômetros',
+                enabled: !_submitting,
+                errorText: _fieldErrors['interval_km'],
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _numberField(
+                      controller: _months,
+                      label: 'Meses',
+                      fieldKey: 'interval_months',
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.s12),
-                Expanded(
-                  child: _numberField(
-                    controller: _days,
-                    label: 'Dias',
-                    fieldKey: 'interval_days',
+                  const SizedBox(width: AppSpacing.s12),
+                  Expanded(
+                    child: _numberField(
+                      controller: _days,
+                      label: 'Dias',
+                      fieldKey: 'interval_days',
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const AppFormGap(),
-        AppFormSection(
-          title: 'Avisar antes',
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: AppKmField(
-                    controller: _alertKm,
-                    label: 'Quilômetros',
-                    enabled: !_submitting,
-                    errorText: _fieldErrors['alert_km'],
+                ],
+              ),
+            ],
+          ),
+          const AppFormGap(),
+          AppFormSection(
+            title: 'Avisar antes',
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: AppKmField(
+                      controller: _alertKm,
+                      label: 'Quilômetros',
+                      enabled: !_submitting,
+                      errorText: _fieldErrors['alert_km'],
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.s12),
-                Expanded(
-                  child: _numberField(
-                    controller: _alertDays,
-                    label: 'Dias',
-                    fieldKey: 'alert_days',
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: _submitting ? null : _submit,
+                  const SizedBox(width: AppSpacing.s12),
+                  Expanded(
+                    child: _numberField(
+                      controller: _alertDays,
+                      label: 'Dias',
+                      fieldKey: 'alert_days',
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: _submitting ? null : _submit,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.s24),
-        AppButton(
-          label: _offline ? 'Tentar de novo' : 'Salvar',
-          loading: _submitting,
-          onPressed: _submitting ? null : _submit,
-          expanded: true,
-        ),
-      ],
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s24),
+          AppButton(
+            label: _offline ? 'Tentar de novo' : 'Salvar',
+            loading: _submitting,
+            onPressed: _submitting ? null : _submit,
+            expanded: true,
+          ),
+        ],
+      ),
     );
   }
 
