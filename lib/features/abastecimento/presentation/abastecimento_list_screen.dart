@@ -79,8 +79,7 @@ class AbastecimentosView extends ConsumerStatefulWidget {
   final EdgeInsets padding;
 
   @override
-  ConsumerState<AbastecimentosView> createState() =>
-      _AbastecimentosViewState();
+  ConsumerState<AbastecimentosView> createState() => _AbastecimentosViewState();
 }
 
 class _AbastecimentosViewState extends ConsumerState<AbastecimentosView> {

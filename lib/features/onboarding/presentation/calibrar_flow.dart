@@ -16,6 +16,7 @@ import 'package:meu_auto/features/maintenance/application/maintenance_plan_provi
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_update.dart';
+import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_rollback.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_rollback_dialog.dart';
 import 'package:meu_auto/features/onboarding/application/calibrar_provider.dart';
@@ -28,6 +29,7 @@ import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -348,6 +350,10 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     if (_step == _Step.intro) {
       return CalibrarIntroContent(
         questionCount: questions.length,
+        items: [
+          for (final plan in questions)
+            (name: plan.itemName, icon: maintenanceIconFor(plan.itemSlug)),
+        ],
         onStart: () => unawaited(_startAsking()),
         onLater: () => unawaited(_seeCar()),
       );
@@ -407,17 +413,25 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
 ///
 /// The heading does not say "Carro cadastrado": the flow is also opened from
 /// Início for a car registered long ago, and it cannot tell the two apart.
+///
+/// The items about to be asked are listed under it, so "3 perguntas" is three
+/// things the person can already see — and deciding "depois" is deciding
+/// about those, not about an unknown amount of homework.
 class CalibrarIntroContent extends StatelessWidget {
   const CalibrarIntroContent({
     super.key,
     required this.questionCount,
     required this.onStart,
     required this.onLater,
+    this.items = const [],
   });
 
   final int questionCount;
   final VoidCallback onStart;
   final VoidCallback onLater;
+
+  /// What will be asked about, in the order it will be asked.
+  final List<({String name, IconData icon})> items;
 
   @override
   Widget build(BuildContext context) {
@@ -448,6 +462,15 @@ class CalibrarIntroContent extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
+        if (items.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.block),
+          AppGroup(
+            children: [
+              for (final item in items)
+                AppListRow(title: item.name, icon: item.icon),
+            ],
+          ),
+        ],
       ],
     );
   }

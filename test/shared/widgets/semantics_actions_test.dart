@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
+import 'package:meu_auto/features/auth/application/auth_controller.dart';
+import 'package:meu_auto/features/auth/domain/auth_status.dart';
+import 'package:meu_auto/features/auth/domain/user.dart';
+import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
 import 'package:meu_auto/shared/widgets/app_expandable_group.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_quick_action.dart';
@@ -36,7 +41,11 @@ void main() {
     final handle = tester.ensureSemantics();
     await pump(
       tester,
-      AppListRow(title: 'Troca de óleo', subtitle: 'Faltam 2.000 km', onTap: () {}),
+      AppListRow(
+        title: 'Troca de óleo',
+        subtitle: 'Faltam 2.000 km',
+        onTap: () {},
+      ),
     );
     expectTappable(tester, 'Troca de óleo. Faltam 2.000 km');
     handle.dispose();
@@ -78,7 +87,11 @@ void main() {
     final handle = tester.ensureSemantics();
     await pump(
       tester,
-      AppSectionHeader(title: 'Vencidos', actionLabel: 'Ver todos', onAction: () {}),
+      AppSectionHeader(
+        title: 'Vencidos',
+        actionLabel: 'Ver todos',
+        onAction: () {},
+      ),
     );
     expectTappable(tester, 'Ver todos');
     handle.dispose();
@@ -130,4 +143,34 @@ void main() {
     expectTappable(tester, 'Manutenções');
     handle.dispose();
   });
+
+  testWidgets('the account button can be pressed by a screen reader', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authControllerProvider.overrideWith(_LoggedIn.new)],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(body: ProfileButton(onPressed: () {})),
+        ),
+      ),
+    );
+    await tester.pump();
+    expectTappable(tester, 'Perfil e conta');
+    handle.dispose();
+  });
+}
+
+final class _LoggedIn extends AuthController {
+  @override
+  Future<AuthStatus> build() async => AuthLoggedIn(
+    User(
+      id: 'u1',
+      name: 'Ana',
+      email: 'ana@example.com',
+      createdAt: DateTime(2026),
+    ),
+  );
 }

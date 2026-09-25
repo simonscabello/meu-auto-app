@@ -107,6 +107,32 @@ final class MaintenanceRecord {
   /// Built from what the server named the items, never from the slug.
   String get itemsSummary => items.map((item) => item.itemName).join(', ');
 
+  /// What the record is, in the few words a title holds: the one item, the
+  /// two, or the first and how many more. A revisão names the visit by
+  /// itself.
+  ///
+  /// The same words head the record's own screen and its line in a list.
+  /// The list used to print the whole comma list, which cut a service of
+  /// four items at "Balanceamento, Calib…", mid-word, beside the cost;
+  /// [itemsSummary] still says every item to a screen reader.
+  String get title {
+    if (items.isEmpty) return 'Manutenção';
+    for (final item in items) {
+      if (item.itemSlug == 'revisao') {
+        final others = items.length - 1;
+        if (others == 0) return item.itemName;
+        return others == 1
+            ? '${item.itemName} e mais 1 item'
+            : '${item.itemName} e mais $others itens';
+      }
+    }
+    if (items.length == 1) return items.first.itemName;
+    if (items.length == 2) {
+      return '${items[0].itemName} e ${items[1].itemName}';
+    }
+    return '${items.first.itemName} e mais ${items.length - 1} itens';
+  }
+
   factory MaintenanceRecord.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'];
     return MaintenanceRecord(

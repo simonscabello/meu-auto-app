@@ -60,11 +60,18 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
         if (trailing != null)
           trailing!
         else ...[
+          // Capped, not flexible: a Flexible beside the Expanded label took
+          // half the line and left the chevron in the middle of the row
+          // whenever the value was short.
           if (value != null)
-            Flexible(
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * 0.45,
+              ),
               child: Text(
                 value!,
                 textAlign: TextAlign.end,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,

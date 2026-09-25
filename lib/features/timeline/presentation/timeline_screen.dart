@@ -28,6 +28,7 @@ import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_paged_footer.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_tab_header.dart';
 import 'package:meu_auto/shared/widgets/app_segmented.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
@@ -105,23 +106,27 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
               ),
             ),
           Expanded(
-            child: selected.when(
-              loading: () => const _TimelineSkeleton(),
-              error: (error, _) => AppErrorState.fromError(
-                error: error,
-                onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+            child: AppTabBody(
+              child: selected.when(
+                loading: () => const _TimelineSkeleton(),
+                error: (error, _) => AppErrorState.fromError(
+                  error: error,
+                  onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+                ),
+                data: (current) => current == null
+                    ? const SizedBox.shrink()
+                    : switch (filter) {
+                        HistoryFilter.all => TimelineView(
+                          vehicleId: current.id,
+                        ),
+                        HistoryFilter.maintenance => MaintenanceRecordsView(
+                          vehicleId: current.id,
+                        ),
+                        HistoryFilter.fuel => AbastecimentosView(
+                          vehicleId: current.id,
+                        ),
+                      },
               ),
-              data: (current) => current == null
-                  ? const SizedBox.shrink()
-                  : switch (filter) {
-                      HistoryFilter.all => TimelineView(vehicleId: current.id),
-                      HistoryFilter.maintenance => MaintenanceRecordsView(
-                        vehicleId: current.id,
-                      ),
-                      HistoryFilter.fuel => AbastecimentosView(
-                        vehicleId: current.id,
-                      ),
-                    },
             ),
           ),
         ],
@@ -288,8 +293,7 @@ class TimelineContent extends StatelessWidget {
               for (final entry in month.items)
                 TimelineRow(
                   entry: entry,
-                  onTap:
-                      onOpen != null && routeForTimelineEntry(entry) != null
+                  onTap: onOpen != null && routeForTimelineEntry(entry) != null
                       ? () => onOpen!(entry)
                       : null,
                 ),
@@ -389,10 +393,7 @@ class TimelineRow extends StatelessWidget with GroupedRow {
     // row onto a third line.
     final detail = [
       formatCivilDayMonthAbbrev(entry.occurredOn),
-      if (mileage != null)
-        formatKm(mileage)
-      else
-        ?timelineSubtitleOf(entry),
+      if (mileage != null) formatKm(mileage) else ?timelineSubtitleOf(entry),
     ].join(' · ');
 
     return AppListRow(

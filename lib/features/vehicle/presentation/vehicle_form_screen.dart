@@ -7,6 +7,7 @@ import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
+import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
@@ -578,6 +579,13 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
       DropdownButtonFormField<FuelType?>(
         initialValue: _fuelInitial,
         isExpanded: true,
+        // The field's own face: the widget's default is titleMedium, which
+        // set the chosen fuel in bold beside fields typed in bodyLarge.
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+        borderRadius: AppRadius.borderM,
+        dropdownColor: Theme.of(context).colorScheme.surfaceContainerHigh,
         // Not marked optional, although the server accepts it empty: the fuel
         // is what decides which items the car has at all — an electric has
         // no oil change, a diesel no spark plugs. Left blank, the engine

@@ -20,6 +20,7 @@ import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_tab_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
 class DocumentosScreen extends ConsumerWidget {
@@ -46,24 +47,26 @@ class DocumentosScreen extends ConsumerWidget {
             ],
           ),
           Expanded(
-            child: selected.when(
-              loading: () => const _DocumentosSkeleton(),
-              error: (error, _) => AppErrorState.fromError(
-                error: error,
-                onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+            child: AppTabBody(
+              child: selected.when(
+                loading: () => const _DocumentosSkeleton(),
+                error: (error, _) => AppErrorState.fromError(
+                  error: error,
+                  onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+                ),
+                data: (current) => current == null
+                    ? const SizedBox.shrink()
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: AppSpacing.tab,
+                        children: [
+                          DocumentosSection(
+                            vehicleId: current.id,
+                            showHeading: false,
+                          ),
+                        ],
+                      ),
               ),
-              data: (current) => current == null
-                  ? const SizedBox.shrink()
-                  : ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: AppSpacing.tab,
-                      children: [
-                        DocumentosSection(
-                          vehicleId: current.id,
-                          showHeading: false,
-                        ),
-                      ],
-                    ),
             ),
           ),
         ],

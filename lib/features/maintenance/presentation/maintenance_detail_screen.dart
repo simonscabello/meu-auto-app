@@ -206,25 +206,9 @@ class _MaintenanceDetailScreenState
   }
 }
 
-/// What the record is, in the few words a title holds: the one item, the two,
-/// or the first and how many more. A revisão names the visit by itself.
-String maintenanceRecordTitle(MaintenanceRecord record) {
-  final items = record.items;
-  if (items.isEmpty) return 'Manutenção';
-  for (final item in items) {
-    if (item.itemSlug == 'revisao') {
-      final others = items.length - 1;
-      if (others == 0) return item.itemName;
-      return others == 1
-          ? '${item.itemName} e mais 1 item'
-          : '${item.itemName} e mais $others itens';
-    }
-  }
-  if (items.length == 1) return items.first.itemName;
-  if (items.length == 2) return '${items[0].itemName} e ${items[1].itemName}';
-  final others = items.length - 1;
-  return '${items.first.itemName} e mais $others itens';
-}
+/// What the record is, in the few words a title holds — see
+/// [MaintenanceRecord.title], which the list line uses too.
+String maintenanceRecordTitle(MaintenanceRecord record) => record.title;
 
 /// The record as pure presentation.
 ///

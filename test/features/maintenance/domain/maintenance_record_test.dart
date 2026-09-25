@@ -32,6 +32,21 @@ void main() {
       record.itemsSummary,
       'Troca de óleo do motor, Filtro de óleo, Filtro de ar do motor',
     );
+    expect(record.title, 'Troca de óleo do motor e mais 2 itens');
+  });
+
+  test('the title names one or two items and counts the rest', () {
+    MaintenanceRecord withItems(List<String> names) =>
+        MaintenanceRecord.fromJson(
+          _record(items: [for (final name in names) _item(name: name)]),
+        );
+
+    expect(withItems(['Pneus']).title, 'Pneus');
+    expect(
+      withItems(['Alinhamento', 'Balanceamento']).title,
+      'Alinhamento e Balanceamento',
+    );
+    expect(withItems(const []).title, 'Manutenção');
   });
 
   test('every optional field may be absent', () {

@@ -84,10 +84,14 @@ class ProfileButton extends ConsumerWidget {
     final name = auth is AuthLoggedIn ? auth.user.name.trim() : '';
     final initial = name.isEmpty ? null : name.characters.first.toUpperCase();
 
+    final open = onPressed ?? () => context.push(AppRoutes.profile);
     return Semantics(
       button: true,
       label: 'Perfil e conta',
       excludeSemantics: true,
+      // Excluding the children drops the InkWell's own action; without this
+      // a screen reader announced a button it could not press.
+      onTap: open,
       child: Tooltip(
         message: 'Perfil e conta',
         child: Material(
@@ -95,7 +99,7 @@ class ProfileButton extends ConsumerWidget {
           shape: const CircleBorder(),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
-            onTap: onPressed ?? () => context.push(AppRoutes.profile),
+            onTap: open,
             highlightColor: tones.overlayPressed,
             child: SizedBox(
               width: AppSpacing.minTapTarget,

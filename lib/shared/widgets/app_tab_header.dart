@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/core/theme/app_motion.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
@@ -10,8 +11,10 @@ import 'package:meu_auto/core/theme/app_tones.dart';
 /// with the title 12dp left of the content under it and the car in small
 /// accent type squeezed beneath; changing tab looked like changing app. Now
 /// the header is part of the page — on the same gutter as everything below,
-/// scrolling with it, so pull-to-refresh starts at the very top — and only
-/// the [title] changes from tab to tab.
+/// with no bar colour of its own — and only the [title] changes from tab to
+/// tab. It stays in place while the tab scrolls, so the "+" and the car are
+/// always one tap away; [AppTabBody] draws the hairline that separates the
+/// two once something has scrolled under it.
 ///
 /// The [contextLabel] line is the car. It is in the accent because it is
 /// something to press (it opens the switcher) and because it is about the
@@ -136,6 +139,59 @@ class AppTabHeader extends StatelessWidget {
           for (final action in actions) action,
         ],
       ),
+    );
+  }
+}
+
+/// The scrolling part of a main tab, under an [AppTabHeader].
+///
+/// At rest the header and the page are one surface. Once the list has moved,
+/// a hairline appears where the two meet — the same cue a Material app bar
+/// gives when content scrolls under it — so a row cut in half by the header
+/// reads as scrolled away, not as drawn over.
+class AppTabBody extends StatefulWidget {
+  const AppTabBody({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<AppTabBody> createState() => _AppTabBodyState();
+}
+
+class _AppTabBodyState extends State<AppTabBody> {
+  var _scrolledUnder = false;
+
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    final under = notification.metrics.pixels > 0;
+    if (under != _scrolledUnder) setState(() => _scrolledUnder = under);
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tones = AppTones.of(context);
+    return Stack(
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          child: widget.child,
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _scrolledUnder ? 1 : 0,
+              duration: AppMotion.short,
+              child: Divider(height: 1, thickness: 1, color: tones.stroke),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

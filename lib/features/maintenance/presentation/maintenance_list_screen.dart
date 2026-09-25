@@ -227,7 +227,7 @@ class MaintenanceRecordRow extends StatelessWidget with GroupedRow {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  record.itemsSummary,
+                  record.title,
                   style: theme.textTheme.titleSmall,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

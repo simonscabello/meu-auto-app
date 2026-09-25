@@ -35,6 +35,7 @@ import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_tab_header.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
@@ -63,15 +64,17 @@ class CuidadosScreen extends ConsumerWidget {
             ],
           ),
           Expanded(
-            child: selected.when(
-              loading: () => const _CuidadosSkeleton(),
-              error: (error, _) => AppErrorState.fromError(
-                error: error,
-                onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+            child: AppTabBody(
+              child: selected.when(
+                loading: () => const _CuidadosSkeleton(),
+                error: (error, _) => AppErrorState.fromError(
+                  error: error,
+                  onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+                ),
+                data: (current) => current == null
+                    ? const SizedBox.shrink()
+                    : CuidadosView(vehicleId: current.id),
               ),
-              data: (current) => current == null
-                  ? const SizedBox.shrink()
-                  : CuidadosView(vehicleId: current.id),
             ),
           ),
         ],
@@ -291,7 +294,7 @@ class CuidadosContent extends StatelessWidget {
           ),
         ..._openGroup(
           title: 'Sem data da última vez',
-          subtitle: 'Sem a data da última vez, não há como avisar.',
+          subtitle: 'Sem essa data, o Meu Auto não tem como avisar.',
           plans: [...groups.needsBaseline, ...groups.historySettled],
           actionLabel:
               onNeedsBaselineGroupTap == null || groups.needsBaseline.isEmpty

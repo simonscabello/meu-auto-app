@@ -93,6 +93,12 @@ void main() {
         questionCount: 4,
         onStart: _noop,
         onLater: _noop,
+        items: [
+          (name: 'Correia dentada', icon: Icons.settings_outlined),
+          (name: 'Fluido de freio', icon: Icons.water_drop_outlined),
+          (name: 'Velas de ignição', icon: Icons.bolt_outlined),
+          (name: 'Filtro do ar-condicionado', icon: Icons.air),
+        ],
       ),
     ),
     'calibrar question': _CalibrarQuestionHarness.new,
