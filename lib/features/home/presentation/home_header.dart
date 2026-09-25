@@ -102,6 +102,7 @@ class HomeHeader extends StatelessWidget {
 
     if (onSwitch != null) {
       vehicle = Semantics(
+        container: true,
         button: true,
         label: canSwitch ? '$spoken. Trocar veículo' : '$spoken. Veículos',
         excludeSemantics: true,
@@ -122,6 +123,7 @@ class HomeHeader extends StatelessWidget {
       );
     } else {
       vehicle = Semantics(
+        container: true,
         header: true,
         label: spoken,
         excludeSemantics: true,

@@ -108,6 +108,7 @@ class AppDateField extends StatelessWidget {
         : formatCivilDateLong(current);
 
     return Semantics(
+      container: true,
       button: true,
       enabled: enabled,
       label: '$label. $text',

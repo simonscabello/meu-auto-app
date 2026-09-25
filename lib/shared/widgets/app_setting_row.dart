@@ -106,6 +106,7 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
     }
 
     return Semantics(
+      container: true,
       button: true,
       label: value == null ? label : '$label. $value',
       excludeSemantics: true,

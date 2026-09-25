@@ -35,6 +35,7 @@ class AppChoiceRow<T> extends StatelessWidget with GroupedRow {
     final active = enabled && onChanged != null;
 
     return Semantics(
+      container: true,
       button: true,
       selected: selected,
       enabled: active,

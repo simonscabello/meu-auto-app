@@ -120,6 +120,7 @@ class AppTabHeader extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.s4),
                   child: Semantics(
+                    container: true,
                     header: true,
                     // Scaled down, never cut: at a 1.6 text scale "Manuten…"
                     // beside the "+" and the avatar was not a title.

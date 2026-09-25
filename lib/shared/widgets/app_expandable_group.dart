@@ -52,6 +52,7 @@ class _AppExpandableGroupState extends State<AppExpandableGroup> {
     final count = widget.count;
 
     final header = Semantics(
+      container: true,
       button: true,
       expanded: _open,
       label: count == null ? widget.title : '${widget.title}, $count itens',

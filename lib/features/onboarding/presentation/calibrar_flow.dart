@@ -449,6 +449,7 @@ class CalibrarIntroContent extends StatelessWidget {
       ],
       children: [
         Semantics(
+          container: true,
           header: true,
           child: Text(
             'Quando foi a última vez?',
@@ -603,6 +604,7 @@ class CalibrarQuestionContent extends StatelessWidget {
               if (progress != null) AppProgressBar(value: progress!),
               const SizedBox(height: AppSpacing.s32),
               Semantics(
+                container: true,
                 header: true,
                 child: Text(title, style: theme.textTheme.headlineSmall),
               ),
@@ -700,6 +702,7 @@ class CalibrarDoneContent extends StatelessWidget {
       ],
       children: [
         Semantics(
+          container: true,
           header: true,
           child: Text(title, style: theme.textTheme.headlineMedium),
         ),

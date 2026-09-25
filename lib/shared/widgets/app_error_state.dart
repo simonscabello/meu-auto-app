@@ -74,6 +74,7 @@ class AppErrorState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s20),
             Semantics(
+              container: true,
               header: true,
               child: Text(
                 offline ? offlineTitle : failedTitle,

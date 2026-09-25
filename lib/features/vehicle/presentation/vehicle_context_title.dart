@@ -86,6 +86,7 @@ class ProfileButton extends ConsumerWidget {
 
     final open = onPressed ?? () => context.push(AppRoutes.profile);
     return Semantics(
+      container: true,
       button: true,
       label: 'Perfil e conta',
       excludeSemantics: true,

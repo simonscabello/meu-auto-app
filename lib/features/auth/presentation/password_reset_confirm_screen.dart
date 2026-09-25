@@ -200,6 +200,7 @@ class _ResetOutcome extends StatelessWidget {
         padding: AppSpacing.screenHeaded,
         children: [
           Semantics(
+            container: true,
             header: true,
             child: Text(title, style: theme.textTheme.headlineSmall),
           ),

@@ -60,6 +60,7 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
         errorText: widget.errorText,
         errorMaxLines: 3,
         suffixIcon: Semantics(
+          container: true,
           button: true,
           enabled: widget.enabled,
           label: _visible ? 'Ocultar senha' : 'Mostrar senha',

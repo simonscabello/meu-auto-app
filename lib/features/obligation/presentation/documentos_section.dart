@@ -256,6 +256,7 @@ class DocumentosContent extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.s12),
             child: Semantics(
+              container: true,
               header: true,
               child: Text(
                 'Documentos e prazos',

@@ -48,6 +48,7 @@ class AppEmptyState extends StatelessWidget {
               const SizedBox(height: AppSpacing.s20),
             ],
             Semantics(
+              container: true,
               header: true,
               child: Text(
                 title,

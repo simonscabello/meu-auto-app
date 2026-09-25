@@ -26,6 +26,7 @@ class AppSwitchRow extends StatelessWidget with GroupedRow {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Semantics(
+      container: true,
       toggled: value,
       enabled: onChanged != null,
       label: subtitle == null ? title : '$title. $subtitle',

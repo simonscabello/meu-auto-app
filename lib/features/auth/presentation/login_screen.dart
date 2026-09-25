@@ -120,6 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Semantics(
+                      container: true,
                       header: true,
                       child: const AppWordmark(size: AppWordmarkSize.large),
                     ),

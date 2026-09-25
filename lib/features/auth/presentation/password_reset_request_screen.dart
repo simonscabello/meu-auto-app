@@ -160,6 +160,7 @@ class PasswordResetRequestSuccess extends StatelessWidget {
         padding: AppSpacing.screenHeaded,
         children: [
           Semantics(
+            container: true,
             header: true,
             child: Text(
               'Confira seu e-mail',

@@ -384,6 +384,7 @@ class ProfileQuestionBlock extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Semantics(
+            container: true,
             header: true,
             child: Text(prompt, style: theme.textTheme.titleSmall),
           ),

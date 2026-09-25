@@ -285,6 +285,7 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Semantics(
+                container: true,
                 header: true,
                 child: Text(name, style: theme.textTheme.headlineSmall),
               ),

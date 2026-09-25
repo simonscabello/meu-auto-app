@@ -52,6 +52,7 @@ class AppSegmented<T> extends StatelessWidget {
           for (final option in options)
             Expanded(
               child: Semantics(
+                container: true,
                 button: true,
                 selected: option.value == value,
                 enabled: active,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
@@ -171,11 +172,14 @@ class AppListRow extends StatelessWidget with GroupedRow {
       ],
     );
 
+    // On the page, with nothing beside it, the ink reaches past the text
+    // (see [_PageBleed]).
+    final bleed = inset == EdgeInsets.zero && onTap != null && trailing == null;
     Widget tappable = Padding(
       padding: EdgeInsets.fromLTRB(
-        inset.left,
+        inset.left + (bleed ? _PageBleed.bleed : 0),
         AppSpacing.s12,
-        trailing == null ? inset.right : 0,
+        (trailing == null ? inset.right : 0) + (bleed ? _PageBleed.bleed : 0),
         AppSpacing.s12,
       ),
       child: main,
@@ -183,6 +187,7 @@ class AppListRow extends StatelessWidget with GroupedRow {
 
     if (onTap != null) {
       tappable = Semantics(
+        container: true,
         button: true,
         label: semanticLabel ?? _spoken(),
         excludeSemantics: true,
@@ -207,6 +212,7 @@ class AppListRow extends StatelessWidget with GroupedRow {
           ),
         ),
       );
+      if (bleed) tappable = _PageBleed(child: tappable);
     } else if (semanticLabel != null) {
       tappable = Semantics(
         label: semanticLabel,
@@ -308,7 +314,9 @@ class AppListRowShell extends StatelessWidget with GroupedRow {
       );
     }
 
-    return Semantics(
+    final onPage = inset == EdgeInsets.zero;
+    final Widget row = Semantics(
+      container: true,
       button: true,
       label: semanticLabel,
       excludeSemantics: semanticLabel != null,
@@ -317,20 +325,70 @@ class AppListRowShell extends StatelessWidget with GroupedRow {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: inset == EdgeInsets.zero
-              ? AppRadius.borderS
-              : BorderRadius.zero,
+          borderRadius: onPage ? AppRadius.borderS : BorderRadius.zero,
           highlightColor: tones.overlayPressed,
           splashColor: tones.overlayPressed,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               minHeight: AppSpacing.minTapTarget,
             ),
-            child: padded,
+            child: onPage
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: _PageBleed.bleed,
+                    ),
+                    child: padded,
+                  )
+                : padded,
           ),
         ),
       ),
     );
+    return onPage ? _PageBleed(child: row) : row;
+  }
+}
+
+/// Lets the pressed state of a row that sits straight on the page reach a
+/// little past its text on both sides.
+///
+/// Inside a group the card's edge frames the ink. On the page nothing does,
+/// and a highlight that started exactly where "Sem comprovante" starts read
+/// as a box drawn around the words. The row is laid out [bleed] wider than
+/// its slot and pulled back by the same amount, so the text stays on the
+/// gutter and only the ink spills into the page margin.
+class _PageBleed extends SingleChildRenderObjectWidget {
+  const _PageBleed({required Widget super.child});
+
+  static const double bleed = AppSpacing.s12;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderPageBleed();
+}
+
+class _RenderPageBleed extends RenderShiftedBox {
+  _RenderPageBleed() : super(null);
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+    final parentData = child.parentData! as BoxParentData;
+    if (!constraints.hasBoundedWidth) {
+      child.layout(constraints, parentUsesSize: true);
+      size = constraints.constrain(child.size);
+      parentData.offset = Offset.zero;
+      return;
+    }
+    final width = constraints.maxWidth + _PageBleed.bleed * 2;
+    child.layout(
+      constraints.copyWith(minWidth: width, maxWidth: width),
+      parentUsesSize: true,
+    );
+    size = constraints.constrain(Size(constraints.maxWidth, child.size.height));
+    parentData.offset = const Offset(-_PageBleed.bleed, 0);
   }
 }
 

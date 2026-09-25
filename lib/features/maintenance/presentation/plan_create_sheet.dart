@@ -204,6 +204,7 @@ class _ChoiceItemRow extends StatelessWidget with GroupedRow {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Semantics(
+      container: true,
       button: true,
       selected: selected,
       label: item.name,

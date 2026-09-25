@@ -67,6 +67,7 @@ class AppQuickAction extends StatelessWidget {
           );
 
     return Semantics(
+      container: true,
       button: true,
       enabled: onTap != null,
       label: label,

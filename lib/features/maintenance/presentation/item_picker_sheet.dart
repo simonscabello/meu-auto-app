@@ -301,6 +301,7 @@ class _PickRow extends StatelessWidget with GroupedRow {
     final scheme = theme.colorScheme;
 
     return Semantics(
+      container: true,
       checked: selected,
       enabled: enabled,
       label: locked ? '${item.name}. Já está neste registro' : item.name,

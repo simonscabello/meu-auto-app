@@ -55,6 +55,7 @@ class _AppFoldedSectionState extends State<AppFoldedSection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Semantics(
+          container: true,
           button: true,
           expanded: _open,
           label: widget.subtitle == null

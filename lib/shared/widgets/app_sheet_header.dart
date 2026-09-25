@@ -41,8 +41,14 @@ class AppSheetHeader extends StatelessWidget {
         top: closable ? AppSpacing.s12 : 0,
         bottom: AppSpacing.s4,
       ),
+      // A title alone is centred on the 48dp control beside it — the close
+      // button, or a link like "Histórico" — so the two read as one line.
+      // With a subtitle the title stays at the top and the control beside
+      // it, nudged to the title's line.
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: subtitle == null
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
@@ -50,8 +56,11 @@ class AppSheetHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: EdgeInsets.only(top: closable ? AppSpacing.s8 : 0),
+                  padding: EdgeInsets.only(
+                    top: closable && subtitle != null ? AppSpacing.s8 : 0,
+                  ),
                   child: Semantics(
+                    container: true,
                     header: true,
                     child: Text(title, style: theme.textTheme.titleLarge),
                   ),

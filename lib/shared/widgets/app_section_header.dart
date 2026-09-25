@@ -63,6 +63,7 @@ class AppSectionHeader extends StatelessWidget {
         ? AppSpacing.s8
         : AppSpacing.s12;
     final heading = Semantics(
+      container: true,
       header: true,
       child: Text.rich(
         TextSpan(

@@ -96,6 +96,7 @@ class MileageDisplay extends StatelessWidget {
     final stacked = AppTypography.isLargeText(context);
 
     return Semantics(
+      container: true,
       button: onTap != null,
       label:
           '${formatKm(currentKm)}. $caption.'
