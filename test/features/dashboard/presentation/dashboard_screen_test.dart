@@ -215,8 +215,9 @@ void main() {
     });
   });
 
-  // The verdict is the head of the attention strip, and tapping it opens the
-  // full list when Início could not show all of it.
+  // The verdict is the head of the attention strip and the only row about
+  // what is late: tapping it opens the full list (or the one item, when
+  // there is exactly one — see dashboard_content_test).
   group('attention strip', () {
     testWidgets('the verdict opens the full list', (tester) async {
       var opened = false;

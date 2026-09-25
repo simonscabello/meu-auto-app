@@ -6,6 +6,7 @@ import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
+import 'package:meu_auto/features/dashboard/presentation/alerts_screen.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 
@@ -34,24 +35,89 @@ void main() {
     });
   });
 
+  // The rows themselves live on Avisos. Início says the count and opens what
+  // it counts; it used to list the items under the count as well, and the
+  // owner tapped "1 item vencido" to land on a page that repeated "Calibrar os
+  // pneus" — the same fact three times.
   group('alert rows', () {
+    testWidgets('are not repeated on Início under the verdict', (tester) async {
+      await _pump(
+        tester,
+        _dashboard(
+          overdue: 1,
+          items: [_alert(title: 'Calibrar os pneus', remainingDays: -13)],
+        ),
+      );
+
+      expect(find.text('1 item vencido'), findsOneWidget);
+      expect(find.text('Calibrar os pneus'), findsNothing);
+    });
+
+    testWidgets('a single item opens itself, not a list of one', (
+      tester,
+    ) async {
+      Alert? opened;
+      var listOpened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: DashboardContent(
+              dashboard: _dashboard(
+                overdue: 1,
+                items: [_alert(title: 'Calibrar os pneus', remainingDays: -13)],
+              ),
+              onSeeAllAlerts: () => listOpened = true,
+              onAlertTap: (alert) => opened = alert,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('1 item vencido'));
+      expect(opened?.title, 'Calibrar os pneus');
+      expect(listOpened, isFalse);
+    });
+
+    testWidgets('two or more items open the list', (tester) async {
+      Alert? opened;
+      var listOpened = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: DashboardContent(
+              dashboard: _dashboard(
+                overdue: 1,
+                dueSoon: 1,
+                items: [
+                  _alert(title: 'Calibrar os pneus', remainingDays: -13),
+                  _alert(title: 'IPVA', remainingDays: 12),
+                ],
+              ),
+              onSeeAllAlerts: () => listOpened = true,
+              onAlertTap: (alert) => opened = alert,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('1 item vencido'));
+      expect(listOpened, isTrue);
+      expect(opened, isNull);
+    });
+
     testWidgets(
       'joins the subtitle the server sent with the remaining figures',
       (tester) async {
-        await _pump(
-          tester,
-          _dashboard(
-            dueSoon: 1,
-            items: [
-              _alert(
-                title: 'Bateria',
-                subtitle: 'Garantia',
-                remainingDays: 240,
-                remainingKm: null,
-              ),
-            ],
+        await _pumpAlerts(tester, [
+          _alert(
+            title: 'Bateria',
+            subtitle: 'Garantia',
+            remainingDays: 240,
+            remainingKm: null,
           ),
-        );
+        ]);
 
         expect(find.text('Bateria'), findsOneWidget);
         expect(find.text('Garantia · faltam cerca de 8 meses'), findsOneWidget);
@@ -61,20 +127,13 @@ void main() {
     testWidgets('a dimension that came back null never renders as zero', (
       tester,
     ) async {
-      await _pump(
-        tester,
-        _dashboard(
-          dueSoon: 1,
-          items: [
-            _alert(title: 'Alinhamento', remainingDays: 8, remainingKm: null),
-          ],
-        ),
-      );
+      await _pumpAlerts(tester, [
+        _alert(title: 'Alinhamento', remainingDays: 8, remainingKm: null),
+      ]);
 
       // The exact match is the proof: had the null been coalesced to zero, the
       // detail line would carry a distance clause as well. 'vence agora' is
-      // what remainingKmPhrase(0) produces, so its absence is the guard —
-      // searching for '0 km' would hit the odometer reading instead.
+      // what remainingKmPhrase(0) produces, so its absence is the guard.
       expect(find.text('faltam 8 dias'), findsOneWidget);
       expect(find.text('vence agora'), findsNothing);
       expect(find.textContaining('· faltam'), findsNothing);
@@ -83,14 +142,10 @@ void main() {
     testWidgets('an alert with no remaining figures shows no detail line', (
       tester,
     ) async {
-      await _pump(
-        tester,
-        _dashboard(dueSoon: 1, items: [_alert(title: 'Revisão programada')]),
-      );
+      await _pumpAlerts(tester, [_alert(title: 'Revisão programada')]);
 
-      // Only the status chip is left beside the title. The banner above still
-      // says "1 item vence em breve", so the guard has to be the phrases the
-      // detail line itself would produce, not the word "vence".
+      // Only the status chip is left beside the title, so the guard has to be
+      // the phrases the detail line itself would produce.
       expect(find.text('Revisão programada'), findsOneWidget);
       expect(find.textContaining('faltam'), findsNothing);
       expect(find.text('vence agora'), findsNothing);
@@ -423,6 +478,15 @@ Alert _upcoming({
     dueOn: dueOn,
     referenceType: AlertReferenceType.maintenancePlan,
     referenceId: '33333333-3333-7333-8333-333333333333',
+  );
+}
+
+Future<void> _pumpAlerts(WidgetTester tester, List<Alert> alerts) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.light,
+      home: Scaffold(body: AlertsContent(alerts: alerts)),
+    ),
   );
 }
 

@@ -197,9 +197,6 @@ class DashboardContent extends StatelessWidget {
     final alerts = dashboard.alerts;
     final verdict = verdictOf(dashboard);
     final profilePrompt = profilePromptOf(dashboard.profile);
-    final totalAlerts = alerts.overdue + alerts.dueSoon;
-    final shown = alerts.items.take(_maxAlertsOnHome).toList();
-    final seeAll = totalAlerts > shown.length ? onSeeAllAlerts : null;
 
     final quietRows = <Widget>[
       // The two gaps that stop the app working sit right under the verdict
@@ -259,11 +256,7 @@ class DashboardContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.block),
         AttentionStrip(
           verdict: verdict,
-          alerts: shown,
-          seeAllLabel: seeAll == null ? null : 'Ver todos ($totalAlerts)',
-          onSeeAll: seeAll,
-          onHeaderTap: _verdictTap(verdict, seeAll),
-          onAlertTap: onAlertTap,
+          onHeaderTap: _verdictTap(verdict, alerts),
           quietRows: quietRows,
         ),
         const SizedBox(height: AppSpacing.block),
@@ -296,22 +289,30 @@ class DashboardContent extends StatelessWidget {
     );
   }
 
-  /// Late or close: the full list when Início could not show all of it,
-  /// otherwise the maintenance tab. Unknown or fine: the maintenance tab,
-  /// where the items live. Nothing tracked: the screen that adds a plan.
-  VoidCallback? _verdictTap(DashboardVerdict verdict, VoidCallback? seeAll) {
-    return switch (verdict.kind) {
-      VerdictKind.overdue || VerdictKind.dueSoon => seeAll ?? onMaintenanceTap,
-      VerdictKind.unknown || VerdictKind.fine => onMaintenanceTap,
-      VerdictKind.nothingTracked => onProfileTap,
-    };
+  /// Late or close: the one item itself when there is exactly one — a list
+  /// of one thing is a page that only repeats the row — otherwise the full
+  /// list. Unknown or fine: the maintenance tab, where the items live.
+  /// Nothing tracked: the screen that adds a plan.
+  VoidCallback? _verdictTap(DashboardVerdict verdict, DashboardAlerts alerts) {
+    switch (verdict.kind) {
+      case VerdictKind.overdue:
+      case VerdictKind.dueSoon:
+        final single =
+            alerts.overdue + alerts.dueSoon == 1 && alerts.items.length == 1
+            ? alerts.items.single
+            : null;
+        if (single != null && onAlertTap != null) {
+          return () => onAlertTap!(single);
+        }
+        return onSeeAllAlerts ?? onMaintenanceTap;
+      case VerdictKind.unknown:
+      case VerdictKind.fine:
+        return onMaintenanceTap;
+      case VerdictKind.nothingTracked:
+        return onProfileTap;
+    }
   }
 }
-
-/// How many late or close items Início lists before pointing at the full
-/// list. Three is what fits above the fold on a small phone with the mileage
-/// still visible.
-const _maxAlertsOnHome = 3;
 
 // ---------------------------------------------------------------- verdict
 
@@ -431,29 +432,22 @@ String? profilePromptOf(DashboardProfile profile) {
 /// What needs attention, as a strip between two hairlines.
 ///
 /// No card: the strip is part of the page. The head of it is the verdict —
-/// the glyph in a tinted well, the count, the quiet detail — and under it the
-/// items themselves, three at most. Red appears on the glyph and on the
-/// figure that says how late, and nowhere else. When nothing is late the
-/// strip is one line, and it stays honest: "we do not know yet" is one of
-/// its states.
+/// the glyph in a tinted well, the count, the quiet detail — and tapping it
+/// opens what it counts. The items themselves are not repeated under it: the
+/// owner saw "1 item vencido" over "Calibrar os pneus", tapped the count and
+/// got a page saying "Calibrar os pneus" again. Red appears on the glyph and
+/// on the count, and nowhere else. When nothing is late the strip is one
+/// line, and it stays honest: "we do not know yet" is one of its states.
 class AttentionStrip extends StatelessWidget {
   const AttentionStrip({
     super.key,
     required this.verdict,
-    this.alerts = const [],
-    this.seeAllLabel,
-    this.onSeeAll,
     this.onHeaderTap,
-    this.onAlertTap,
     this.quietRows = const [],
   });
 
   final DashboardVerdict verdict;
-  final List<Alert> alerts;
-  final String? seeAllLabel;
-  final VoidCallback? onSeeAll;
   final VoidCallback? onHeaderTap;
-  final ValueChanged<Alert>? onAlertTap;
 
   /// Rows about what is missing rather than what is late, in the same strip
   /// so the page does not grow a second list.
@@ -485,27 +479,13 @@ class AttentionStrip extends StatelessWidget {
       subtitle: verdict.detail,
       accent: loud ? null : scheme.onSurfaceVariant,
       onTap: onHeaderTap,
-      showChevron: onHeaderTap != null && onSeeAll == null,
-      trailing: onSeeAll == null
-          ? null
-          : AppSectionAction(
-              label: seeAllLabel ?? 'Ver todos',
-              onPressed: onSeeAll,
-            ),
+      showChevron: onHeaderTap != null,
       semanticLabel: verdict.detail == null
           ? verdict.phrase
           : '${verdict.phrase}. ${verdict.detail}',
     );
 
-    final rows = <Widget>[
-      head,
-      for (final alert in alerts)
-        AlertRow(
-          alert: alert,
-          onTap: onAlertTap == null ? null : () => onAlertTap!(alert),
-        ),
-      ...quietRows,
-    ];
+    final rows = <Widget>[head, ...quietRows];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
