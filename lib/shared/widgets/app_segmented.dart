@@ -38,7 +38,11 @@ class AppSegmented<T> extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.s4),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
+        // A step below the page in daylight: the field tone sat within one
+        // percent of the page there and the track vanished.
+        color: scheme.brightness == Brightness.light
+            ? scheme.surfaceContainerHigh
+            : scheme.surfaceContainer,
         borderRadius: AppRadius.borderControl,
       ),
       child: Row(

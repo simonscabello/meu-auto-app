@@ -45,8 +45,12 @@ class AppProgressBar extends StatelessWidget {
               builder: (context, fraction, _) {
                 return Align(
                   alignment: Alignment.centerLeft,
+                  // heightFactor: the Align above loosens the constraint, and
+                  // an empty DecoratedBox then takes zero height — every bar
+                  // drew its groove and no fill at all.
                   child: FractionallySizedBox(
                     widthFactor: fraction,
+                    heightFactor: 1,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: color ?? scheme.primary,

@@ -60,6 +60,77 @@ void main() {
     expect(find.text('Sem placa'), findsNothing);
     expect(find.text('Fusca'), findsOneWidget);
   });
+
+  testWidgets('each car says its make and year under the name', (tester) async {
+    await _pump(tester, selectedId: 'v1');
+    expect(find.text('Toyota · 2020'), findsNWidgets(3));
+    expect(find.text('Seus veículos'), findsOneWidget);
+  });
+
+  testWidgets('with one car the sheet still shows it, and the way to add', (
+    tester,
+  ) async {
+    var added = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: VehicleSwitcherContent(
+            vehicles: [_vehicle(id: 'v1', nickname: 'Prius', plate: 'QAF5G33')],
+            selectedId: 'v1',
+            onSelect: (_) {},
+            onAdd: () => added++,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Prius'), findsOneWidget);
+    expect(find.byIcon(Icons.check), findsOneWidget);
+    await tester.tap(find.text('Adicionar veículo'));
+    await tester.pump();
+    expect(added, 1);
+  });
+
+  testWidgets('opens the details of the car in use', (tester) async {
+    final opened = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: VehicleSwitcherContent(
+            vehicles: [
+              _vehicle(id: 'v1', nickname: 'Prius', plate: 'QAF5G33'),
+              _vehicle(id: 'v2', nickname: 'Corolla', plate: 'ABC1D23'),
+            ],
+            selectedId: 'v2',
+            onSelect: (_) {},
+            onOpenDetail: (vehicle) => opened.add(vehicle.id),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Detalhes do veículo'));
+    await tester.pump();
+    expect(opened, ['v2']);
+  });
+
+  testWidgets('no car in use, no details row', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(
+          body: VehicleSwitcherContent(
+            vehicles: [_vehicle(id: 'v1', nickname: 'Prius')],
+            onOpenDetail: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Detalhes do veículo'), findsNothing);
+  });
 }
 
 Future<void> _pump(

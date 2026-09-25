@@ -27,11 +27,11 @@ class AppShell extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: navigationShell,
       // The bar is one step off the page with a hairline along its top: the
-      // same edge every grouped surface has, so it reads as part of the same
-      // instrument rather than as a strip stuck on.
+      // same edge every card has, so it reads as part of the app rather than
+      // as a strip stuck on.
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: tones.strokeStrong)),
+          border: Border(top: BorderSide(color: tones.stroke)),
         ),
         child: NavigationBar(
           selectedIndex: navigationShell.currentIndex,

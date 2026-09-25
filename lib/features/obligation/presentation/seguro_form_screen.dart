@@ -13,6 +13,7 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_folded_section.dart';
 import 'package:meu_auto/shared/widgets/app_form_section.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -320,74 +321,72 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
                     ],
                   ),
                   const AppFormGap(),
-                  if (_showDetails)
-                    AppFormSection(
-                      title: 'Contatos e detalhes',
-                      children: [
-                        TextField(
-                          controller: _emergency,
-                          enabled: !_submitting,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Telefone de emergência (opcional)',
-                            errorText: _fieldErrors['emergency_phone'],
+                  // Real, and rarely the reason the form was opened: closed
+                  // until there is something in it, or the server has
+                  // something to say about one of them.
+                  AppFoldedSection(
+                    title: 'Contatos e detalhes',
+                    subtitle:
+                        'Telefone de emergência, número da apólice, '
+                        'corretor e observação.',
+                    initiallyOpen: _showDetails,
+                    children: [
+                      AppFormSection(
+                        children: [
+                          TextField(
+                            controller: _emergency,
+                            enabled: !_submitting,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'Telefone de emergência',
+                              errorText: _fieldErrors['emergency_phone'],
+                            ),
                           ),
-                        ),
-                        TextField(
-                          controller: _policy,
-                          enabled: !_submitting,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Número da apólice (opcional)',
-                            errorText: _fieldErrors['policy_number'],
+                          TextField(
+                            controller: _policy,
+                            enabled: !_submitting,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'Número da apólice',
+                              errorText: _fieldErrors['policy_number'],
+                            ),
                           ),
-                        ),
-                        TextField(
-                          controller: _brokerName,
-                          enabled: !_submitting,
-                          textCapitalization: TextCapitalization.words,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Corretor (opcional)',
-                            errorText: _fieldErrors['broker_name'],
+                          TextField(
+                            controller: _brokerName,
+                            enabled: !_submitting,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'Corretor',
+                              errorText: _fieldErrors['broker_name'],
+                            ),
                           ),
-                        ),
-                        TextField(
-                          controller: _brokerPhone,
-                          enabled: !_submitting,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Telefone do corretor (opcional)',
-                            errorText: _fieldErrors['broker_phone'],
+                          TextField(
+                            controller: _brokerPhone,
+                            enabled: !_submitting,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'Telefone do corretor',
+                              errorText: _fieldErrors['broker_phone'],
+                            ),
                           ),
-                        ),
-                        TextField(
-                          controller: _notes,
-                          enabled: !_submitting,
-                          minLines: 2,
-                          maxLines: 4,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: InputDecoration(
-                            labelText: 'Observações (opcional)',
-                            errorText: _fieldErrors['notes'],
+                          TextField(
+                            controller: _notes,
+                            enabled: !_submitting,
+                            minLines: 2,
+                            maxLines: 4,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: InputDecoration(
+                              labelText: 'Observação',
+                              errorText: _fieldErrors['notes'],
+                            ),
                           ),
-                        ),
-                      ],
-                    )
-                  else
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: AppButton(
-                        label: 'Contatos e detalhes',
-                        icon: Icons.add,
-                        variant: AppButtonVariant.tertiary,
-                        onPressed: _submitting
-                            ? null
-                            : () => setState(() => _showDetails = true),
+                        ],
                       ),
-                    ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -395,7 +394,7 @@ class _SeguroFormScreenState extends ConsumerState<SeguroFormScreen> {
               child: AppButton(
                 label: _offline
                     ? 'Tentar de novo'
-                    : (_editing ? 'Salvar seguro' : 'Registrar seguro'),
+                    : (_editing ? 'Salvar' : 'Registrar seguro'),
                 loading: _submitting,
                 onPressed: _submitting ? null : _submit,
                 expanded: true,

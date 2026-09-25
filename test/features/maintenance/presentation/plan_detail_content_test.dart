@@ -21,11 +21,154 @@ void main() {
       ),
     );
 
-    expect(find.text('a cada 12 meses'), findsOneWidget);
-    expect(find.text('0 km'), findsNothing);
-    expect(find.text('aos 0 km'), findsNothing);
-    expect(find.text('a cada 0 km'), findsNothing);
-    expect(find.text('em 10/08/2027'), findsOneWidget);
+    expect(find.text('A cada 12 meses'), findsOneWidget);
+    expect(find.textContaining('0 km'), findsNothing);
+    // One dimension is not a strip: the date is a line of the details.
+    expect(find.text('10/08/2027'), findsOneWidget);
+    expect(find.text('Vence em 10/08/2027'), findsOneWidget);
+  });
+
+  // The same words Início uses for the same item, beside the badge.
+  testWidgets('the header says how far, and the strip says when', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _plan(
+        intervalKm: 10000,
+        intervalMonths: 12,
+        dueAtKm: 141011,
+        dueOn: const CivilDate(2027, 3, 21),
+        remainingKm: 2000,
+        remainingDays: 177,
+        lastOccurredOn: const CivilDate(2026, 3, 21),
+        lastMileageKm: 131011,
+      ),
+    );
+
+    expect(find.text('Troca de óleo do motor'), findsOneWidget);
+    expect(find.text('Em dia'), findsOneWidget);
+    expect(find.text('Faltam 2.000 km ou 21/03/2027'), findsOneWidget);
+    expect(find.text('Última vez'), findsOneWidget);
+    expect(find.text('21/03/2026'), findsOneWidget);
+    expect(find.text('Próxima'), findsOneWidget);
+    expect(find.text('141.011 km'), findsOneWidget);
+    expect(find.text('Ou em'), findsOneWidget);
+    expect(find.text('21/03/2027'), findsOneWidget);
+    expect(find.text('A cada 10.000 km ou 12 meses'), findsOneWidget);
+  });
+
+  testWidgets('a late item says by how much, in the closer dimension', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _plan(
+        status: MaintenanceStatus.vencido,
+        intervalKm: 10000,
+        dueAtKm: 137011,
+        remainingKm: -2000,
+        remainingDays: 40,
+        dueOn: const CivilDate(2026, 11, 4),
+        lastOccurredOn: const CivilDate(2025, 11, 4),
+        lastMileageKm: 127011,
+      ),
+    );
+
+    expect(find.text('Vencido'), findsOneWidget);
+    expect(find.text('Passou 2.000 km'), findsOneWidget);
+  });
+
+  // A tyre that has run its suggested distance is "vencido" on the wire and
+  // is not a deadline: the badge says so in its own words.
+  testWidgets('a condition-based item is worth checking, not late', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _plan(
+        status: MaintenanceStatus.vencido,
+        strategy: MaintenanceStrategy.conditionBased,
+        intervalKm: 50000,
+        remainingKm: -500,
+      ),
+    );
+
+    expect(find.text('Vale checar'), findsOneWidget);
+    expect(find.text('Vencido'), findsNothing);
+  });
+
+  group('the one action', () {
+    testWidgets('a service registers the service', (tester) async {
+      await _pump(
+        tester,
+        _plan(intervalKm: 10000, dueAtKm: 141011, remainingKm: 2000),
+        onRegister: () {},
+      );
+
+      expect(find.text('Registrar manutenção'), findsOneWidget);
+      expect(find.text('Marcar como feito'), findsNothing);
+    });
+
+    testWidgets('a care habit is marked done, in one tap', (tester) async {
+      var done = 0;
+      await _pump(
+        tester,
+        _care(status: MaintenanceStatus.vencido, remainingDays: -13),
+        onRegister: () {},
+        onMarkDone: () => done++,
+      );
+
+      expect(find.text('Venceu há 13 dias'), findsOneWidget);
+      expect(find.text('Registrar manutenção'), findsNothing);
+      await tester.tap(find.text('Marcar como feito'));
+      expect(done, 1);
+    });
+
+    testWidgets('marking done does not take a second tap in flight', (
+      tester,
+    ) async {
+      var done = 0;
+      await _pump(
+        tester,
+        _care(status: MaintenanceStatus.vencido, remainingDays: -13),
+        onMarkDone: () => done++,
+        markingDone: true,
+      );
+
+      await tester.tap(find.byType(FilledButton));
+      expect(done, 0);
+    });
+  });
+
+  testWidgets('a history line shows what this item cost on that visit', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _plan(
+        lastOccurredOn: const CivilDate(2026, 8, 10),
+        lastMileageKm: 108200,
+      ),
+      history: [
+        _record(
+          id: 'r1',
+          on: const CivilDate(2026, 8, 10),
+          km: 108200,
+          total: 18000,
+        ),
+      ],
+    );
+
+    expect(find.text('Histórico'), findsOneWidget);
+    expect(find.text('10 de agosto de 2026'), findsOneWidget);
+    expect(find.text('R\$ 180,00'), findsOneWidget);
+  });
+
+  testWidgets('no history says so under the group', (tester) async {
+    await _pump(tester, _plan(intervalKm: 10000));
+
+    expect(find.text('Nenhum registro deste item ainda.'), findsOneWidget);
   });
 
   testWidgets('history shows the mileage delta between two records', (
@@ -181,6 +324,7 @@ void main() {
         baseline: MaintenanceBaseline.sinceNew,
         intervalKm: 60000,
       ),
+      onRegister: () {},
     );
 
     expect(
@@ -190,7 +334,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Informar a última vez'), findsNothing);
-    expect(find.text('Registrar serviço'), findsOneWidget);
+    expect(find.text('Registrar manutenção'), findsOneWidget);
   });
 
   // A condition-based item explains itself, because "a cada 50.000 km" on a
@@ -214,6 +358,9 @@ Future<void> _pump(
   ThemeData? theme,
   double scale = 1.0,
   ValueChanged<MaintenanceHistoryStatus>? onHistoryUnknown,
+  VoidCallback? onRegister,
+  VoidCallback? onMarkDone,
+  bool markingDone = false,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -225,10 +372,34 @@ Future<void> _pump(
             plan: plan,
             history: history,
             onHistoryUnknown: onHistoryUnknown,
+            onRegister: onRegister,
+            onMarkDone: onMarkDone,
+            markingDone: markingDone,
           ),
         ),
       ),
     ),
+  );
+}
+
+MaintenancePlan _care({
+  MaintenanceStatus status = MaintenanceStatus.emDia,
+  int? remainingDays,
+}) {
+  return MaintenancePlan(
+    id: 'plan-care',
+    maintenanceItemId: 'item-care',
+    itemSlug: 'calibrar_pneus',
+    itemName: 'Calibrar os pneus',
+    itemKind: MaintenanceItemKind.care,
+    intervalDays: 15,
+    alertKm: 500,
+    alertDays: 5,
+    origin: MaintenancePlanOrigin.suggested,
+    strategy: MaintenanceStrategy.periodic,
+    historyStatus: MaintenanceHistoryStatus.notAsked,
+    status: status,
+    remainingDays: remainingDays,
   );
 }
 
@@ -277,6 +448,7 @@ MaintenanceRecord _record({
   required String id,
   required CivilDate on,
   required int km,
+  int total = 0,
 }) {
   return MaintenanceRecord(
     id: id,
@@ -284,7 +456,7 @@ MaintenanceRecord _record({
     occurredOn: on,
     mileageKm: km,
     kind: MaintenanceRecordKind.performed,
-    totalCostCents: Money.zero,
+    totalCostCents: Money.fromCents(total),
     items: const [
       MaintenanceRecordItem(
         id: 'line-1',

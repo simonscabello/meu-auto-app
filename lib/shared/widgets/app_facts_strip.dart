@@ -79,9 +79,11 @@ class _FactCell extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Two lines before an ellipsis: with the system font turned up,
+            // "Combustível" in a third of the width lost its end.
             Text(
               fact.label,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelMedium,
             ),

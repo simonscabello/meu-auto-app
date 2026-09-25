@@ -8,19 +8,23 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/odometer/application/odometer_provider.dart';
 import 'package:meu_auto/features/odometer/domain/odometer_reading.dart';
+import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
-import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_paged_footer.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
+
+const _updateLabel = 'Atualizar quilometragem';
 
 class OdometerHistoryScreen extends ConsumerStatefulWidget {
   const OdometerHistoryScreen({super.key, required this.vehicleId});
@@ -59,23 +63,43 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(odometerHistoryProvider(widget.vehicleId));
+    final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
+    // The sheet starts on the car's current reading, so it needs the car.
+    final VoidCallback? onUpdate =
+        vehicle == null || vehicle.id != widget.vehicleId
+        ? null
+        : () => OdometerSheet.show(
+            context,
+            vehicleId: vehicle.id,
+            currentMileageKm: vehicle.currentMileageKm,
+            showHistoryLink: false,
+          );
 
     return AppScaffold(
       title: 'Quilometragem',
+      actions: [
+        if (onUpdate != null)
+          AppIconButton(
+            label: _updateLabel,
+            icon: Icons.add,
+            onPressed: onUpdate,
+          ),
+      ],
       body: history.when(
         loading: () => const Padding(
           padding: AppSpacing.screen,
-          child: AppSkeletonList(count: 4, itemHeight: 72),
+          child: AppSkeletonList(count: 4, itemHeight: 64),
         ),
         error: (error, _) => AppErrorState.fromError(
           error: error,
           onRetry: () =>
               ref.invalidate(odometerHistoryProvider(widget.vehicleId)),
         ),
-        data: (state) => _HistoryList(
+        data: (state) => OdometerHistoryContent(
           state: state,
           scroll: _scroll,
           deletingId: _deletingId,
+          onUpdate: onUpdate,
           onDelete: _confirmDelete,
           onBlockedDelete: _explainBlockedDelete,
           onRetryPage: () => ref
@@ -96,20 +120,19 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
       ScaffoldMessenger.of(context),
       message:
           'Esta leitura foi registrada junto com $origin. '
-          'Para removê-la, apague esse registro.',
+          'Para removê-la, exclua esse registro.',
     );
   }
 
   Future<void> _confirmDelete(OdometerReading reading) async {
     final confirmed = await confirmAction(
       context,
-      title: 'Apagar esta leitura?',
+      title: 'Excluir esta leitura?',
       message:
           '${formatKm(reading.mileageKm)} em '
-          '${formatCivilDate(reading.occurredOn)}.\n\n'
-          'A leitura some para sempre, e a quilometragem atual do veículo '
-          'pode mudar.',
-      confirmLabel: 'Apagar',
+          '${formatCivilDate(reading.occurredOn)}. '
+          'A quilometragem atual do carro pode mudar.',
+      confirmLabel: 'Excluir leitura',
       destructive: true,
     );
     if (!confirmed || !mounted) return;
@@ -127,7 +150,7 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
       setState(() => _deletingId = null);
       showAppSnackBar(
         ScaffoldMessenger.of(context),
-        message: 'Leitura apagada.',
+        message: 'Leitura excluída.',
       );
     } on ApiFailure catch (failure) {
       if (!mounted) return;
@@ -140,35 +163,50 @@ class _OdometerHistoryScreenState extends ConsumerState<OdometerHistoryScreen> {
   }
 }
 
-class _HistoryList extends StatelessWidget {
-  const _HistoryList({
+/// The readings as pure presentation: one group per month, newest first,
+/// each reading with how far the car went since the one before it.
+class OdometerHistoryContent extends StatelessWidget {
+  const OdometerHistoryContent({
+    super.key,
     required this.state,
-    required this.scroll,
-    required this.deletingId,
-    required this.onDelete,
-    required this.onBlockedDelete,
-    required this.onRetryPage,
+    this.scroll,
+    this.deletingId,
+    this.onUpdate,
+    this.onDelete,
+    this.onBlockedDelete,
+    this.onRetryPage,
   });
 
   final PagedState<OdometerReading> state;
-  final ScrollController scroll;
+  final ScrollController? scroll;
   final String? deletingId;
-  final ValueChanged<OdometerReading> onDelete;
-  final ValueChanged<OdometerReading> onBlockedDelete;
-  final VoidCallback onRetryPage;
+  final VoidCallback? onUpdate;
+  final ValueChanged<OdometerReading>? onDelete;
+  final ValueChanged<OdometerReading>? onBlockedDelete;
+  final VoidCallback? onRetryPage;
 
   @override
   Widget build(BuildContext context) {
-    if (state.items.isEmpty) {
-      return const AppEmptyState(
+    final readings = state.items;
+    if (readings.isEmpty) {
+      return AppEmptyState(
         icon: Icons.speed_outlined,
-        title: 'A quilometragem do seu carro começa aqui',
+        title: 'Nenhuma leitura registrada',
         message:
-            'Toque em atualizar quilometragem para registrar a primeira leitura.',
+            'Cada vez que você atualiza a quilometragem, a leitura aparece '
+            'aqui.',
+        actionLabel: onUpdate == null ? null : _updateLabel,
+        onAction: onUpdate,
       );
     }
 
-    final months = _groupByMonth(state.items);
+    final distances = _distancesSincePrevious(readings);
+    final months = groupByMonth<OdometerReading>(
+      readings,
+      (reading) =>
+          (year: reading.occurredOn.year, month: reading.occurredOn.month),
+      (reading) => formatCivilMonthHeader(reading.occurredOn),
+    );
 
     return ListView.builder(
       controller: scroll,
@@ -176,7 +214,7 @@ class _HistoryList extends StatelessWidget {
       itemCount: months.length + 1,
       itemBuilder: (context, index) {
         if (index == months.length) {
-          return _Footer(state: state, onRetry: onRetryPage);
+          return AppPagedFooter(state: state, onRetry: onRetryPage);
         }
         final month = months[index];
         return Padding(
@@ -184,10 +222,11 @@ class _HistoryList extends StatelessWidget {
           child: AppGroup(
             title: month.label,
             children: [
-              for (final reading in month.readings)
-                _ReadingTile(
+              for (final reading in month.items)
+                OdometerReadingRow(
                   key: ValueKey(reading.id),
                   reading: reading,
+                  distanceKm: distances[reading.id],
                   deleting: deletingId == reading.id,
                   onDelete: onDelete,
                   onBlockedDelete: onBlockedDelete,
@@ -198,154 +237,142 @@ class _HistoryList extends StatelessWidget {
       },
     );
   }
-
-  /// Groups by month without a second pass over the data: the list already
-  /// arrives newest first, so a group closes wherever the month changes.
-  List<({String label, List<OdometerReading> readings})> _groupByMonth(
-    List<OdometerReading> readings,
-  ) {
-    final groups = <({String label, List<OdometerReading> readings})>[];
-    int? year;
-    int? month;
-    for (final reading in readings) {
-      if (reading.occurredOn.year != year ||
-          reading.occurredOn.month != month) {
-        year = reading.occurredOn.year;
-        month = reading.occurredOn.month;
-        groups.add((
-          label: formatCivilMonthHeader(reading.occurredOn),
-          readings: <OdometerReading>[],
-        ));
-      }
-      groups.last.readings.add(reading);
-    }
-    return groups;
-  }
 }
 
-class _ReadingTile extends StatelessWidget {
-  const _ReadingTile({
+/// How far the car went between each reading and the one before it — the
+/// next one down the list, which arrives newest first. Presentation only: a
+/// difference between two readings the server sent, never a new reading.
+///
+/// Nothing for the oldest reading loaded while more pages remain (its
+/// predecessor has not arrived yet), and nothing when the difference is not
+/// forward — a correction after a panel swap goes down, and "−3.000 km"
+/// would read as the car driving backwards.
+Map<String, int> _distancesSincePrevious(List<OdometerReading> readings) {
+  final distances = <String, int>{};
+  for (var i = 0; i < readings.length - 1; i++) {
+    final delta = readings[i].mileageKm - readings[i + 1].mileageKm;
+    if (delta > 0) distances[readings[i].id] = delta;
+  }
+  return distances;
+}
+
+/// One reading: the figure, when and where it came from, and how far the car
+/// went since the reading before it.
+class OdometerReadingRow extends StatelessWidget with GroupedRow {
+  const OdometerReadingRow({
     super.key,
     required this.reading,
-    required this.deleting,
-    required this.onDelete,
-    required this.onBlockedDelete,
+    this.distanceKm,
+    this.deleting = false,
+    this.onDelete,
+    this.onBlockedDelete,
   });
 
   final OdometerReading reading;
+
+  /// Kilometres since the previous reading, when it is known and forward.
+  final int? distanceKm;
   final bool deleting;
-  final ValueChanged<OdometerReading> onDelete;
-  final ValueChanged<OdometerReading> onBlockedDelete;
+  final ValueChanged<OdometerReading>? onDelete;
+  final ValueChanged<OdometerReading>? onBlockedDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final origin = reading.source.originLabel;
     final canDelete = reading.source.isOwnEntry;
+    final notes = reading.notes?.trim();
+    final distance = distanceKm;
 
-    final when = origin == null
-        ? formatCivilDate(reading.occurredOn)
-        : '${formatCivilDate(reading.occurredOn)} · $origin';
+    final detail = [
+      formatCivilDayMonthAbbrev(reading.occurredOn),
+      ?_originOf(reading.source),
+      if (distance != null) '+${formatKm(distance)}',
+    ].join(' · ');
+
+    final action = deleting
+        ? const Padding(
+            padding: EdgeInsets.all(AppSpacing.s12),
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          )
+        : canDelete
+        ? (onDelete == null
+              ? null
+              : AppIconButton(
+                  label: 'Excluir leitura',
+                  icon: Icons.delete_outline,
+                  color: scheme.onSurfaceVariant,
+                  onPressed: () => onDelete!(reading),
+                ))
+        : (onBlockedDelete == null
+              ? null
+              : AppIconButton(
+                  label: 'Por que não dá para excluir',
+                  icon: Icons.lock_outline,
+                  // Quieter than the bin: it explains, it does not act.
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+                  onPressed: () => onBlockedDelete!(reading),
+                ));
 
     return AppListRowShell(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AppIconWell(
-            icon: switch (reading.source) {
-              OdometerSource.abastecimento => Icons.local_gas_station_outlined,
-              OdometerSource.maintenance => Icons.build_outlined,
-              _ => Icons.speed_outlined,
-            },
-          ),
+          AppIconWell(icon: _iconOf(reading.source)),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  formatKm(reading.mileageKm),
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: AppTypography.tabular,
+                // The reading, set as the panel shows it; the unit quieter.
+                Text.rich(
+                  TextSpan(
+                    text: formatKmNumber(reading.mileageKm),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: AppTypography.tabular,
+                    ),
+                    children: [
+                      TextSpan(text: ' km', style: theme.textTheme.bodySmall),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  when,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                if (reading.notes != null && reading.notes!.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.s4),
-                  Text(reading.notes!, style: theme.textTheme.bodySmall),
+                Text(detail, style: theme.textTheme.bodySmall),
+                if (notes != null && notes.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(notes, style: theme.textTheme.bodySmall),
                 ],
               ],
             ),
           ),
-          if (deleting)
-            const Padding(
-              padding: EdgeInsets.all(AppSpacing.s12),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            AppIconButton(
-              label: canDelete
-                  ? 'Apagar leitura'
-                  : 'Por que não dá para apagar',
-              icon: canDelete ? Icons.delete_outline : Icons.lock_outline,
-              color: scheme.onSurfaceVariant,
-              onPressed: () =>
-                  canDelete ? onDelete(reading) : onBlockedDelete(reading),
-            ),
+          if (action != null) ...[const SizedBox(width: AppSpacing.s4), action],
         ],
       ),
     );
   }
 }
 
-class _Footer extends StatelessWidget {
-  const _Footer({required this.state, required this.onRetry});
+IconData _iconOf(OdometerSource source) {
+  return switch (source) {
+    OdometerSource.abastecimento => Icons.local_gas_station_outlined,
+    OdometerSource.maintenance => Icons.build_outlined,
+    _ => Icons.speed_outlined,
+  };
+}
 
-  final PagedState<OdometerReading> state;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.lastPageError != null) {
-      final error = state.lastPageError;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
-        child: Column(
-          children: [
-            Text(
-              error is ApiFailure
-                  ? error.message
-                  : 'Não foi possível carregar mais.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            AppButton(
-              label: 'Tentar de novo',
-              variant: AppButtonVariant.tertiary,
-              onPressed: onRetry,
-            ),
-          ],
-        ),
-      );
-    }
-    if (state.isLoadingMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.s24),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return const SizedBox(height: AppSpacing.s24);
-  }
+/// Where a reading came from, as a clause beside its date. The glyph says
+/// the same, so the clause is one word; a reading the owner typed says
+/// nothing, because that is the ordinary case.
+String? _originOf(OdometerSource source) {
+  return switch (source) {
+    OdometerSource.correction => 'Correção',
+    OdometerSource.maintenance => 'Manutenção',
+    OdometerSource.abastecimento => 'Abastecimento',
+    OdometerSource.manual || OdometerSource.desconhecido => null,
+  };
 }

@@ -77,25 +77,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // The entry screens replace each other rather than stack, so there is no
+    // route behind this one to pop. The arrow goes where "back" means here:
+    // the sign-in.
     return AppScaffold(
       title: 'Criar conta',
+      leading: BackButton(
+        onPressed: _submitting ? null : () => context.go(AppRoutes.login),
+      ),
       body: AutofillGroup(
         child: ListView(
           padding: AppSpacing.screenHeaded,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-              child: Text(
-                'Uma conta guarda os carros, o histórico e os prazos, e '
-                'funciona em qualquer aparelho.',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s24),
             if (_banner != null) AuthFormBanner(message: _banner!),
             TextField(
               controller: _nameController,
@@ -111,7 +105,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               },
               decoration: InputDecoration(
                 labelText: 'Nome',
-                prefixIcon: const Icon(Icons.person_outline),
                 errorText: _fieldErrors['name'],
               ),
             ),
@@ -132,7 +125,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               },
               decoration: InputDecoration(
                 labelText: 'E-mail',
-                prefixIcon: const Icon(Icons.mail_outline),
                 errorText: _fieldErrors['email'],
               ),
             ),
@@ -140,8 +132,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             AuthPasswordField(
               controller: _passwordController,
               label: 'Senha',
-              hint:
-                  'Mínimo de 8 caracteres. Sem exigência de símbolo ou número.',
+              hint: newPasswordHint,
               enabled: !_submitting,
               autofillHints: const [AutofillHints.newPassword],
               errorText: _fieldErrors['password'],
@@ -163,12 +154,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               loading: _submitting,
               onPressed: _submit,
               expanded: true,
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppButton(
-              label: 'Já tem conta? Entrar',
-              variant: AppButtonVariant.tertiary,
-              onPressed: _submitting ? null : () => context.go(AppRoutes.login),
             ),
           ],
         ),

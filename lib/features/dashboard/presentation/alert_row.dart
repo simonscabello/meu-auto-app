@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/shared/widgets/app_group_scope.dart';
-import 'package:meu_auto/core/domain/civil_date.dart';
-import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/domain/phrases.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
@@ -76,21 +74,6 @@ String? alertDetailLine(Alert alert) {
   return parts.isEmpty ? null : parts.join(' · ');
 }
 
-/// How late or how close, in the one dimension that decides: "Venceu há 13
-/// dias", "Vence em 21 dias", "Passou 1.200 km", "Faltam 800 km".
-///
-/// The closer dimension leads, the way [dueSummary] orders them, and only it
-/// is said. Figures come from the server; nothing here is date arithmetic.
-@visibleForTesting
-String? urgencyPhrase({int? remainingKm, int? remainingDays}) {
-  final useDays =
-      remainingDays != null &&
-      (remainingKm == null || remainingDays <= remainingKm);
-  if (useDays) return dueInDaysPhrase(remainingDays);
-  final km = remainingKmPhrase(remainingKm);
-  return km == null ? null : capitalizeFirst(km);
-}
-
 IconData alertIconOf(AlertKind kind) {
   return switch (kind) {
     AlertKind.manutencao => Icons.build_outlined,
@@ -124,40 +107,4 @@ String routeForAlert(Alert alert) {
     AlertReferenceType.seguro => AppRoutes.seguro(alert.referenceId),
     AlertReferenceType.desconhecido => AppRoutes.care,
   };
-}
-
-/// Upcoming, as the distance to it: "Faltam 4.200 km ou 30 dias",
-/// "Faltam 4.200 km ou 12/02/2027", "Vence em 12/02/2027".
-///
-/// Uses the figures the server computed. The date is written as a date once
-/// it is more than about a month and a half out, because "faltam 197 dias"
-/// makes the owner do arithmetic the calendar already did.
-@visibleForTesting
-String? upcomingSummary({
-  int? remainingKm,
-  int? remainingDays,
-  CivilDate? dueOn,
-}) {
-  final km = remainingKm != null && remainingKm > 0
-      ? formatKm(remainingKm)
-      : null;
-
-  String? when;
-  var whenIsDate = false;
-  if (remainingDays != null && remainingDays >= 0) {
-    if (remainingDays == 0) {
-      return 'Vence hoje';
-    }
-    if (remainingDays > 45 && dueOn != null) {
-      when = formatCivilDate(dueOn);
-      whenIsDate = true;
-    } else {
-      when = remainingDays == 1 ? '1 dia' : '$remainingDays dias';
-    }
-  }
-
-  if (km == null && when == null) return null;
-  if (km != null && when != null) return 'Faltam $km ou $when';
-  if (km != null) return 'Faltam $km';
-  return whenIsDate ? 'Vence em $when' : 'Faltam $when';
 }

@@ -19,16 +19,19 @@ import 'package:meu_auto/features/maintenance/presentation/maintenance_edit_shee
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/vehicle/application/vehicle_derived.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
-import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
+import 'package:meu_auto/shared/widgets/app_detail_header.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_facts_strip.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_overflow_menu.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
-import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 class MaintenanceDetailScreen extends ConsumerStatefulWidget {
   const MaintenanceDetailScreen({super.key, required this.recordId});
@@ -48,29 +51,60 @@ class _MaintenanceDetailScreenState
   @override
   Widget build(BuildContext context) {
     final record = ref.watch(maintenanceRecordProvider(widget.recordId));
+    final current = record.valueOrNull;
 
     return AppScaffold(
       title: 'Manutenção',
-      body: record.when(
-        loading: () => const Padding(
-          padding: AppSpacing.screen,
-          child: AppSkeletonList(count: 3, itemHeight: 120),
-        ),
-        error: (error, _) => AppErrorState.fromError(
-          error: error,
-          onRetry: () =>
-              ref.invalidate(maintenanceRecordProvider(widget.recordId)),
-        ),
-        data: (data) => MaintenanceDetailContent(
-          record: data,
-          retracting: _retracting,
-          addingItem: _addingItem,
-          onEdit: _busy
-              ? null
-              : () => MaintenanceEditSheet.show(context, record: data),
-          onRetract: _busy ? null : () => _confirmRetraction(data),
-          onAddItem: _busy ? null : () => unawaited(_addItems(data)),
-        ),
+      // Editing is the pencil and deleting is the ⋮, like every detail: the
+      // most destructive action used to be one of the two largest shapes on
+      // the screen.
+      actions: current == null
+          ? null
+          : [
+              AppIconButton(
+                label: 'Editar manutenção',
+                icon: Icons.edit_outlined,
+                onPressed: _busy
+                    ? null
+                    : () => MaintenanceEditSheet.show(context, record: current),
+              ),
+              AppOverflowMenu(
+                actions: [
+                  AppMenuAction(
+                    label: 'Excluir manutenção',
+                    destructive: true,
+                    onSelected: () {
+                      if (_busy) return;
+                      unawaited(_confirmRetraction(current));
+                    },
+                  ),
+                ],
+              ),
+            ],
+      body: Column(
+        children: [
+          // The retraction has no button of its own any more to spin, so the
+          // wait shows here until the screen closes.
+          if (_retracting) const LinearProgressIndicator(),
+          Expanded(
+            child: record.when(
+              loading: () => const Padding(
+                padding: AppSpacing.screen,
+                child: AppSkeletonList(count: 3, itemHeight: 120),
+              ),
+              error: (error, _) => AppErrorState.fromError(
+                error: error,
+                onRetry: () =>
+                    ref.invalidate(maintenanceRecordProvider(widget.recordId)),
+              ),
+              data: (data) => MaintenanceDetailContent(
+                record: data,
+                addingItem: _addingItem,
+                onAddItem: _busy ? null : () => unawaited(_addItems(data)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -140,12 +174,11 @@ class _MaintenanceDetailScreenState
       context,
       title: 'Excluir esta manutenção?',
       message:
-          'Ela sai do histórico do carro.\n\n'
-          'A quilometragem que você registrou junto com ela também é removida, '
-          'e os itens envolvidos voltam a contar a partir do registro anterior '
-          '— o que pode mudar quando eles vencem.\n\n'
+          'Ela sai do histórico do carro, junto com a quilometragem registrada '
+          'com ela. Os itens voltam a contar a partir do registro anterior, o '
+          'que pode mudar quando eles vencem.\n\n'
           'Não dá para desfazer.',
-      confirmLabel: 'Excluir',
+      confirmLabel: 'Excluir manutenção',
       destructive: true,
     );
     if (!confirmed || !mounted) return;
@@ -173,14 +206,24 @@ class _MaintenanceDetailScreenState
   }
 }
 
-String _recordMileageLine(MaintenanceRecord record) {
-  final workshop = record.workshopName?.trim();
-  final km = record.mileageKm;
-  final parts = <String>[
-    if (km != null) formatKm(km),
-    if (workshop != null && workshop.isNotEmpty) workshop,
-  ];
-  return parts.join(' · ');
+/// What the record is, in the few words a title holds: the one item, the two,
+/// or the first and how many more. A revisão names the visit by itself.
+String maintenanceRecordTitle(MaintenanceRecord record) {
+  final items = record.items;
+  if (items.isEmpty) return 'Manutenção';
+  for (final item in items) {
+    if (item.itemSlug == 'revisao') {
+      final others = items.length - 1;
+      if (others == 0) return item.itemName;
+      return others == 1
+          ? '${item.itemName} e mais 1 item'
+          : '${item.itemName} e mais $others itens';
+    }
+  }
+  if (items.length == 1) return items.first.itemName;
+  if (items.length == 2) return '${items[0].itemName} e ${items[1].itemName}';
+  final others = items.length - 1;
+  return '${items.first.itemName} e mais $others itens';
 }
 
 /// The record as pure presentation.
@@ -188,172 +231,101 @@ String _recordMileageLine(MaintenanceRecord record) {
 /// Nothing here derives anything: `warranty_until` and `warranty_until_km`
 /// arrive computed by the server on every read, and the totals arrive summed.
 ///
-/// The lines are one event, so they are one group — and the row that adds a
-/// forgotten one is the last row of it, where it reads as "and one more
-/// here".
+/// The header says what was done and where; the strip, when, at what mileage
+/// and for how much. The lines are one event, so they are one group — and the
+/// row that adds a forgotten one is the last row of it, where it reads as "and
+/// one more here".
 class MaintenanceDetailContent extends StatelessWidget {
   const MaintenanceDetailContent({
     super.key,
     required this.record,
-    this.onEdit,
-    this.onRetract,
     this.onAddItem,
-    this.retracting = false,
     this.addingItem = false,
   });
 
   final MaintenanceRecord record;
-  final VoidCallback? onEdit;
-  final VoidCallback? onRetract;
 
   /// Names one more service that was done at the same time. Appending only —
   /// there is no way to take a line off, because removing one means deciding
   /// what happens to the clock it was keeping.
   final VoidCallback? onAddItem;
 
-  final bool retracting;
   final bool addingItem;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final meta = _recordMileageLine(record);
+    final workshop = record.workshopName?.trim();
+    final hasWorkshop = workshop != null && workshop.isNotEmpty;
+    final notes = record.notes?.trim();
+    final declared = record.kind == MaintenanceRecordKind.declared;
+    final km = record.mileageKm;
+    final figures = [
+      if (km != null)
+        AppFact(label: 'Odômetro', value: formatKmNumber(km), unit: 'km'),
+      if (record.totalCostCents.cents > 0)
+        AppFact(label: 'Total', value: record.totalCostCents.format()),
+    ];
+    // With nothing to set beside it, the date reads better as a sentence
+    // under the title than as a strip of one.
+    final showStrip = figures.isNotEmpty;
+    final subtitle = [
+      if (!showStrip) formatCivilDateLong(record.occurredOn),
+      if (hasWorkshop) workshop,
+    ].join(' · ');
 
     return ListView(
       padding: AppSpacing.screenHeaded,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                formatCivilDateLong(record.occurredOn),
-                style: theme.textTheme.headlineSmall,
-              ),
-              if (meta.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.s4),
-                Text(
-                  meta,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+        AppDetailHeader(
+          title: maintenanceRecordTitle(record),
+          subtitle: subtitle.isEmpty ? null : subtitle,
+          // Told from memory rather than proven: the difference is
+          // load-bearing at resale, so it is said at the top, quietly.
+          status: declared ? AppStatus.semPeriodicidade : null,
+          statusLabel: declared ? 'Informado' : null,
+          phrase: declared ? 'Sem comprovante. Pesa menos numa revenda.' : null,
+        ),
+        if (showStrip) ...[
+          const SizedBox(height: AppSpacing.s24),
+          AppFactsStrip(
+            facts: [
+              AppFact(label: 'Data', value: formatCivilDate(record.occurredOn)),
+              ...figures,
             ],
           ),
-        ),
-        if (record.kind == MaintenanceRecordKind.declared) ...[
-          const SizedBox(height: AppSpacing.s16),
-          const _DeclaredBanner(),
         ],
         const SizedBox(height: appGroupGap),
         AppGroup(
           title: 'O que foi feito',
           count: record.items.length > 1 ? record.items.length : null,
           children: [
-            for (final item in record.items) _ItemRow(item: item),
+            for (final item in record.items)
+              _ItemRow(key: ValueKey(item.id), item: item),
             if (onAddItem != null)
               AppListRow(
                 icon: addingItem ? Icons.hourglass_empty : Icons.add,
                 iconTone: AppIconWellTone.accent,
-                title: 'Adicionar item que faltou',
-                subtitle: 'Um serviço feito junto e que ficou de fora',
+                title: 'Adicionar item',
+                subtitle: 'Feito junto e que ficou de fora',
                 onTap: addingItem ? null : onAddItem,
                 showChevron: !addingItem,
               ),
           ],
         ),
-        if (record.totalCostCents.cents > 0) ...[
-          const SizedBox(height: appGroupGap),
-          AppGroup(
-            dividerIndent: 0,
-            children: [
-              AppListRowShell(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text('Total', style: theme.textTheme.titleSmall),
-                    ),
-                    Text(
-                      record.totalCostCents.format(),
-                      style: AppTypography.figure(
-                        size: 22,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-        if (record.notes != null && record.notes!.trim().isNotEmpty) ...[
+        if (notes != null && notes.isNotEmpty) ...[
           const SizedBox(height: appGroupGap),
           AppGroup(
             title: 'Observação',
-            dividerIndent: 0,
+            dividerIndent: AppGroup.textIndent,
             children: [
               AppListRowShell(
-                child: Text(
-                  record.notes!.trim(),
-                  style: theme.textTheme.bodyMedium,
-                ),
+                child: Text(notes, style: theme.textTheme.bodyMedium),
               ),
             ],
           ),
         ],
-        const SizedBox(height: appGroupGap),
-        if (onEdit != null)
-          AppButton(
-            label: 'Editar',
-            icon: Icons.edit_outlined,
-            variant: AppButtonVariant.secondary,
-            onPressed: onEdit,
-            expanded: true,
-          ),
-        const SizedBox(height: AppSpacing.s8),
-        if (onRetract != null)
-          AppButton(
-            label: 'Excluir manutenção',
-            variant: AppButtonVariant.destructive,
-            loading: retracting,
-            onPressed: onRetract,
-            expanded: true,
-          ),
       ],
-    );
-  }
-}
-
-class _DeclaredBanner extends StatelessWidget {
-  const _DeclaredBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final visual = statusColors(AppStatus.semBaseline, theme.brightness);
-    return AppSurface(
-      variant: AppSurfaceVariant.grouped,
-      color: visual.background,
-      padding: const EdgeInsets.all(AppSpacing.s12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, size: 20, color: visual.foreground),
-          const SizedBox(width: AppSpacing.s8),
-          Expanded(
-            child: Text(
-              'Informado pelo dono, sem comprovante. Conta como histórico, mas '
-              'pesa menos numa revenda ou numa discussão com a oficina.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: visual.foreground,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -362,71 +334,63 @@ class _DeclaredBanner extends StatelessWidget {
 /// warranted for.
 ///
 /// [AppListRowShell] rather than [AppListRow]: the cost is a column of its
-/// own and the warranty is a second line, which is more than the one line of
-/// state a plain row carries. The shell keeps the height, the padding and the
-/// 48dp minimum identical to every other row in the app.
-class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item});
+/// own and the warranty is a line of its own, which is more than the one line
+/// of state a plain row carries. The shell keeps the height, the padding and
+/// the 48dp minimum identical to every other row in the app.
+class _ItemRow extends StatelessWidget with GroupedRow {
+  const _ItemRow({super.key, required this.item});
 
   final MaintenanceRecordItem item;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final detail = [
       if (item.description != null && item.description!.trim().isNotEmpty)
         item.description!.trim(),
       if (item.partBrand != null && item.partBrand!.trim().isNotEmpty)
         item.partBrand!.trim(),
     ].join(' · ');
+    final warranty = _warrantyLine(item);
+    final cost = item.costCents;
 
     return AppListRowShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      semanticLabel: [
+        item.itemName,
+        if (detail.isNotEmpty) detail,
+        if (cost != null) cost.format(),
+        ?warranty,
+      ].join('. '),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              AppIconWell(icon: maintenanceIconFor(item.itemSlug)),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.itemName,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (detail.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        detail,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (item.costCents != null) ...[
-                const SizedBox(width: AppSpacing.s8),
-                Text(
-                  item.costCents!.format(),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: AppTypography.tabular,
-                  ),
-                ),
+          AppIconWell(icon: maintenanceIconFor(item.itemSlug)),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.itemName, style: theme.textTheme.titleSmall),
+                if (detail.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(detail, style: theme.textTheme.bodySmall),
+                ],
+                if (warranty != null) ...[
+                  const SizedBox(height: 2),
+                  Text(warranty, style: theme.textTheme.bodySmall),
+                ],
               ],
-            ],
+            ),
           ),
-          if (item.hasWarranty) ...[
-            const SizedBox(height: AppSpacing.s8),
-            _WarrantyLine(item: item),
+          if (cost != null) ...[
+            const SizedBox(width: AppSpacing.s12),
+            Text(
+              cost.format(),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFeatures: AppTypography.tabular,
+              ),
+            ),
           ],
         ],
       ),
@@ -439,43 +403,14 @@ class _ItemRow extends StatelessWidget {
 /// It says "até 20/08/2028", never "ativa" or "vencida". Deciding that would
 /// mean comparing to today, and whether a warranty is close to running out is
 /// a rule the server owns.
-class _WarrantyLine extends StatelessWidget {
-  const _WarrantyLine({required this.item});
-
-  final MaintenanceRecordItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final until = item.warrantyUntil;
-    final untilKm = item.warrantyUntilKm;
-
-    final parts = [
-      if (until != null) 'até ${formatCivilDate(until)}',
-      if (untilKm != null) 'até ${formatKm(untilKm)}',
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 50),
-      child: Row(
-        children: [
-          Icon(
-            Icons.verified_user_outlined,
-            size: 16,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: AppSpacing.s8),
-          Expanded(
-            child: Text(
-              // "ou" and not "e": whichever comes first ends it.
-              'Garantia ${parts.join(' ou ')}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+String? _warrantyLine(MaintenanceRecordItem item) {
+  if (!item.hasWarranty) return null;
+  final until = item.warrantyUntil;
+  final untilKm = item.warrantyUntilKm;
+  final parts = [
+    if (until != null) 'até ${formatCivilDate(until)}',
+    if (untilKm != null) 'até ${formatKm(untilKm)}',
+  ];
+  // "ou" and not "e": whichever comes first ends it.
+  return 'Garantia ${parts.join(' ou ')}';
 }

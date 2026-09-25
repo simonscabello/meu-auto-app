@@ -20,7 +20,8 @@ void main() {
   testWidgets('offers the six presets and hides alert fields', (tester) async {
     await _open(tester, adapter);
 
-    expect(find.text('Padrão recomendado (a cada 21 dias)'), findsOneWidget);
+    expect(find.text('Recomendado'), findsOneWidget);
+    expect(find.text('A cada 21 dias'), findsOneWidget);
     expect(find.text('Toda semana'), findsOneWidget);
     expect(find.text('A cada 15 dias'), findsOneWidget);
     expect(find.text('Todo mês'), findsOneWidget);
@@ -36,7 +37,7 @@ void main() {
   ) async {
     await _open(tester, adapter);
 
-    await tester.tap(find.text('Padrão recomendado (a cada 21 dias)'));
+    await tester.tap(find.text('Recomendado'));
     await tester.pump();
     await tester.tap(find.text('Salvar'));
     await tester.pumpAndSettle();

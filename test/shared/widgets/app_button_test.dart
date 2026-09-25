@@ -52,7 +52,8 @@ void main() {
     );
 
     expect(find.widgetWithText(FilledButton, 'Primário'), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Secundário'), findsOneWidget);
+    // Secondary is tonal now: a neutral fill, not a border.
+    expect(find.widgetWithText(FilledButton, 'Secundário'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Excluir'), findsOneWidget);
     expect(find.widgetWithText(TextButton, 'Auxiliar'), findsOneWidget);
   });

@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// The one rule the server puts on a new password, said under the field it
+/// applies to. The same words on sign-up, reset and change.
+const newPasswordHint = 'Mínimo de 8 caracteres.';
+
+/// A password field with a way to see what was typed.
+///
+/// The toggle is announced as "Mostrar senha" / "Ocultar senha", and the
+/// field never offers suggestions or autocorrect.
 class AuthPasswordField extends StatefulWidget {
   const AuthPasswordField({
     super.key,

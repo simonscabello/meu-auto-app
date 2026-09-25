@@ -110,7 +110,7 @@ abstract final class AppColors {
     surfaceContainer: Color(0xFFF4F6F8),
     surfaceContainerHigh: Color(0xFFEBEEF2),
     surfaceContainerHighest: Color(0xFFE1E5EB),
-    outline: Color(0xFF858F9D),
+    outline: Color(0xFF808A98),
     outlineVariant: Color(0xFFE1E5EB),
     shadow: Color(0xFF000000),
     scrim: Color(0xFF000000),

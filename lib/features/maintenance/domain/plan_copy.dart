@@ -92,24 +92,6 @@ String planStatusPhrase(MaintenancePlan plan) {
   return phrase;
 }
 
-/// The line beside the status chip on the plan detail.
-///
-/// The chip already names the state, so an item on track says how far off the
-/// next service is — it used to read "Em dia" beside a chip reading "Em dia".
-/// Without a baseline it is empty: the facts under it say what is missing.
-String planDetailHeadline(MaintenancePlan plan) {
-  if (plan.status == MaintenanceStatus.semBaseline) return '';
-  if (plan.status != MaintenanceStatus.emDia ||
-      plan.itemKind == MaintenanceItemKind.care) {
-    return planStatusPhrase(plan);
-  }
-  final summary = dueSummary(
-    remainingKm: plan.remainingKm,
-    remainingDays: plan.remainingDays,
-  );
-  return [if (plan.countsFromNew) 'Nunca feito', ?summary].join(' · ');
-}
-
 String _duePhrase(MaintenancePlan plan) {
   if (plan.strategy == MaintenanceStrategy.conditionBased) {
     switch (plan.status) {

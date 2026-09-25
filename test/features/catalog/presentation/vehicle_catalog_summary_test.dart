@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/money.dart';
+import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/catalog/domain/vehicle_catalog.dart';
 import 'package:meu_auto/features/catalog/presentation/vehicle_catalog_sheet.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
@@ -23,16 +24,23 @@ void main() {
     );
   }
 
-  Future<void> pump(WidgetTester tester, Widget child) {
+  Future<void> pump(WidgetTester tester, Widget child, {double scale = 1}) {
     return tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: SingleChildScrollView(child: child)),
+        theme: AppTheme.dark,
+        home: MediaQuery(
+          data: MediaQueryData(
+            textScaler: TextScaler.linear(scale),
+            size: const Size(360, 640),
+          ),
+          child: Scaffold(body: SingleChildScrollView(child: child)),
+        ),
       ),
     );
   }
 
   group('VehicleCatalogSummary', () {
-    testWidgets('shows the valuation and the month it refers to', (
+    testWidgets('shows the car, the valuation and the month it refers to', (
       tester,
     ) async {
       await pump(
@@ -50,10 +58,10 @@ void main() {
         ),
       );
 
-      expect(find.text('Toyota'), findsOneWidget);
       expect(find.text('PRIUS 1.8 16V 5p Aut. (Híbrido)'), findsOneWidget);
+      expect(find.text('Toyota · 2017 · Híbrido'), findsOneWidget);
       expect(find.text(r'R$ 80.055,00'), findsOneWidget);
-      expect(find.text('Valor FIPE de agosto de 2026'), findsOneWidget);
+      expect(find.text('Referência: agosto de 2026'), findsOneWidget);
     });
 
     testWidgets('a missing valuation reads as unavailable, not as an error', (
@@ -71,9 +79,33 @@ void main() {
         ),
       );
 
-      expect(find.text('Valor FIPE indisponível no momento.'), findsOneWidget);
+      expect(find.text('Valor FIPE'), findsOneWidget);
+      expect(
+        find.text('Indisponível agora. O cadastro funciona sem ele.'),
+        findsOneWidget,
+      );
       expect(find.text('PRIUS 1.8 16V 5p Aut. (Híbrido)'), findsOneWidget);
       expect(find.textContaining('erro'), findsNothing);
+      expect(find.byIcon(Icons.error_outline), findsNothing);
+    });
+
+    testWidgets('change and remove reach their callbacks', (tester) async {
+      var changed = 0;
+      var cleared = 0;
+      await pump(
+        tester,
+        VehicleCatalogSummary(
+          selection: selection(),
+          onChange: () => changed++,
+          onClear: () => cleared++,
+        ),
+      );
+
+      await tester.tap(find.text('Trocar'));
+      await tester.tap(find.text('Remover'));
+      await tester.pump();
+      expect(changed, 1);
+      expect(cleared, 1);
     });
 
     testWidgets('disabled while the form is submitting', (tester) async {
@@ -92,16 +124,43 @@ void main() {
       await tester.pump();
       expect(changed, isFalse);
     });
+
+    testWidgets('lays out at 360px with the font turned up', (tester) async {
+      tester.view.physicalSize = const Size(360, 640) * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await pump(
+        tester,
+        VehicleCatalogSummary(
+          selection: const VehicleCatalogSelection(
+            modelYearId: 'year-1',
+            brandName: 'VW - VolksWagen',
+            modelName: 'AMAROK CD2.0 16V/S CD2.0 16V TDI 4x2 Die',
+            modelYear: 2017,
+          ),
+          onChange: () {},
+          onClear: () {},
+        ),
+        scale: 1.3,
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('VehicleCatalogPrompt', () {
-    testWidgets('offers the search and says typing by hand still works', (
+    testWidgets('offers the picker and says typing by hand still works', (
       tester,
     ) async {
-      await pump(tester, VehicleCatalogPrompt(onPressed: () {}));
+      var opened = 0;
+      await pump(tester, VehicleCatalogPrompt(onPressed: () => opened++));
 
-      expect(find.text('Buscar na tabela FIPE'), findsOneWidget);
-      expect(find.textContaining('digitar tudo à mão'), findsOneWidget);
+      expect(find.text('Escolher na tabela FIPE'), findsOneWidget);
+      expect(find.textContaining('digitar à mão'), findsOneWidget);
+      await tester.tap(find.text('Escolher na tabela FIPE'));
+      await tester.pump();
+      expect(opened, 1);
     });
 
     testWidgets('an already-linked vehicle says so instead of implying it '
@@ -112,10 +171,19 @@ void main() {
       );
 
       expect(find.text('Trocar na tabela FIPE'), findsOneWidget);
-      expect(
-        find.textContaining('cadastrado pela tabela FIPE'),
-        findsOneWidget,
+      expect(find.textContaining('Veio da tabela FIPE'), findsOneWidget);
+    });
+
+    testWidgets('does nothing while the form is submitting', (tester) async {
+      var opened = 0;
+      await pump(
+        tester,
+        VehicleCatalogPrompt(onPressed: () => opened++, enabled: false),
       );
+
+      await tester.tap(find.text('Escolher na tabela FIPE'));
+      await tester.pump();
+      expect(opened, 0);
     });
   });
 }

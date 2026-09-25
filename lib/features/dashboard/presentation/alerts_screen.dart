@@ -6,6 +6,9 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/dashboard/presentation/alert_row.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
+import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
@@ -25,6 +28,12 @@ class AlertsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final alerts = ref.watch(alertsProvider(vehicleId));
+    // The item's own glyph, as on Início; an alert carries the plan id only.
+    final plans = ref.watch(maintenancePlansProvider(vehicleId)).valueOrNull;
+    final icons = <String, IconData>{
+      for (final plan in plans ?? const <MaintenancePlan>[])
+        plan.id: maintenanceIconFor(plan.itemSlug),
+    };
 
     return AppScaffold(
       title: 'Precisa de atenção',
@@ -46,6 +55,7 @@ class AlertsScreen extends ConsumerWidget {
         ),
         data: (list) => AlertsContent(
           alerts: list,
+          iconByReference: icons,
           onAlertTap: (alert) {
             final route = routeForAlert(alert);
             if (route == AppRoutes.care) {
@@ -62,7 +72,14 @@ class AlertsScreen extends ConsumerWidget {
 
 /// The list as pure presentation: what is late, then what is close.
 class AlertsContent extends StatelessWidget {
-  const AlertsContent({super.key, required this.alerts, this.onAlertTap});
+  const AlertsContent({
+    super.key,
+    required this.alerts,
+    this.onAlertTap,
+    this.iconByReference = const {},
+  });
+
+  final Map<String, IconData> iconByReference;
 
   final List<Alert> alerts;
   final ValueChanged<Alert>? onAlertTap;
@@ -96,6 +113,7 @@ class AlertsContent extends StatelessWidget {
               for (final alert in overdue)
                 AlertRow(
                   alert: alert,
+                  icon: iconByReference[alert.referenceId],
                   onTap: onAlertTap == null ? null : () => onAlertTap!(alert),
                 ),
             ],
@@ -110,6 +128,7 @@ class AlertsContent extends StatelessWidget {
               for (final alert in soon)
                 AlertRow(
                   alert: alert,
+                  icon: iconByReference[alert.referenceId],
                   onTap: onAlertTap == null ? null : () => onAlertTap!(alert),
                 ),
             ],

@@ -128,11 +128,11 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
   Widget build(BuildContext context) {
     return AppSheetBody(
       children: [
-        const AppSheetHeader(
-          title: 'Ajustar intervalo',
-          subtitle:
-              'Os intervalos sugeridos são padrões genéricos de mercado, '
-              'não a especificação do fabricante do seu carro.',
+        // Where a suggested interval came from is said on the plan itself,
+        // under its details; here the sheet only names what is being edited.
+        AppSheetHeader(
+          title: 'Editar intervalo',
+          subtitle: widget.plan.itemName,
           closable: false,
         ),
         const SizedBox(height: AppSpacing.s16),
@@ -170,7 +170,7 @@ class _PlanIntervalSheetState extends ConsumerState<PlanIntervalSheet> {
         ),
         const AppFormGap(),
         AppFormSection(
-          title: 'Avisar com antecedência de',
+          title: 'Avisar antes',
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,

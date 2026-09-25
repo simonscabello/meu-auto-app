@@ -14,14 +14,17 @@ import 'package:meu_auto/shared/widgets/app_choice_row.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_detail_header.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
+import 'package:meu_auto/shared/widgets/app_expandable_group.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_fact_row.dart';
+import 'package:meu_auto/shared/widgets/app_facts_strip.dart';
 import 'package:meu_auto/shared/widgets/app_folded_section.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_metric.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_overflow_menu.dart';
 import 'package:meu_auto/shared/widgets/app_plate_chip.dart';
 import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_quick_action.dart';
@@ -33,7 +36,7 @@ import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_status_chip.dart';
 import 'package:meu_auto/shared/widgets/app_surface.dart';
 import 'package:meu_auto/shared/widgets/app_switch_row.dart';
-import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
+import 'package:meu_auto/shared/widgets/app_tab_header.dart';
 import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
 /// Catalogue of every design token and base widget, rendered on one page.
@@ -130,11 +133,11 @@ class _DesignGalleryState extends State<DesignGallery> {
             const _RadiusScale(),
             const _SectionTitle('Tipografia'),
             const _TypeScale(),
-            const _SectionTitle('Instrumento'),
+            const _SectionTitle('Leitura'),
             Text(
               '139.011',
-              style: AppTypography.instrument(
-                size: 56,
+              style: AppTypography.figure(
+                size: 44,
                 color: theme.colorScheme.onSurface,
               ),
             ),
@@ -145,7 +148,24 @@ class _DesignGalleryState extends State<DesignGallery> {
                 fontFeatures: AppTypography.tabular,
               ),
             ),
-            const _SectionTitle('Poços de ícone'),
+            const _SectionTitle('Cabeçalho de aba'),
+            AppTabHeader(
+              title: 'Manutenção',
+              contextLabel: 'Prius · QAF5G33',
+              onContextTap: () {},
+              actions: [
+                AppOverflowMenu(
+                  actions: [
+                    AppMenuAction(
+                      label: 'Excluir registro',
+                      destructive: true,
+                      onSelected: () {},
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const _SectionTitle('Ícones'),
             const Wrap(
               spacing: AppSpacing.s12,
               runSpacing: AppSpacing.s12,
@@ -265,10 +285,18 @@ class _DesignGalleryState extends State<DesignGallery> {
             ),
             const _SectionTitle('Cabeçalho de detalhe'),
             const AppDetailHeader(
-              icon: Icons.receipt_long_outlined,
               title: 'IPVA 2026',
+              subtitle: 'Vencimento em 15/03/2026',
               status: AppStatus.venceEmBreve,
-              phrase: 'faltam 12 dias',
+              phrase: 'Vence em 12 dias',
+            ),
+            const SizedBox(height: AppSpacing.s16),
+            const AppFactsStrip(
+              facts: [
+                AppFact(label: 'Total', value: 'R\$ 246,55'),
+                AppFact(label: 'Litros', value: '39,83', unit: 'L'),
+                AppFact(label: 'Consumo', value: '17,2', unit: 'km/L'),
+              ],
             ),
             const _SectionTitle('Card e métrica'),
             const AppCard(
@@ -320,7 +348,7 @@ class _DesignGalleryState extends State<DesignGallery> {
             AppListRow(
               icon: Icons.settings_outlined,
               title: 'Correia dentada',
-              subtitle: 'venceu há 40 dias · passou 1.200 km',
+              subtitle: 'Venceu há 40 dias',
               status: AppStatus.vencido,
               onTap: () {},
               showChevron: true,
@@ -329,11 +357,12 @@ class _DesignGalleryState extends State<DesignGallery> {
             AppListRow(
               icon: Icons.tire_repair_outlined,
               title: 'Calibrar os pneus',
-              subtitle: 'Está na hora de verificar.',
+              subtitle: 'Vence em 3 dias',
               status: AppStatus.venceEmBreve,
               trailing: AppButton(
                 label: 'Feito',
                 variant: AppButtonVariant.secondary,
+                compact: true,
                 onPressed: () {},
               ),
             ),
@@ -352,7 +381,7 @@ class _DesignGalleryState extends State<DesignGallery> {
                 AppListRow(
                   icon: Icons.description_outlined,
                   title: 'Licenciamento 2026',
-                  subtitle: 'vence em 30 nov',
+                  subtitle: 'Vence em 20 dias',
                   onTap: () {},
                   showChevron: true,
                 ),
@@ -384,18 +413,28 @@ class _DesignGalleryState extends State<DesignGallery> {
                 ),
               ],
             ),
-            const _SectionTitle('Linha do tempo'),
-            AppTimelineTile(
-              title: '138.798 km',
-              subtitle: 'Quilometragem registrada',
-              icon: Icons.speed_outlined,
-              onTap: () {},
-            ),
-            const AppTimelineTile(
-              title: 'Revisão',
-              subtitle: 'Bateria · discos de freio · filtros',
-              icon: Icons.build_outlined,
-              isLast: true,
+            const _SectionTitle('Grupo que expande'),
+            AppExpandableGroup(
+              title: 'Em dia',
+              count: 12,
+              explanation: 'Ficam no histórico e nunca vencem.',
+              initiallyOpen: true,
+              children: [
+                AppListRow(
+                  icon: Icons.air_outlined,
+                  title: 'Filtro de ar',
+                  subtitle: 'Faltam 8.000 km',
+                  onTap: () {},
+                  showChevron: true,
+                ),
+                const AppListRow(
+                  icon: Icons.bolt_outlined,
+                  title: 'Velas',
+                  subtitle: 'Faltam 21.000 km',
+                  value: 'R\$ 320,00',
+                  strongValue: true,
+                ),
+              ],
             ),
             const _SectionTitle('Configurações'),
             AppGroup(
@@ -470,6 +509,11 @@ class _DesignGalleryState extends State<DesignGallery> {
             const AppSurface(
               variant: AppSurfaceVariant.raised,
               child: Text('raised'),
+            ),
+            const SizedBox(height: AppSpacing.s8),
+            const AppSurface(
+              variant: AppSurfaceVariant.sunken,
+              child: Text('sunken'),
             ),
             const _SectionTitle('Marca'),
             const Align(
@@ -594,8 +638,9 @@ class _ColorSwatches extends StatelessWidget {
       ('surfaceContainerHigh', scheme.surfaceContainerHigh, scheme.onSurface),
       ('error', scheme.error, scheme.onError),
       ('errorContainer', scheme.errorContainer, scheme.onErrorContainer),
-      ('pageTop', tones.pageTop, scheme.onSurface),
-      ('glow', tones.glow, scheme.onPrimary),
+      ('surfaceContainer', scheme.surfaceContainer, scheme.onSurface),
+      ('stroke', tones.stroke, scheme.onSurface),
+      ('success', tones.success, scheme.surface),
       ('outline', scheme.outline, scheme.surface),
     ];
     return Wrap(

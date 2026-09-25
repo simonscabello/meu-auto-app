@@ -11,6 +11,8 @@ import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dar
 import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
@@ -18,8 +20,6 @@ import 'package:meu_auto/shared/widgets/app_segmented.dart';
 import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
-
-bool _never(String id) => false;
 
 /// Multi-select catalogue. Search, grouped by kind, already-chosen items
 /// marked, cap of 20, and a way out for anything the catalogue does not name.
@@ -140,15 +140,17 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
               prefixIcon: Icon(Icons.search),
             ),
           ),
-          const SizedBox(height: AppSpacing.s8),
           Expanded(child: _body(catalogue)),
-          const SizedBox(height: AppSpacing.s8),
-          AppButton(
-            label: 'Criar item personalizado',
-            icon: Icons.add,
-            variant: AppButtonVariant.tertiary,
-            onPressed: _createCustom,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AppButton(
+              label: 'Criar item personalizado',
+              icon: Icons.add,
+              variant: AppButtonVariant.tertiary,
+              onPressed: _createCustom,
+            ),
           ),
+          const SizedBox(height: AppSpacing.s4),
           AppButton(
             label: _selected.isEmpty
                 ? 'Pronto'
@@ -163,20 +165,38 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
 
   Widget _body(AsyncValue<List<MaintenanceItem>> catalogue) {
     return catalogue.when(
-      loading: () => const AppSkeletonList(count: 8, itemHeight: 56),
+      // Clipped rather than laid out whole: eight rows are taller than the
+      // room a sheet leaves under its search field on a small phone.
+      loading: () => const SingleChildScrollView(
+        physics: NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.s8),
+        child: AppSkeletonList(count: 8, itemHeight: 56),
+      ),
       error: (error, _) => AppErrorState.fromError(
         error: error,
         onRetry: () => ref.invalidate(maintenanceItemsProvider),
       ),
-      data: (items) => _GroupedList(
-        items: _filtered(items),
-        isSelected: _isSelected,
-        isLocked: widget.lockedItemIds.contains,
-        atCap:
+      data: (items) {
+        final atCap =
             _selected.length + widget.lockedItemIds.length >=
-            MaintenanceRecordDraft.maxItems,
-        onToggle: _toggle,
-      ),
+            MaintenanceRecordDraft.maxItems;
+        return CatalogueItemList(
+          items: _filtered(items),
+          emptyMessage: 'Nenhum item com esse nome.',
+          rowBuilder: (item) {
+            final locked = widget.lockedItemIds.contains(item.id);
+            final selected = locked || _isSelected(item.id);
+            return _PickRow(
+              key: ValueKey(item.id),
+              item: item,
+              selected: selected,
+              locked: locked,
+              enabled: !locked && (selected || !atCap),
+              onToggle: _toggle,
+            );
+          },
+        );
+      },
     );
   }
 
@@ -191,20 +211,27 @@ class _ItemPickerSheetState extends ConsumerState<ItemPickerSheet> {
   }
 }
 
-class _GroupedList extends StatelessWidget {
-  const _GroupedList({
+/// The catalogue the way the app splits it — maintenance first, then everyday
+/// care — as one group each, for the two sheets that choose from it.
+///
+/// A group per kind rather than rows straight on the sheet: thirty items
+/// under two quiet labels read as one column, and the surface is what says
+/// where one kind ends and the next begins.
+class CatalogueItemList extends StatelessWidget {
+  const CatalogueItemList({
+    super.key,
     required this.items,
-    required this.isSelected,
-    required this.atCap,
-    required this.onToggle,
-    this.isLocked = _never,
+    required this.rowBuilder,
+    required this.emptyMessage,
   });
 
   final List<MaintenanceItem> items;
-  final bool Function(String id) isSelected;
-  final bool Function(String id) isLocked;
-  final bool atCap;
-  final ValueChanged<MaintenanceItem> onToggle;
+
+  /// One row per item. Return a [GroupedRow] so its ink reaches the edges.
+  final Widget Function(MaintenanceItem item) rowBuilder;
+
+  /// Said in place of the list when there is nothing to show.
+  final String emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +239,8 @@ class _GroupedList extends StatelessWidget {
     if (items.isEmpty) {
       return Center(
         child: Text(
-          'Nada com esse nome. Tente outra busca.',
+          emptyMessage,
+          textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -230,40 +258,47 @@ class _GroupedList extends StatelessWidget {
     ];
 
     return ListView(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
       children: [
-        if (maintenance.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.s8),
-            child: AppSectionHeader(
-              title: MaintenanceItemKind.maintenance.sectionTitle,
-            ),
-          ),
-          for (var i = 0; i < maintenance.length; i++) ...[
-            if (i > 0) const AppRowDivider(),
-            _tile(context, maintenance[i]),
-          ],
-        ],
-        if (care.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.s16),
-            child: AppSectionHeader(
-              title: MaintenanceItemKind.care.sectionTitle,
-            ),
-          ),
-          for (var i = 0; i < care.length; i++) ...[
-            if (i > 0) const AppRowDivider(),
-            _tile(context, care[i]),
-          ],
-        ],
+        AppGroup(
+          title: MaintenanceItemKind.maintenance.sectionTitle,
+          emphasis: AppSectionEmphasis.label,
+          children: [for (final item in maintenance) rowBuilder(item)],
+        ),
+        if (maintenance.isNotEmpty && care.isNotEmpty)
+          const SizedBox(height: AppSpacing.s24),
+        AppGroup(
+          title: MaintenanceItemKind.care.sectionTitle,
+          emphasis: AppSectionEmphasis.label,
+          children: [for (final item in care) rowBuilder(item)],
+        ),
       ],
     );
   }
+}
 
-  Widget _tile(BuildContext context, MaintenanceItem item) {
+/// One catalogue item that can be ticked. An item already on the record is
+/// ticked and does not answer a tap.
+class _PickRow extends StatelessWidget with GroupedRow {
+  const _PickRow({
+    super.key,
+    required this.item,
+    required this.selected,
+    required this.locked,
+    required this.enabled,
+    required this.onToggle,
+  });
+
+  final MaintenanceItem item;
+  final bool selected;
+  final bool locked;
+  final bool enabled;
+  final ValueChanged<MaintenanceItem> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final locked = isLocked(item.id);
-    final selected = locked || isSelected(item.id);
-    final enabled = !locked && (selected || !atCap);
+    final scheme = theme.colorScheme;
 
     return Semantics(
       checked: selected,
@@ -285,27 +320,30 @@ class _GroupedList extends StatelessWidget {
                 children: [
                   Text(
                     item.name,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
+                    style: theme.textTheme.titleSmall?.copyWith(
                       color: enabled
-                          ? theme.colorScheme.onSurface
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          ? scheme.onSurface
+                          : scheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
-                  if (locked)
+                  if (locked) ...[
+                    const SizedBox(height: 2),
                     Text(
                       'Já está neste registro',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                      style: theme.textTheme.bodySmall,
                     ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: AppSpacing.s8),
+            // The whole row is the target, so the box keeps only its drawn
+            // size — its own 48dp padding made every row half again as tall.
             Checkbox(
               value: selected,
               onChanged: enabled ? (_) => onToggle(item) : null,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
             ),
           ],
         ),
@@ -406,7 +444,7 @@ class _CustomItemSheetState extends ConsumerState<_CustomItemSheet> {
         ),
         const SizedBox(height: AppSpacing.s24),
         AppButton(
-          label: 'Criar',
+          label: 'Criar item',
           loading: _submitting,
           onPressed: _submit,
           expanded: true,

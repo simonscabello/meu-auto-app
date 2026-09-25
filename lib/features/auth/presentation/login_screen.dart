@@ -17,6 +17,10 @@ import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 import 'package:meu_auto/shared/widgets/app_wordmark.dart';
 
+/// What the app keeps, in the owner's words. Three of the things it actually
+/// does, and nothing it does not.
+const loginTagline = 'Manutenção, abastecimento e documentos do seu carro.';
+
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -96,90 +100,121 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final theme = Theme.of(context);
     // No app bar. This is the front door, and an app bar reading "Entrar"
     // above a button reading "Entrar" is chrome saying the same word twice.
+    // The mark is the heading; the form follows it; the way to a new account
+    // waits at the foot of the page, apart from the sign-in it is not.
     return AppScaffold(
       body: AutofillGroup(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.page,
-            AppSpacing.s48,
-            AppSpacing.page,
-            AppSpacing.s40,
-          ),
+        child: CustomScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          children: [
-            const AppWordmark(size: AppWordmarkSize.large),
-            const SizedBox(height: AppSpacing.s12),
-            Text(
-              'Manutenção, quilometragem e prazos do seu carro.',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.page,
+                  AppSpacing.s48,
+                  AppSpacing.page,
+                  AppSpacing.s16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: const AppWordmark(size: AppWordmarkSize.large),
+                    ),
+                    const SizedBox(height: AppSpacing.s8),
+                    Text(
+                      loginTagline,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s40),
+                    if (_banner != null) AuthFormBanner(message: _banner!),
+                    TextField(
+                      controller: _emailController,
+                      enabled: !_submitting,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      autofillHints: const [AutofillHints.email],
+                      inputFormatters: [LengthLimitingTextInputFormatter(254)],
+                      onChanged: (_) {
+                        if (_fieldErrors.containsKey('email')) {
+                          setState(() => _fieldErrors.remove('email'));
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'E-mail',
+                        errorText: _fieldErrors['email'],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s12),
+                    AuthPasswordField(
+                      controller: _passwordController,
+                      label: 'Senha',
+                      enabled: !_submitting,
+                      errorText: _fieldErrors['password'],
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) {
+                        if (!_submitting) {
+                          unawaited(_submit());
+                        }
+                      },
+                      onChanged: (_) {
+                        if (_fieldErrors.containsKey('password')) {
+                          setState(() => _fieldErrors.remove('password'));
+                        }
+                      },
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      // Pulled into the gutter by the button's own padding,
+                      // so the words end where the field above them ends.
+                      child: Transform.translate(
+                        offset: const Offset(AppSpacing.s12, 0),
+                        child: AppButton(
+                          label: 'Esqueci minha senha',
+                          variant: AppButtonVariant.tertiary,
+                          onPressed: _submitting
+                              ? null
+                              : () => context.go(AppRoutes.passwordReset),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s12),
+                    AppButton(
+                      label: _offline ? 'Tentar de novo' : 'Entrar',
+                      loading: _submitting,
+                      onPressed: _submit,
+                      expanded: true,
+                    ),
+                    const Spacer(),
+                    const SizedBox(height: AppSpacing.s32),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          'Ainda não tem conta?',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        AppButton(
+                          label: 'Criar conta',
+                          variant: AppButtonVariant.tertiary,
+                          onPressed: _submitting
+                              ? null
+                              : () => context.go(AppRoutes.register),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.s48),
-            if (_banner != null) AuthFormBanner(message: _banner!),
-            TextField(
-              controller: _emailController,
-              enabled: !_submitting,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              autocorrect: false,
-              enableSuggestions: false,
-              autofillHints: const [AutofillHints.email],
-              inputFormatters: [LengthLimitingTextInputFormatter(254)],
-              onChanged: (_) {
-                if (_fieldErrors.containsKey('email')) {
-                  setState(() => _fieldErrors.remove('email'));
-                }
-              },
-              decoration: InputDecoration(
-                labelText: 'E-mail',
-                prefixIcon: const Icon(Icons.mail_outline),
-                errorText: _fieldErrors['email'],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AuthPasswordField(
-              controller: _passwordController,
-              label: 'Senha',
-              enabled: !_submitting,
-              errorText: _fieldErrors['password'],
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) {
-                if (!_submitting) {
-                  unawaited(_submit());
-                }
-              },
-              onChanged: (_) {
-                if (_fieldErrors.containsKey('password')) {
-                  setState(() => _fieldErrors.remove('password'));
-                }
-              },
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: AppButton(
-                label: 'Esqueci minha senha',
-                variant: AppButtonVariant.tertiary,
-                onPressed: _submitting
-                    ? null
-                    : () => context.go(AppRoutes.passwordReset),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s8),
-            AppButton(
-              label: _offline ? 'Tentar de novo' : 'Entrar',
-              loading: _submitting,
-              onPressed: _submit,
-              expanded: true,
-            ),
-            const SizedBox(height: AppSpacing.s12),
-            AppButton(
-              label: 'Criar conta',
-              variant: AppButtonVariant.secondary,
-              onPressed: _submitting
-                  ? null
-                  : () => context.go(AppRoutes.register),
-              expanded: true,
             ),
           ],
         ),

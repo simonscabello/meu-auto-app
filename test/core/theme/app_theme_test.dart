@@ -32,13 +32,19 @@ void main() {
       final pairs = <String, (Color, Color)>{
         'onSurface/surface': (scheme.onSurface, scheme.surface),
         'onSurfaceVariant/surface': (scheme.onSurfaceVariant, scheme.surface),
-        'onSurface/inputFill': (
-          scheme.onSurface,
-          scheme.surfaceContainerHighest,
-        ),
-        'hint/inputFill': (
+        'onSurface/inputFill': (scheme.onSurface, scheme.surfaceContainer),
+        'hint/inputFill': (scheme.onSurfaceVariant, scheme.surfaceContainer),
+        'onSurface/card': (scheme.onSurface, scheme.surfaceContainerLow),
+        'onSurfaceVariant/card': (
           scheme.onSurfaceVariant,
-          scheme.surfaceContainerHighest,
+          scheme.surfaceContainerLow,
+        ),
+        'link/card': (scheme.primary, scheme.surfaceContainerLow),
+        'error/card': (scheme.error, scheme.surfaceContainerLow),
+        'tertiary/card': (scheme.tertiary, scheme.surfaceContainerLow),
+        'onSecondaryContainer/secondaryContainer': (
+          scheme.onSecondaryContainer,
+          scheme.secondaryContainer,
         ),
         'error/surface': (scheme.error, scheme.surface),
         'onError/error': (scheme.onError, scheme.error),
@@ -50,8 +56,15 @@ void main() {
           scheme.onPrimaryContainer,
           scheme.primaryContainer,
         ),
-        'selectedNav/bar': (scheme.primary, scheme.surfaceContainer),
-        'unselectedNav/bar': (scheme.onSurfaceVariant, scheme.surfaceContainer),
+        'selectedNav/indicator': (
+          scheme.onPrimaryContainer,
+          scheme.primaryContainer,
+        ),
+        'selectedNavLabel/bar': (scheme.onSurface, scheme.surfaceContainerLow),
+        'unselectedNav/bar': (
+          scheme.onSurfaceVariant,
+          scheme.surfaceContainerLow,
+        ),
       };
       for (final entry in pairs.entries) {
         final ratio = _contrastRatio(entry.value.$1, entry.value.$2);
@@ -139,16 +152,53 @@ void main() {
     expect(pending.background, isNot(dueSoon.background));
   });
 
-  test('numeric text styles use tabular figures', () {
+  // Tabular figures only where numbers line up. Inter's tabular set also
+  // widens punctuation, and with it on every style "E-mail" read "E - mail".
+  test('figures are tabular, running text is not', () {
+    final figure = AppTypography.figure(size: 44, color: Colors.white);
+    expect(figure.fontFeatures, AppTypography.tabular);
+
     final theme = AppTheme.light.textTheme;
     for (final style in [
-      theme.displayLarge,
       theme.headlineLarge,
-      theme.titleLarge,
+      theme.titleMedium,
+      theme.titleSmall,
       theme.bodyLarge,
       theme.bodyMedium,
+      theme.bodySmall,
     ]) {
-      expect(style?.fontFeatures, AppTypography.tabular);
+      expect(style?.fontFeatures, isNull);
+    }
+  });
+
+  // The card is separated from the page by its fill, not by a shadow, so the
+  // two must differ in both themes — and the page must be the deeper one.
+  test('a card is one step off the page in both themes', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final scheme = theme.colorScheme;
+      final page = scheme.surface.computeLuminance();
+      final card = scheme.surfaceContainerLow.computeLuminance();
+      expect(card, greaterThan(page), reason: '${scheme.brightness}');
+    }
+  });
+
+  // WCAG 1.4.11: the edge of what is touched reaches 3:1.
+  test('the border of a control reaches 3:1 in both themes', () {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      final scheme = theme.colorScheme;
+      for (final entry in {
+        'outline/field': scheme.surfaceContainer,
+        'outline/card': scheme.surfaceContainerLow,
+        'outline/page': scheme.surface,
+      }.entries) {
+        final ratio = _contrastRatio(scheme.outline, entry.value);
+        expect(
+          ratio,
+          greaterThanOrEqualTo(3),
+          reason:
+              '${scheme.brightness} ${entry.key} was ${ratio.toStringAsFixed(2)}',
+        );
+      }
     }
   });
 }

@@ -17,6 +17,7 @@ import 'package:meu_auto/features/onboarding/application/calibrar_provider.dart'
 import 'package:meu_auto/features/onboarding/data/calibrar_skip_store.dart';
 import 'package:meu_auto/features/onboarding/domain/calibrar_questions.dart';
 import 'package:meu_auto/features/onboarding/presentation/calibrar_flow.dart';
+import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 
 void main() {
@@ -33,10 +34,25 @@ void main() {
   testWidgets('opens on the invitation, not on a form', (tester) async {
     await _open(tester, adapter, skipStore);
 
-    expect(find.text('Carro cadastrado'), findsOneWidget);
+    expect(find.text('Quando foi a última vez?'), findsOneWidget);
     expect(find.textContaining('2 perguntas rápidas'), findsOneWidget);
     expect(find.text('Quando foi a última troca de óleo?'), findsNothing);
     expect(find.text('Escolher data'), findsNothing);
+  });
+
+  // The flow is opened from Início too, for a car registered long ago, and
+  // it cannot tell which: the invitation must be true in both cases.
+  testWidgets('the invitation does not claim the car was just registered', (
+    tester,
+  ) async {
+    await _open(tester, adapter, skipStore);
+
+    expect(find.textContaining('cadastrado'), findsNothing);
+  });
+
+  test('the invitation counts one question as one', () {
+    expect(calibrarIntroBody(1), startsWith('1 pergunta rápida '));
+    expect(calibrarIntroBody(3), startsWith('3 perguntas rápidas '));
   });
 
   testWidgets('Depois goes straight to the dashboard, writing nothing', (
@@ -62,6 +78,32 @@ void main() {
     expect(find.text('Hoje'), findsNothing);
   });
 
+  // The answers come first; the date and the mileage only when the answer
+  // needs them, and nothing is sent before one is chosen.
+  testWidgets('the date and mileage appear only for "Lembro quando foi"', (
+    tester,
+  ) async {
+    await _startAsking(tester, adapter, skipStore);
+
+    expect(find.text('Lembro quando foi'), findsOneWidget);
+    expect(find.text('Não sei'), findsOneWidget);
+    expect(find.byType(AppKmField), findsNothing);
+    expect(find.text('Escolher data'), findsNothing);
+    expect(_continueButton(tester).onPressed, isNull);
+
+    await tester.tap(find.text('Não sei'));
+    await tester.pump();
+    expect(find.byType(AppKmField), findsNothing);
+    expect(_continueButton(tester).onPressed, isNotNull);
+
+    await tester.tap(find.text('Lembro quando foi'));
+    await tester.pump();
+    expect(find.byType(AppKmField), findsOneWidget);
+    expect(find.text('Escolher data'), findsOneWidget);
+    expect(adapter.postedBodies, isEmpty);
+    expect(adapter.patched, isEmpty);
+  });
+
   // "Não sei" is an answer now: it is written down so the question stops coming
   // back, and it still creates no service record.
   testWidgets('Não sei records the gap without inventing a record', (
@@ -69,8 +111,7 @@ void main() {
   ) async {
     await _startAsking(tester, adapter, skipStore);
 
-    await tester.tap(find.text('Não sei'));
-    await tester.pumpAndSettle();
+    await _answerDontKnow(tester);
 
     expect(adapter.postedBodies, isEmpty);
     expect(adapter.patched, hasLength(1));
@@ -80,8 +121,7 @@ void main() {
     expect(find.text('Quando foi a última revisão?'), findsOneWidget);
     expect(find.text('2 de 2'), findsOneWidget);
 
-    await tester.tap(find.text('Não sei'));
-    await tester.pumpAndSettle();
+    await _answerDontKnow(tester);
 
     expect(adapter.postedBodies, isEmpty);
     expect(adapter.patched, hasLength(2));
@@ -94,10 +134,19 @@ void main() {
     adapter.rejectPatches = true;
     await _startAsking(tester, adapter, skipStore);
 
-    await tester.tap(find.text('Não sei'));
-    await tester.pumpAndSettle();
+    await _answerDontKnow(tester);
 
     expect(find.text('Quando foi a última revisão?'), findsOneWidget);
+  });
+
+  // The next question starts blank: an answer does not carry over.
+  testWidgets('each question starts with no answer chosen', (tester) async {
+    await _startAsking(tester, adapter, skipStore);
+
+    await _answerDontKnow(tester);
+
+    expect(find.text('Quando foi a última revisão?'), findsOneWidget);
+    expect(_continueButton(tester).onPressed, isNull);
   });
 
   testWidgets('Pular tudo does not send a request', (tester) async {
@@ -111,12 +160,14 @@ void main() {
     expect(find.text('início'), findsOneWidget);
   });
 
-  testWidgets('Registrar without a date does not send a request', (
+  testWidgets('Continuar without a date does not send a request', (
     tester,
   ) async {
     await _startAsking(tester, adapter, skipStore);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
+    await tester.tap(find.text('Lembro quando foi'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
     await tester.pump();
 
     expect(adapter.postedBodies, isEmpty);
@@ -125,12 +176,12 @@ void main() {
   });
 
   testWidgets(
-    'Registrar posts one declared record with no shop and no amount',
+    'Continuar posts one declared record with no shop and no amount',
     (tester) async {
       await _startAsking(tester, adapter, skipStore);
 
       await _pickDate(tester);
-      await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
+      await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
       await tester.pumpAndSettle();
 
       expect(adapter.postedBodies, hasLength(1));
@@ -152,6 +203,8 @@ void main() {
     tester,
   ) async {
     await _startAsking(tester, adapter, skipStore);
+    await tester.tap(find.text('Lembro quando foi'));
+    await tester.pump();
 
     final field = tester.widget<TextField>(
       find.descendant(
@@ -166,7 +219,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
     await tester.pumpAndSettle();
 
     expect(adapter.postedBodies, isEmpty);
@@ -180,7 +233,7 @@ void main() {
     await _startAsking(tester, adapter, skipStore);
 
     await _pickDate(tester);
-    await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsOneWidget);
@@ -194,18 +247,31 @@ void main() {
     expect(find.text('Quando foi a última troca de óleo?'), findsOneWidget);
     expect(adapter.postedBodies, hasLength(1));
 
-    await tester.tap(find.text('Não sei'));
-    await tester.pumpAndSettle();
+    await _answerDontKnow(tester);
 
     expect(adapter.postedBodies, hasLength(1));
     expect(find.text('Quando foi a última revisão?'), findsOneWidget);
   });
 }
 
-/// Picks the date and types the mileage of that day. The field starts empty on
-/// purpose: every answer here is about the past, and today's reading left in
-/// place used to be saved as the mileage of a service done months ago.
+AppButton _continueButton(WidgetTester tester) =>
+    tester.widget<AppButton>(find.widgetWithText(AppButton, 'Continuar'));
+
+/// "Não sei" is chosen like any answer, then sent with Continuar.
+Future<void> _answerDontKnow(WidgetTester tester) async {
+  await tester.tap(find.text('Não sei'));
+  await tester.pump();
+  await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+  await tester.pumpAndSettle();
+}
+
+/// Chooses "Lembro quando foi", picks the date and types the mileage of that
+/// day. The field starts empty on purpose: every answer here is about the
+/// past, and today's reading left in place used to be saved as the mileage of
+/// a service done months ago.
 Future<void> _pickDate(WidgetTester tester, {String mileage = '48320'}) async {
+  await tester.tap(find.text('Lembro quando foi'));
+  await tester.pump();
   await tester.tap(find.text('Escolher data'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('OK'));

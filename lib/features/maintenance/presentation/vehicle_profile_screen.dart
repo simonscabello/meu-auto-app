@@ -24,7 +24,6 @@ import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
-import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 /// "O que o seu carro tem" — the one place the personalisation is visible and
 /// reversible.
@@ -35,14 +34,17 @@ import 'package:meu_auto/shared/widgets/app_surface.dart';
 class VehicleProfileScreen extends ConsumerWidget {
   const VehicleProfileScreen({super.key});
 
+  /// The same words as the row that opens it, on Manutenção.
+  static const title = 'O que o seu carro tem';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
     if (vehicle == null) {
-      return const AppScaffold(title: 'Seu carro', body: SizedBox.shrink());
+      return const AppScaffold(title: title, body: SizedBox.shrink());
     }
     return AppScaffold(
-      title: 'Seu carro',
+      title: title,
       body: VehicleProfileView(vehicleId: vehicle.id),
     );
   }
@@ -130,7 +132,7 @@ class VehicleProfileView extends ConsumerWidget {
         message: '${plan.itemName} voltou para a lista.',
       );
     } on ApiFailure catch (failure) {
-      showAppSnackBar(
+      showAppErrorSnackBar(
         messenger,
         message: ApiFormErrors.bannerOf(failure) ?? failure.message,
       );
@@ -140,8 +142,10 @@ class VehicleProfileView extends ConsumerWidget {
 
 /// The profile as pure presentation. No providers, so the copy is testable.
 ///
-/// It descends in this order: what is still unknown and can be answered,
-/// what the car uses, what it does not.
+/// It descends in this order: what is still unknown and can be answered, what
+/// the car uses, what it does not. Each is one group — the open questions
+/// share one surface, the two lists one each — so the screen reads as three
+/// blocks rather than a stack of cards.
 class VehicleProfileContent extends StatelessWidget {
   const VehicleProfileContent({
     super.key,
@@ -171,7 +175,8 @@ class VehicleProfileContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final hasQuestions =
+        !profile.powertrainKnown || profile.questions.isNotEmpty;
 
     return ListView(
       padding: AppSpacing.screenHeaded,
@@ -181,63 +186,36 @@ class VehicleProfileContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
             child: Text(
               'Ainda não temos um plano para este carro. '
-              'Você escolhe o que quer acompanhar.',
+              'Escolha o que quer acompanhar.',
               style: theme.textTheme.bodyLarge,
             ),
           ),
           const SizedBox(height: appGroupGap),
         ],
 
-        // The one gap that blocks everything about the engine. It is not a
-        // profile question, because the answer lives on the vehicle itself.
-        if (!profile.powertrainKnown) ...[
-          AppSurface(
-            variant: AppSurfaceVariant.grouped,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const AppIconWell(
-                      icon: Icons.local_gas_station_outlined,
-                      tone: AppIconWellTone.accent,
-                    ),
-                    const SizedBox(width: AppSpacing.s12),
-                    Expanded(
-                      child: Text(
-                        'Qual o combustível do seu carro?',
-                        style: theme.textTheme.titleSmall,
-                      ),
-                    ),
-                  ],
+        if (hasQuestions) ...[
+          AppGroup(
+            title: 'Falta responder',
+            dividerIndent: AppGroup.textIndent,
+            children: [
+              // The one gap that blocks everything about the engine. It is not
+              // a profile question, because the answer lives on the vehicle.
+              if (!profile.powertrainKnown)
+                ProfileQuestionBlock(
+                  prompt: 'Qual o combustível do seu carro?',
+                  help:
+                      'É o que diz o que o carro tem e o que não tem. Sem essa '
+                      'resposta, a gente não chuta.',
+                  answers: [('Informar', onFixFuel)],
                 ),
-                const SizedBox(height: AppSpacing.s8),
-                Text(
-                  'É o que diz o que o seu carro tem e o que ele não tem. '
-                  'Sem essa resposta a gente não chuta.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+              for (final question in profile.questions)
+                ProfileQuestionBlock.of(
+                  question,
+                  onAnswer: onAnswer == null
+                      ? null
+                      : (answer) => onAnswer!(question.id, answer),
                 ),
-                const SizedBox(height: AppSpacing.s12),
-                AppButton(
-                  label: 'Informar',
-                  variant: AppButtonVariant.secondary,
-                  onPressed: onFixFuel,
-                  expanded: true,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: appGroupGap),
-        ],
-
-        for (final question in profile.questions) ...[
-          ProfileQuestionCard(
-            question: question,
-            onAnswer: onAnswer == null
-                ? null
-                : (answer) => onAnswer!(question.id, answer),
+            ],
           ),
           const SizedBox(height: appGroupGap),
         ],
@@ -248,7 +226,7 @@ class VehicleProfileContent extends StatelessWidget {
           title: 'Seu carro usa',
           subtitle: inUse.isEmpty
               ? null
-              : 'Estes são os itens que o Meu Auto acompanha neste carro.',
+              : 'O que o Meu Auto acompanha neste carro.',
           children: [
             for (final plan in inUse)
               AppListRow(
@@ -275,8 +253,8 @@ class VehicleProfileContent extends StatelessWidget {
           AppGroup(
             title: 'Seu carro não usa',
             subtitle:
-                'Não mostramos esses itens em lugar nenhum. Se algum estiver '
-                'errado, é só trazer de volta.',
+                'Ficam fora das listas e dos avisos. Se algum estiver errado, '
+                'toque em "Tem sim".',
             children: [
               for (final plan in notApplicable)
                 AppListRow(
@@ -297,16 +275,13 @@ class VehicleProfileContent extends StatelessWidget {
           ),
         ],
 
-        if (profile.questions.isEmpty && profile.powertrainKnown) ...[
-          const SizedBox(height: appGroupGap),
+        if (!hasQuestions) ...[
+          const SizedBox(height: AppSpacing.s24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
             child: Text(
-              'Não falta nada por aqui. Os cuidados que aparecem no app são '
-              'os que fazem sentido para este carro.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              'Não falta nada por aqui. O app só mostra o que este carro usa.',
+              style: theme.textTheme.bodySmall,
             ),
           ),
         ],
@@ -335,14 +310,15 @@ Future<void> answerProfileQuestion(
     invalidateAfterProfileWrite(ref, vehicleId);
     showAppSnackBar(messenger, message: 'Anotado.');
   } on ApiFailure catch (failure) {
-    showAppSnackBar(
+    showAppErrorSnackBar(
       messenger,
       message: ApiFormErrors.bannerOf(failure) ?? failure.message,
     );
   }
 }
 
-/// One question the server wrote, with the answers it offered.
+/// One question the server wrote, with the answers it offered, as a group of
+/// its own — what the maintenance tab shows at its top.
 class ProfileQuestionCard extends StatelessWidget {
   const ProfileQuestionCard({super.key, required this.question, this.onAnswer});
 
@@ -351,60 +327,84 @@ class ProfileQuestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return AppGroup(
+      children: [ProfileQuestionBlock.of(question, onAnswer: onAnswer)],
+    );
+  }
+}
+
+/// A question inside a group: the prompt, a line of help, and the answers as
+/// short buttons side by side.
+///
+/// Every answer offered is shown, in the order it came — including "não sei",
+/// which is a real answer and is never buried. Short and tonal rather than
+/// one full-width button per answer: three of those stacked were the
+/// heaviest thing on the screen, heavier than the list the answer changes.
+class ProfileQuestionBlock extends StatelessWidget {
+  const ProfileQuestionBlock({
+    super.key,
+    required this.prompt,
+    required this.answers,
+    this.help = '',
+  });
+
+  /// The block for a question the server wrote, answering with the value the
+  /// server offered — never the label.
+  factory ProfileQuestionBlock.of(
+    MaintenanceProfileQuestion question, {
+    Key? key,
+    ValueChanged<String>? onAnswer,
+  }) {
+    return ProfileQuestionBlock(
+      key: key ?? ValueKey(question.id),
+      prompt: question.prompt,
+      help: question.help,
+      answers: [
+        for (final option in question.options)
+          (
+            option.label,
+            onAnswer == null ? null : () => onAnswer(option.value),
+          ),
+      ],
+    );
+  }
+
+  final String prompt;
+  final String help;
+
+  /// Each answer's label and what tapping it does.
+  final List<(String, VoidCallback?)> answers;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AppSurface(
-      variant: AppSurfaceVariant.grouped,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Semantics(
+            header: true,
+            child: Text(prompt, style: theme.textTheme.titleSmall),
+          ),
+          if (help.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.s4),
+            Text(help, style: theme.textTheme.bodySmall),
+          ],
+          const SizedBox(height: AppSpacing.s12),
+          Wrap(
+            spacing: AppSpacing.s8,
+            runSpacing: AppSpacing.s8,
             children: [
-              const AppIconWell(
-                icon: Icons.help_outline,
-                tone: AppIconWellTone.accent,
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.s8),
-                      child: Text(
-                        question.prompt,
-                        style: theme.textTheme.titleSmall,
-                      ),
-                    ),
-                    if (question.help.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.s4),
-                      Text(
-                        question.help,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ],
+              for (final (label, onPressed) in answers)
+                AppButton(
+                  label: label,
+                  variant: AppButtonVariant.secondary,
+                  compact: true,
+                  onPressed: onPressed,
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: AppSpacing.s16),
-          // Every option the server offered, in the order it offered them
-          // — including "não sei", which is a real answer and is never
-          // buried.
-          for (var i = 0; i < question.options.length; i++) ...[
-            if (i > 0) const SizedBox(height: AppSpacing.s8),
-            AppButton(
-              label: question.options[i].label,
-              variant: AppButtonVariant.secondary,
-              onPressed: onAnswer == null
-                  ? null
-                  : () => onAnswer!(question.options[i].value),
-              expanded: true,
-            ),
-          ],
         ],
       ),
     );

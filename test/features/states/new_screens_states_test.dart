@@ -91,7 +91,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(AppSkeletonList), findsOneWidget);
+    // Shaped like the detail that will arrive, not a generic list.
+    expect(find.byType(AppSkeleton), findsWidgets);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
@@ -133,7 +134,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(AppSkeletonList), findsOneWidget);
+    // Shaped like the detail that will arrive, not a generic list.
+    expect(find.byType(AppSkeleton), findsWidgets);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 

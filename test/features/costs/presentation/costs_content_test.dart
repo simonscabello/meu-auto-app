@@ -70,7 +70,7 @@ void main() {
     expect(find.text('Combustível'), findsOneWidget);
     expect(find.text(r'R$ 2.912,87'), findsOneWidget);
     expect(
-      find.text('despesas do dia a dia ainda não entram nesta conta.'),
+      find.text('Despesas do dia a dia ainda não entram nesta conta.'),
       findsOneWidget,
     );
     expect(find.textContaining('Combustível ainda não'), findsNothing);

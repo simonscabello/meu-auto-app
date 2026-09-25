@@ -1,3 +1,4 @@
+import 'civil_date.dart';
 import 'formatters.dart';
 
 /// Presentation copy only. Remaining km/days come from the API; this file
@@ -63,6 +64,57 @@ String dueInDaysPhrase(int remainingDays) {
 String capitalizeFirst(String text) {
   if (text.isEmpty) return text;
   return '${text[0].toUpperCase()}${text.substring(1)}';
+}
+
+/// How late or how close, in the one dimension that decides: "Venceu há 13
+/// dias", "Vence em 21 dias", "Passou 1.200 km", "Faltam 800 km".
+///
+/// The closer dimension leads, the way [dueSummary] orders them, and only it
+/// is said: a row is read at a glance, and "venceu há 13 dias · passou 1.200
+/// km" asks the owner to weigh two facts when one decides. Figures come from
+/// the server; nothing here is date arithmetic.
+String? urgencyPhrase({int? remainingKm, int? remainingDays}) {
+  final useDays =
+      remainingDays != null &&
+      (remainingKm == null || remainingDays <= remainingKm);
+  if (useDays) return dueInDaysPhrase(remainingDays);
+  final km = remainingKmPhrase(remainingKm);
+  return km == null ? null : capitalizeFirst(km);
+}
+
+/// Upcoming, as the distance to it: "Faltam 4.200 km ou 30 dias",
+/// "Faltam 4.200 km ou 12/02/2027", "Vence em 12/02/2027".
+///
+/// The date is written as a date once it is more than about a month and a
+/// half out, because "faltam 197 dias" makes the owner do arithmetic the
+/// calendar already did.
+String? upcomingSummary({
+  int? remainingKm,
+  int? remainingDays,
+  CivilDate? dueOn,
+}) {
+  final km = remainingKm != null && remainingKm > 0
+      ? formatKm(remainingKm)
+      : null;
+
+  String? when;
+  var whenIsDate = false;
+  if (remainingDays != null && remainingDays >= 0) {
+    if (remainingDays == 0) {
+      return 'Vence hoje';
+    }
+    if (remainingDays > _phraseDaysLimit && dueOn != null) {
+      when = formatCivilDate(dueOn);
+      whenIsDate = true;
+    } else {
+      when = remainingDays == 1 ? '1 dia' : '$remainingDays dias';
+    }
+  }
+
+  if (km == null && when == null) return null;
+  if (km != null && when != null) return 'Faltam $km ou $when';
+  if (km != null) return 'Faltam $km';
+  return whenIsDate ? 'Vence em $when' : 'Faltam $when';
 }
 
 /// Joins the two remaining dimensions, leading with the closer one.

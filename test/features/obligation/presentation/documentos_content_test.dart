@@ -7,7 +7,7 @@ import 'package:meu_auto/features/obligation/domain/obligation.dart';
 import 'package:meu_auto/features/obligation/presentation/documentos_section.dart';
 
 void main() {
-  testWidgets('empty kinds show the register copy, not a blank section', (
+  testWidgets('empty kinds keep a way to register each, not a blank section', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -27,17 +27,14 @@ void main() {
     );
 
     expect(find.text('Documentos e prazos'), findsOneWidget);
-    expect(find.text('Nenhum IPVA registrado'), findsOneWidget);
-    expect(
-      find.text('Registre o IPVA deste ano para acompanhar o prazo.'),
-      findsOneWidget,
-    );
+    expect(find.text('IPVA e licenciamento'), findsOneWidget);
     expect(find.text('Registrar IPVA'), findsOneWidget);
-    expect(find.text('Nenhum licenciamento registrado'), findsOneWidget);
-    expect(find.text('Nenhum seguro registrado'), findsOneWidget);
+    expect(find.text('Registrar licenciamento'), findsOneWidget);
+    expect(find.text('Seguro'), findsOneWidget);
+    expect(find.text('Registrar seguro'), findsOneWidget);
   });
 
-  testWidgets('a registered IPVA is a card, not the empty copy', (
+  testWidgets('a registered IPVA is a row, not the register action', (
     tester,
   ) async {
     var opened = 0;
@@ -50,6 +47,7 @@ void main() {
               obligations: [_ipva],
               seguros: const [],
               onObligationTap: (_) => opened++,
+              onRegisterIpva: () {},
             ),
           ),
         ),
@@ -57,7 +55,7 @@ void main() {
     );
 
     expect(find.text('IPVA 2026'), findsOneWidget);
-    expect(find.text('Nenhum IPVA registrado'), findsNothing);
+    expect(find.text('Registrar IPVA'), findsNothing);
     await tester.tap(find.text('IPVA 2026'));
     await tester.pump();
     expect(opened, 1);
@@ -67,19 +65,22 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: DocumentosContent(
-            obligations: [],
-            seguros: [],
+            obligations: const [],
+            seguros: const [],
             showHeading: false,
+            onRegisterIpva: () {},
+            onRegisterLicenciamento: () {},
+            onRegisterSeguro: () {},
           ),
         ),
       ),
     );
 
     expect(find.text('Documentos e prazos'), findsNothing);
-    expect(find.text('IPVA'), findsOneWidget);
+    expect(find.text('IPVA e licenciamento'), findsOneWidget);
     expect(find.text('Seguro'), findsOneWidget);
   });
 }

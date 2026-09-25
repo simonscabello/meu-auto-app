@@ -8,7 +8,7 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/timeline_screen.dart';
-import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
 void main() {
   setUpAll(ensurePtBrFormatting);
@@ -63,20 +63,21 @@ void main() {
     });
   });
 
-  group('groupTimelineByDate', () {
-    test('inserts a header wherever the civil day changes', () {
-      final groups = groupTimelineByDate([
+  group('groupTimelineByMonth', () {
+    // A month is the unit people remember a service by ("foi em agosto"); a
+    // card per day turned a month of fills into a column of boxes.
+    test('closes a group wherever the month changes', () {
+      final groups = groupTimelineByMonth([
         _entry(occurredOn: const CivilDate(2026, 8, 12)),
         _entry(occurredOn: const CivilDate(2026, 8, 12), id: 'same-day'),
         _entry(occurredOn: const CivilDate(2026, 8, 3)),
         _entry(occurredOn: const CivilDate(2026, 7, 15)),
       ]);
 
-      expect(groups, hasLength(3));
-      expect(groups[0].label, '12 AGO');
-      expect(groups[0].entries, hasLength(2));
-      expect(groups[1].label, '03 AGO');
-      expect(groups[2].label, '15 JUL');
+      expect(groups, hasLength(2));
+      expect(groups[0].label, 'Agosto de 2026');
+      expect(groups[0].items, hasLength(3));
+      expect(groups[1].label, 'Julho de 2026');
     });
   });
 
@@ -98,12 +99,11 @@ void main() {
         find.text('Troca de óleo do motor, Filtro de óleo'),
         findsOneWidget,
       );
-      expect(find.text('Oficina do João'), findsOneWidget);
       expect(find.text(r'R$ 420,00'), findsOneWidget);
-      expect(find.text('98.200 km'), findsOneWidget);
-      // The weekday is part of the header now: a service is remembered as
-      // "that Monday" long after the day of the month has gone.
-      expect(find.text('10 AGO 2026 · seg'), findsOneWidget);
+      // One line under the name: when, and where on the odometer. The
+      // workshop is on the record's own screen.
+      expect(find.text('10 ago · 98.200 km'), findsOneWidget);
+      expect(find.text('Agosto de 2026'), findsOneWidget);
     });
 
     testWidgets('labels a null title from kind', (tester) async {
@@ -119,12 +119,13 @@ void main() {
 
       expect(find.text('Quilometragem registrada'), findsOneWidget);
       expect(find.text('IPVA'), findsOneWidget);
-      expect(find.text('2026'), findsOneWidget);
-      expect(find.text('10 AGO 2026 · seg'), findsOneWidget);
-      expect(find.text('15 MAR 2026 · dom'), findsOneWidget);
+      expect(find.text('10 ago · 48.320 km'), findsOneWidget);
+      // A tax has no mileage, so the reference year takes its place.
+      expect(find.text('15 mar · 2026'), findsOneWidget);
+      expect(find.text('Março de 2026'), findsOneWidget);
     });
 
-    testWidgets('an abastecimento row shows the fuel and the amount', (
+    testWidgets('an abastecimento row shows the mileage and the amount', (
       tester,
     ) async {
       await _pump(tester, [
@@ -137,9 +138,8 @@ void main() {
       ]);
 
       expect(find.text('Abastecimento'), findsOneWidget);
-      expect(find.text('Gasolina'), findsOneWidget);
       expect(find.text(r'R$ 241,30'), findsOneWidget);
-      expect(find.text('96.420 km'), findsOneWidget);
+      expect(find.text('10 ago · 96.420 km'), findsOneWidget);
     });
 
     testWidgets('a care record is labelled Cuidado, not Manutenção', (
@@ -168,12 +168,10 @@ void main() {
       expect(find.textContaining('R\$'), findsNothing);
       expect(find.textContaining('km'), findsNothing);
 
-      // The trailing column is built only when there is something to put in
-      // it. An empty Column would still take a gap out of the title's width,
-      // which is the whole reason a row with nothing on the right has to be
-      // a different widget tree rather than the same one with blanks in it.
-      final tile = tester.widget<AppTimelineTile>(find.byType(AppTimelineTile));
-      expect(tile.trailing, isNull);
+      // Nothing on the right: no value is laid out, so the name keeps the
+      // whole width.
+      final row = tester.widget<AppListRow>(find.byType(AppListRow));
+      expect(row.value, isNull);
     });
 
     testWidgets('an unknown kind does not navigate', (tester) async {
@@ -206,9 +204,20 @@ void main() {
     });
 
     testWidgets('the empty history invites the first records', (tester) async {
-      await _pump(tester, const []);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: Scaffold(
+            body: TimelineContent(
+              state: const PagedState(items: [], hasMore: false),
+              onAddRecord: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
 
-      expect(find.text('O histórico do seu carro começa aqui'), findsOneWidget);
+      expect(find.text('Nenhum registro ainda'), findsOneWidget);
       expect(find.text('Adicionar registro'), findsOneWidget);
     });
 
@@ -236,7 +245,7 @@ void main() {
       expect(find.text('Tentar de novo'), findsOneWidget);
     });
 
-    testWidgets('dark dates stay inside their day instead of a pinned band', (
+    testWidgets('each month is its own titled group, in the dark theme too', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -257,8 +266,8 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('28 AGO 2026 · sex'), findsOneWidget);
-      expect(find.text('27 FEV 2026 · sex'), findsOneWidget);
+      expect(find.text('Agosto de 2026'), findsOneWidget);
+      expect(find.text('Fevereiro de 2026'), findsOneWidget);
       expect(find.byType(SliverPersistentHeader), findsNothing);
     });
   });

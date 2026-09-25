@@ -148,7 +148,21 @@ void main() {
 
   // A strategy this build has never heard of must not blank the sentence out.
   group('care items speak as habits, not as deadlines', () {
-    test('an overdue care is time to check, not late', () {
+    // How late, in days, when the server said: the same words Início uses.
+    test('an overdue care says how late, in days', () {
+      expect(
+        planStatusPhrase(
+          _plan(
+            status: MaintenanceStatus.vencido,
+            itemKind: MaintenanceItemKind.care,
+            remainingDays: -13,
+          ),
+        ),
+        'Venceu há 13 dias',
+      );
+    });
+
+    test('an overdue care with no figure is time to check', () {
       expect(
         planStatusPhrase(
           _plan(
@@ -156,11 +170,11 @@ void main() {
             itemKind: MaintenanceItemKind.care,
           ),
         ),
-        'Está na hora de verificar.',
+        'Está na hora de verificar',
       );
     });
 
-    test('a care due soon uses the same invite', () {
+    test('a care due soon says in how many days', () {
       expect(
         planStatusPhrase(
           _plan(
@@ -169,7 +183,7 @@ void main() {
             remainingDays: 3,
           ),
         ),
-        'Está na hora de verificar.',
+        'Vence em 3 dias',
       );
     });
 
@@ -181,7 +195,7 @@ void main() {
             itemKind: MaintenanceItemKind.care,
           ),
         ),
-        'Está na hora de verificar.',
+        'Está na hora de verificar',
       );
     });
 
@@ -194,42 +208,6 @@ void main() {
           ),
         ),
         'Tudo certo',
-      );
-    });
-  });
-
-  group('the plan detail does not repeat its chip', () {
-    test('on track, it says how far off the next service is', () {
-      expect(
-        planDetailHeadline(
-          _plan(remainingKm: 60000, remainingDays: 1461, intervalKm: 60000),
-        ),
-        'faltam mais de 4 anos · faltam 60.000 km',
-      );
-    });
-
-    test('counted from new, it says so before the distance', () {
-      expect(
-        planDetailHeadline(
-          _plan(remainingKm: 12000, baseline: MaintenanceBaseline.sinceNew),
-        ),
-        'Nunca feito · faltam 12.000 km',
-      );
-    });
-
-    test('late, it keeps the list phrase', () {
-      expect(
-        planDetailHeadline(
-          _plan(status: MaintenanceStatus.vencido, remainingKm: -2000),
-        ),
-        'passou 2.000 km',
-      );
-    });
-
-    test('without a baseline, the facts speak and the line is empty', () {
-      expect(
-        planDetailHeadline(_plan(status: MaintenanceStatus.semBaseline)),
-        '',
       );
     });
   });

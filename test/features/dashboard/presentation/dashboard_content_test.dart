@@ -35,29 +35,35 @@ void main() {
     });
   });
 
-  // The rows themselves live on Avisos. Início says the count and opens what
-  // it counts; it used to list the items under the count as well, and the
-  // owner tapped "1 item vencido" to land on a page that repeated "Calibrar os
-  // pneus" — the same fact three times.
+  // Início names the late item itself and how late it is. It used to say
+  // only "1 item vencido", which made the owner tap to learn *what* — and then
+  // read the same item again on the next page.
   group('alert rows', () {
-    testWidgets('are not repeated on Início under the verdict', (tester) async {
+    testWidgets('name the late item and how late, not a count', (
+      tester,
+    ) async {
       await _pump(
         tester,
         _dashboard(
           overdue: 1,
-          items: [_alert(title: 'Calibrar os pneus', remainingDays: -13)],
+          items: [
+            _alert(
+              title: 'Calibrar os pneus',
+              remainingDays: -13,
+              severity: AlertSeverity.vencido,
+            ),
+          ],
         ),
       );
 
-      expect(find.text('1 item vencido'), findsOneWidget);
-      expect(find.text('Calibrar os pneus'), findsNothing);
+      expect(find.text('Precisa de atenção'), findsOneWidget);
+      expect(find.text('Calibrar os pneus'), findsOneWidget);
+      expect(find.text('Venceu há 13 dias'), findsOneWidget);
+      expect(find.text('1 item vencido'), findsNothing);
     });
 
-    testWidgets('a single item opens itself, not a list of one', (
-      tester,
-    ) async {
+    testWidgets('an item opens itself', (tester) async {
       Alert? opened;
-      var listOpened = false;
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
@@ -65,22 +71,25 @@ void main() {
             body: DashboardContent(
               dashboard: _dashboard(
                 overdue: 1,
-                items: [_alert(title: 'Calibrar os pneus', remainingDays: -13)],
+                items: [
+                  _alert(
+                    title: 'Calibrar os pneus',
+                    remainingDays: -13,
+                    severity: AlertSeverity.vencido,
+                  ),
+                ],
               ),
-              onSeeAllAlerts: () => listOpened = true,
               onAlertTap: (alert) => opened = alert,
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('1 item vencido'));
+      await tester.tap(find.text('Calibrar os pneus'));
       expect(opened?.title, 'Calibrar os pneus');
-      expect(listOpened, isFalse);
     });
 
-    testWidgets('two or more items open the list', (tester) async {
-      Alert? opened;
+    testWidgets('beyond two, the rest are one tap away', (tester) async {
       var listOpened = false;
       await tester.pumpWidget(
         MaterialApp(
@@ -88,23 +97,44 @@ void main() {
           home: Scaffold(
             body: DashboardContent(
               dashboard: _dashboard(
-                overdue: 1,
+                overdue: 2,
                 dueSoon: 1,
                 items: [
-                  _alert(title: 'Calibrar os pneus', remainingDays: -13),
-                  _alert(title: 'IPVA', remainingDays: 12),
+                  _alert(
+                    title: 'Calibrar os pneus',
+                    remainingDays: -13,
+                    severity: AlertSeverity.vencido,
+                  ),
+                  _alert(
+                    title: 'Correia dentada',
+                    remainingKm: -1200,
+                    severity: AlertSeverity.vencido,
+                  ),
+                  _alert(title: 'IPVA 2026', remainingDays: 12),
                 ],
               ),
               onSeeAllAlerts: () => listOpened = true,
-              onAlertTap: (alert) => opened = alert,
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('1 item vencido'));
+      expect(find.text('Calibrar os pneus'), findsOneWidget);
+      expect(find.text('Correia dentada'), findsOneWidget);
+      expect(find.text('IPVA 2026'), findsNothing);
+      await tester.tap(find.text('Ver mais 1 item'));
       expect(listOpened, isTrue);
-      expect(opened, isNull);
+    });
+
+    testWidgets('a close item says when, in days', (tester) async {
+      await _pump(
+        tester,
+        _dashboard(
+          dueSoon: 1,
+          items: [_alert(title: 'Licenciamento 2026', remainingDays: 20)],
+        ),
+      );
+      expect(find.text('Vence em 20 dias'), findsOneWidget);
     });
 
     testWidgets(
@@ -120,7 +150,10 @@ void main() {
         ]);
 
         expect(find.text('Bateria'), findsOneWidget);
-        expect(find.text('Garantia · faltam cerca de 8 meses'), findsOneWidget);
+        expect(
+          find.text('Garantia · Vence em cerca de 8 meses'),
+          findsOneWidget,
+        );
       },
     );
 
@@ -134,9 +167,9 @@ void main() {
       // The exact match is the proof: had the null been coalesced to zero, the
       // detail line would carry a distance clause as well. 'vence agora' is
       // what remainingKmPhrase(0) produces, so its absence is the guard.
-      expect(find.text('faltam 8 dias'), findsOneWidget);
-      expect(find.text('vence agora'), findsNothing);
-      expect(find.textContaining('· faltam'), findsNothing);
+      expect(find.text('Vence em 8 dias'), findsOneWidget);
+      expect(find.text('Vence agora'), findsNothing);
+      expect(find.textContaining('·'), findsNothing);
     });
 
     testWidgets('an alert with no remaining figures shows no detail line', (
@@ -147,9 +180,9 @@ void main() {
       // Only the status chip is left beside the title, so the guard has to be
       // the phrases the detail line itself would produce.
       expect(find.text('Revisão programada'), findsOneWidget);
-      expect(find.textContaining('faltam'), findsNothing);
-      expect(find.text('vence agora'), findsNothing);
-      expect(find.text('vence hoje'), findsNothing);
+      expect(find.textContaining('Faltam'), findsNothing);
+      expect(find.text('Vence agora'), findsNothing);
+      expect(find.text('Vence hoje'), findsNothing);
     });
   });
 
@@ -177,12 +210,12 @@ void main() {
 
       expect(find.text('Próximos cuidados'), findsOneWidget);
       expect(find.text('Faltam 4.200 km ou 30 dias'), findsOneWidget);
-      expect(find.text('Em 20/01/2027'), findsOneWidget);
-      // No interval arrived for either, so no bar pretends to know.
-      expect(find.byType(AppProgressBar), findsNothing);
+      expect(find.text('Vence em 20/01/2027'), findsOneWidget);
     });
 
-    testWidgets('a bar appears only for an item whose fraction is known', (
+    // A gauge on every row was a metric added because the data existed. The
+    // fraction lives on the plan's own screen.
+    testWidgets('Início draws no progress bars, even with a fraction', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -203,17 +236,28 @@ void main() {
           ),
         ),
       );
-      // Both upcoming items share the fixture's reference id, so both get
-      // the bar; the point is that the map, not the alert, decides.
-      expect(find.byType(AppProgressBar), findsNWidgets(2));
+      expect(find.byType(AppProgressBar), findsNothing);
     });
 
     testWidgets('with something late, unknown items keep a quiet row', (
       tester,
     ) async {
-      await _pump(tester, _dashboard(overdue: 1, unknownHistory: 7));
+      await _pump(
+        tester,
+        _dashboard(
+          overdue: 1,
+          unknownHistory: 7,
+          items: [
+            _alert(
+              title: 'Calibrar os pneus',
+              remainingDays: -13,
+              severity: AlertSeverity.vencido,
+            ),
+          ],
+        ),
+      );
 
-      expect(find.text('1 item vencido'), findsOneWidget);
+      expect(find.text('Calibrar os pneus'), findsOneWidget);
       expect(find.text('7 itens sem data da última vez'), findsOneWidget);
     });
 
@@ -450,10 +494,11 @@ Alert _alert({
   String? subtitle,
   int? remainingKm,
   int? remainingDays,
+  AlertSeverity severity = AlertSeverity.venceEmBreve,
 }) {
   return Alert(
     kind: AlertKind.manutencao,
-    severity: AlertSeverity.venceEmBreve,
+    severity: severity,
     title: title,
     subtitle: subtitle,
     remainingKm: remainingKm,

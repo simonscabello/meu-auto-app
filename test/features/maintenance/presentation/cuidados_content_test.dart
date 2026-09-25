@@ -22,7 +22,7 @@ void main() {
     ]);
 
     expect(find.text('Calibrar os pneus'), findsOneWidget);
-    expect(find.text('Está na hora de verificar.'), findsOneWidget);
+    expect(find.text('Vence em 8 dias'), findsOneWidget);
     expect(find.text('faltam 8 dias'), findsNothing);
     expect(find.text('0 km'), findsNothing);
     expect(find.text('aos 0 km'), findsNothing);
@@ -60,7 +60,7 @@ void main() {
       find.text('Informe a última vez para começarmos a contar'),
       findsNothing,
     );
-    expect(find.text('Está na hora de verificar.'), findsOneWidget);
+    expect(find.text('Está na hora de verificar'), findsOneWidget);
   });
 
   testWidgets('the group of items with no date starts the calibrar action', (
@@ -277,7 +277,7 @@ void main() {
       ]);
 
       expect(find.text('Feito'), findsOneWidget);
-      expect(find.text('Está na hora de verificar.'), findsOneWidget);
+      expect(find.text('Está na hora de verificar'), findsOneWidget);
     });
 
     testWidgets('shows for due-soon and sem_baseline care', (tester) async {
@@ -431,8 +431,8 @@ void main() {
         submittingIds: {'plan-calibrar_pneus'},
       );
 
-      final button = tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, 'Feito'),
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Feito'),
       );
       expect(button.onPressed, isNull);
     });
@@ -452,10 +452,7 @@ void main() {
 
     expect(find.text('Cuidados do dia a dia'), findsOneWidget);
     expect(find.text('Tudo em dia'), findsOneWidget);
-    expect(
-      find.text('Nenhum cuidado precisa da sua atenção agora.'),
-      findsOneWidget,
-    );
+    expect(find.text('Nenhum cuidado para agora'), findsOneWidget);
   });
 
   // The open question about how the car is built opens the screen. It used to

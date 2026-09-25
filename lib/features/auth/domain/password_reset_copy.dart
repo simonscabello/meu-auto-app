@@ -5,6 +5,8 @@ abstract final class PasswordResetCopy {
 
   static const linkLifetime = 'O link vale 1 hora e só pode ser usado uma vez.';
 
-  static const sessionsEnded =
-      'Senha redefinida. Todas as sessões foram encerradas. Entre com a nova senha.';
+  /// Said before the new password is typed, not after: it is a consequence
+  /// to weigh, not news.
+  static const signsOutEverywhere =
+      'Ao redefinir, todos os aparelhos saem da conta.';
 }

@@ -70,6 +70,10 @@ class _CostsScreenState extends ConsumerState<CostsScreen> {
 /// Pure presentation of the cost summary. Every figure arrived from the
 /// server — [DashboardCosts.totalCents] is the total, and the bars only
 /// scale against it. Nothing here adds the categories up.
+///
+/// Three things, top to bottom: the window, the figure, and what it is made
+/// of. The figure is the screen, so it stands on the page as a reading; the
+/// categories are one group, one line each.
 class CostsContent extends StatelessWidget {
   const CostsContent({
     super.key,
@@ -85,14 +89,13 @@ class CostsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final total = costs.totalCents.cents;
     final empty = total <= 0;
     final excluded = excludedCategoriesNote(costs.noteCategoryKeys);
-    final window = costWindowLabel(costs.periodMonths);
-    final bars = costs.bars;
 
     return ListView(
+      // Pull-to-refresh needs a scrollable even when everything fits.
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: AppSpacing.screen,
       children: [
         AppSegmented<int>(
@@ -104,69 +107,115 @@ class CostsContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.block),
-        // The total is the screen, so it is set as the screen's own reading
-        // rather than boxed. A card here would put the one figure everything
-        // else is measured against on the same footing as the bars below it.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        _Total(
+          amount: costs.totalCents,
+          window: 'Nos ${costWindowLabel(costs.periodMonths)}',
+        ),
+        if (empty) ...[
+          const SizedBox(height: AppSpacing.s16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+            child: Text(
+              emptyPeriodPhrase(costs.periodMonths),
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          if (excluded != null) ...[
+            const SizedBox(height: AppSpacing.s8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+              child: Text(excluded, style: theme.textTheme.bodySmall),
+            ),
+          ],
+        ] else ...[
+          const SizedBox(height: appGroupGap),
+          AppGroup(
+            title: 'Por categoria',
+            dividerIndent: AppGroup.textIndent,
+            footnote: excluded,
             children: [
-              Text(
-                'Custo registrado',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  letterSpacing: 0.2,
+              for (final bar in costs.bars)
+                _CategoryBar(
+                  label: bar.label,
+                  amount: bar.cents,
+                  trackedCents: total,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.s8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  costs.totalCents.format(),
-                  style: AppTypography.figure(
-                    size: 48,
-                    color: scheme.onSurface,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.s8),
-              Text(
-                window,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              if (empty) ...[
-                const SizedBox(height: AppSpacing.s12),
-                Text(
-                  emptyPeriodPhrase(costs.periodMonths),
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
             ],
           ),
-        ),
-        const SizedBox(height: AppSpacing.block),
-        AppGroup(
-          title: 'Por categoria',
-          dividerIndent: 0,
-          footnote: excluded,
-          children: [
-            for (final bar in bars)
-              _CategoryBar(
-                label: bar.label,
-                amount: bar.cents,
-                trackedCents: total,
-              ),
-          ],
-        ),
+        ],
       ],
     );
   }
 }
 
+/// The total as a reading, the way Início sets the mileage: the figure large
+/// and tabular, the currency beside it quieter, the window under it.
+class _Total extends StatelessWidget {
+  const _Total({required this.amount, required this.window});
+
+  final Money amount;
+  final String window;
+
+  static const _symbol = 'R\$ ';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final formatted = amount.format();
+    final hasSymbol = formatted.startsWith(_symbol);
+    final figure = hasSymbol ? formatted.substring(_symbol.length) : formatted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Custo registrado',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          // Scaled down rather than wrapped: seven figures at a large text
+          // size are wider than a small phone, and a total split over two
+          // lines is not a total.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  if (hasSymbol)
+                    TextSpan(
+                      text: _symbol,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  TextSpan(
+                    text: figure,
+                    style: AppTypography.figure(
+                      size: 44,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          Text(window, style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
+/// One category: its name and amount on one line, and under them a thin bar
+/// of its share of the total with the share in figures at its end.
 class _CategoryBar extends StatelessWidget {
   const _CategoryBar({
     required this.label,
@@ -188,53 +237,68 @@ class _CategoryBar extends StatelessWidget {
     return AppListRowShell(
       semanticLabel: '$label. ${amount.format()}. $percent por cento',
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            label,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: AppSpacing.s4),
-          // The figure and its share on a line of their own, so a long
-          // category name at a large text scale never pushes them off the
-          // edge.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // The name wraps before the amount moves: at a large text size
+              // "IPVA e licenciamento" takes two lines and the figure stays
+              // whole at the edge.
               Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    amount.format(),
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: AppTypography.tabular,
-                    ),
-                  ),
+                child: Text(
+                  label,
+                  style: theme.textTheme.titleSmall,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: AppSpacing.s8),
+              const SizedBox(width: AppSpacing.s12),
               Text(
-                '$percent%',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                amount.format(),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
                   fontFeatures: AppTypography.tabular,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.s12),
-          AppProgressBar(value: fraction, height: 6),
+          const SizedBox(height: AppSpacing.s8),
+          Row(
+            children: [
+              Expanded(
+                child: AppProgressBar(
+                  value: fraction,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s12),
+              // A fixed column, so every bar in the group ends at the same
+              // place whatever its share reads.
+              SizedBox(
+                width: AppSpacing.s40,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '$percent%',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFeatures: AppTypography.tabular,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
+/// The note stands on its own line, so it starts as a sentence does. When
+/// fuel is counted the copy begins with "despesas", which read as a line cut
+/// off at the front.
 /// Layout only: how much of the track this category occupies. The total is
 /// [trackedCents] from the server — this does not add the other categories.
 double _barFraction(int cents, int trackedCents) {
@@ -259,12 +323,14 @@ class _CostsSkeleton extends StatelessWidget {
     return ListView(
       padding: AppSpacing.screen,
       children: const [
-        AppSkeleton(width: double.infinity, height: 46),
+        AppSkeleton(width: double.infinity, height: 48),
         SizedBox(height: AppSpacing.block),
-        AppSkeleton(width: 140, height: 14),
+        AppSkeleton(width: 120, height: 14),
         SizedBox(height: AppSpacing.s12),
-        AppSkeleton(width: 220, height: 48),
-        SizedBox(height: AppSpacing.block),
+        AppSkeleton(width: 220, height: 44),
+        SizedBox(height: AppSpacing.s8),
+        AppSkeleton(width: 140, height: 12),
+        SizedBox(height: appGroupGap),
         AppSkeleton(width: double.infinity, height: 220),
       ],
     );

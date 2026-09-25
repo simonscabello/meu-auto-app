@@ -364,9 +364,7 @@ class HomeAttention extends StatelessWidget {
             ),
           if (hidden > 0 && onSeeAll != null)
             AppListRow(
-              title: hidden == 1
-                  ? 'Ver mais 1 item'
-                  : 'Ver mais $hidden itens',
+              title: hidden == 1 ? 'Ver mais 1 item' : 'Ver mais $hidden itens',
               iconTone: AppIconWellTone.accent,
               onTap: onSeeAll,
               showChevron: true,
@@ -391,7 +389,8 @@ class HomeAttention extends StatelessWidget {
       onTap: switch (verdict.kind) {
         VerdictKind.unknown => onUnknownTap,
         VerdictKind.nothingTracked => onProfileTap,
-        _ => null,
+        VerdictKind.overdue || VerdictKind.dueSoon => onSeeAll,
+        VerdictKind.fine => null,
       },
     );
     if (prompt == null) return line;
@@ -419,13 +418,20 @@ class _VerdictLine extends StatelessWidget {
     final scheme = theme.colorScheme;
     final tones = AppTones.of(context);
     final fine = verdict.kind == VerdictKind.fine;
-    final glyph = fine ? tones.success : scheme.onSurfaceVariant;
+    // Loud only when the server counted something late or close but sent
+    // no item to name — an older server, or a list cut short.
+    final visual = verdict.loud
+        ? statusColors(verdict.status, theme.brightness)
+        : null;
+    final glyph =
+        visual?.foreground ?? (fine ? tones.success : scheme.onSurfaceVariant);
 
     final line = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(
-          fine ? Icons.check_circle_outline : Icons.help_outline,
+          visual?.icon ??
+              (fine ? Icons.check_circle_outline : Icons.help_outline),
           size: 22,
           color: glyph,
         ),

@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meu_auto/core/domain/civil_date.dart';
+import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/core/network/api_client.dart';
 import 'package:meu_auto/core/session/token_storage.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
@@ -13,6 +15,7 @@ import 'package:meu_auto/features/abastecimento/data/abastecimento_repository.da
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_segmented.dart';
 
 void main() {
   late _FillAdapter adapter;
@@ -44,29 +47,54 @@ void main() {
     expect(find.text('Hoje'), findsOneWidget);
   });
 
-  testWidgets('posto and observação stay behind Mais detalhes', (tester) async {
+  testWidgets('a new fill is titled Abastecer and saved with Salvar', (
+    tester,
+  ) async {
     await _open(tester, adapter);
 
-    expect(find.text('Posto (opcional)'), findsNothing);
-    expect(find.text('Observação (opcional)'), findsNothing);
-    expect(find.text('Mais detalhes'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Mais detalhes'));
-    await tester.tap(find.text('Mais detalhes'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Posto (opcional)'), findsOneWidget);
-    expect(find.text('Observação (opcional)'), findsOneWidget);
+    expect(find.text('Abastecer'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Salvar'), findsOneWidget);
+    // One primary action: the way to the history is not on the form.
+    expect(find.text('Ver histórico'), findsNothing);
   });
 
-  testWidgets('a single fuel does not render a selector', (tester) async {
+  testWidgets('editing says so and opens the details it already has', (
+    tester,
+  ) async {
+    await _open(tester, adapter, existing: _existing());
+
+    expect(find.text('Editar abastecimento'), findsOneWidget);
+    expect(find.text('Posto'), findsOneWidget);
+    expect(find.text('Auto Posto Primavera'), findsOneWidget);
+    expect(find.text('Adicionar detalhes'), findsNothing);
+  });
+
+  testWidgets('posto and observação stay behind Adicionar detalhes', (
+    tester,
+  ) async {
+    await _open(tester, adapter);
+
+    expect(find.text('Posto'), findsNothing);
+    expect(find.text('Observação'), findsNothing);
+    expect(find.text('Adicionar detalhes'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Adicionar detalhes'));
+    await tester.tap(find.text('Adicionar detalhes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Posto'), findsOneWidget);
+    expect(find.text('Observação'), findsOneWidget);
+  });
+
+  testWidgets('a single fuel is stated, not chosen', (tester) async {
     await _open(tester, adapter, fuelTypes: const [AbastecimentoFuel.diesel]);
 
+    expect(find.byType(AppSegmented<AbastecimentoFuel>), findsNothing);
     expect(find.byType(ChoiceChip), findsNothing);
     expect(find.text('Diesel'), findsOneWidget);
   });
 
-  testWidgets('several fuels render chips and prefer the last used', (
+  testWidgets('several fuels are one tap apart and start on the last used', (
     tester,
   ) async {
     await _open(
@@ -76,22 +104,28 @@ void main() {
       lastFuel: AbastecimentoFuel.etanol,
     );
 
-    expect(find.byType(ChoiceChip), findsNWidgets(2));
-    final etanol = tester.widget<ChoiceChip>(
-      find.widgetWithText(ChoiceChip, 'Etanol'),
+    final picker = find.byType(AppSegmented<AbastecimentoFuel>);
+    expect(picker, findsOneWidget);
+    expect(
+      tester.widget<AppSegmented<AbastecimentoFuel>>(picker).value,
+      AbastecimentoFuel.etanol,
     );
-    expect(etanol.selected, isTrue);
+
+    await tester.tap(find.text('Gasolina'));
+    await tester.pumpAndSettle();
+    await _fillRequired(tester);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.postedBodies.single['fuel'], 'gasolina');
   });
 
   testWidgets('saving posts volume_ml from a comma decimal', (tester) async {
     await _open(tester, adapter);
     await _fillRequired(tester);
-    await tester.ensureVisible(
-      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
-    );
-    await tester.tap(
-      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
-    );
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
     await tester.pumpAndSettle();
 
     expect(adapter.postedBodies, hasLength(1));
@@ -110,12 +144,8 @@ void main() {
     adapter.rejectFirstPost = true;
     await _open(tester, adapter);
     await _fillRequired(tester);
-    await tester.ensureVisible(
-      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
-    );
-    await tester.tap(
-      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
-    );
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsOneWidget);
@@ -131,12 +161,8 @@ void main() {
     adapter.rejectFirstPost = true;
     await _open(tester, adapter);
     await _fillRequired(tester);
-    await tester.ensureVisible(
-      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
-    );
-    await tester.tap(
-      find.widgetWithText(FilledButton, 'Registrar abastecimento'),
-    );
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('O valor está certo, registrar assim'));
@@ -147,6 +173,62 @@ void main() {
     expect(adapter.postedBodies.last['source'], 'correction');
     expect(adapter.postedBodies.last['id'], adapter.postedBodies.first['id']);
     expect(adapter.postedBodies.last['volume_ml'], 34700);
+  });
+
+  testWidgets('choosing "corrigir o valor" keeps the form and sends nothing', (
+    tester,
+  ) async {
+    adapter.rejectFirstPost = true;
+    await _open(tester, adapter);
+    await _fillRequired(tester);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Corrigir o valor'));
+    await tester.pumpAndSettle();
+
+    expect(adapter.postedBodies, hasLength(1));
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Abastecer'), findsOneWidget);
+  });
+
+  testWidgets('lays out on 360x640 with the font turned up', (tester) async {
+    tester.view.physicalSize = const Size(360, 640) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: theme,
+            home: MediaQuery(
+              data: const MediaQueryData(
+                textScaler: TextScaler.linear(1.6),
+                size: Size(360, 640),
+              ),
+              child: Scaffold(
+                body: AbastecimentoFormSheet(
+                  vehicleId: _vehicleId,
+                  currentMileageKm: 139011,
+                  fuelTypes: const [
+                    AbastecimentoFuel.gasolina,
+                    AbastecimentoFuel.etanol,
+                    AbastecimentoFuel.diesel,
+                    AbastecimentoFuel.gnv,
+                  ],
+                  existing: _existing(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    }
   });
 }
 
@@ -160,6 +242,7 @@ Future<void> _open(
   _FillAdapter adapter, {
   List<AbastecimentoFuel> fuelTypes = const [AbastecimentoFuel.diesel],
   AbastecimentoFuel? lastFuel,
+  Abastecimento? existing,
 }) async {
   final client = ApiClient(adapter: adapter, logPrint: (_) {});
   addTearDown(client.close);
@@ -185,6 +268,7 @@ Future<void> _open(
                   currentMileageKm: 96420,
                   fuelTypes: fuelTypes,
                   lastFuel: lastFuel,
+                  existing: existing,
                   newId: () => _fixedId,
                 ),
                 child: const Text('abrir'),
@@ -198,6 +282,28 @@ Future<void> _open(
 
   await tester.tap(find.text('abrir'));
   await tester.pumpAndSettle();
+}
+
+Abastecimento _existing() {
+  return Abastecimento(
+    id: _fixedId,
+    vehicleId: _vehicleId,
+    occurredOn: const CivilDate(2026, 9, 21),
+    mileageKm: 96420,
+    volumeMl: 39830,
+    totalCostCents: const Money.fromCents(24655),
+    pricePerLiterCents: const Money.fromCents(619),
+    fuel: AbastecimentoFuel.diesel,
+    fullTank: true,
+    stationName: 'Auto Posto Primavera',
+    consumption: const Consumption(
+      value: 17.2,
+      unit: 'km_per_liter',
+      status: ConsumptionStatus.ok,
+    ),
+    createdAt: DateTime.utc(2026, 9, 21),
+    updatedAt: DateTime.utc(2026, 9, 21),
+  );
 }
 
 const _vehicleId = '22222222-2222-7222-8222-222222222222';

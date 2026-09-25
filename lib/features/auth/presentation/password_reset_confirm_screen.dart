@@ -14,7 +14,6 @@ import 'package:meu_auto/features/auth/domain/password_reset_copy.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/auth/presentation/auth_password_field.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 
 class PasswordResetConfirmScreen extends ConsumerStatefulWidget {
@@ -112,57 +111,20 @@ class _PasswordResetConfirmScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (_succeeded) {
-      return AppScaffold(
-        title: 'Redefinir senha',
-        body: ListView(
-          padding: AppSpacing.screenHeaded,
-          children: [
-            const SizedBox(height: AppSpacing.s16),
-            const AppIconWell(
-              icon: Icons.check_circle_outline,
-              size: AppIconWellSize.xl,
-              tone: AppIconWellTone.accent,
-            ),
-            const SizedBox(height: AppSpacing.s24),
-            Text(
-              PasswordResetCopy.sessionsEnded,
-              style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
-            ),
-            const SizedBox(height: AppSpacing.s32),
-            AppButton(
-              label: 'Entrar',
-              onPressed: () => unawaited(_goToLogin()),
-              expanded: true,
-            ),
-          ],
-        ),
+      return _ResetOutcome(
+        title: 'Senha redefinida',
+        message: 'Todos os aparelhos saíram da conta. Entre com a nova senha.',
+        actionLabel: 'Entrar',
+        onAction: () => unawaited(_goToLogin()),
       );
     }
 
     if (_invalidLink && _fieldErrors.isEmpty) {
-      return AppScaffold(
-        title: 'Redefinir senha',
-        body: ListView(
-          padding: AppSpacing.screenHeaded,
-          children: [
-            const SizedBox(height: AppSpacing.s16),
-            const AppIconWell(
-              icon: Icons.link_off_outlined,
-              size: AppIconWellSize.xl,
-            ),
-            const SizedBox(height: AppSpacing.s24),
-            Text(
-              _banner ?? 'Link de redefinição inválido ou expirado.',
-              style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
-            ),
-            const SizedBox(height: AppSpacing.s32),
-            AppButton(
-              label: 'Pedir outro link',
-              onPressed: () => context.go(AppRoutes.passwordReset),
-              expanded: true,
-            ),
-          ],
-        ),
+      return _ResetOutcome(
+        title: 'Link inválido ou expirado',
+        message: PasswordResetCopy.linkLifetime,
+        actionLabel: 'Pedir outro link',
+        onAction: () => context.go(AppRoutes.passwordReset),
       );
     }
 
@@ -172,11 +134,18 @@ class _PasswordResetConfirmScreenState
         padding: AppSpacing.screenHeaded,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
+          Text(
+            PasswordResetCopy.signsOutEverywhere,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s24),
           if (_banner != null) AuthFormBanner(message: _banner!),
           AuthPasswordField(
             controller: _passwordController,
             label: 'Nova senha',
-            hint: 'Mínimo de 8 caracteres. Sem exigência de símbolo ou número.',
+            hint: newPasswordHint,
             enabled: !_submitting,
             autofillHints: const [AutofillHints.newPassword],
             errorText: _fieldErrors['password'],
@@ -201,6 +170,48 @@ class _PasswordResetConfirmScreenState
             onPressed: _canSubmit ? _submit : null,
             expanded: true,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where the link leads when there is nothing left to type: what happened,
+/// in a heading and one sentence, and the one way on.
+class _ResetOutcome extends StatelessWidget {
+  const _ResetOutcome({
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppScaffold(
+      title: 'Redefinir senha',
+      body: ListView(
+        padding: AppSpacing.screenHeaded,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(title, style: theme.textTheme.headlineSmall),
+          ),
+          const SizedBox(height: AppSpacing.s8),
+          Text(
+            message,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s32),
+          AppButton(label: actionLabel, onPressed: onAction, expanded: true),
         ],
       ),
     );

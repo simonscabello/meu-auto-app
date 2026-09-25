@@ -8,6 +8,7 @@ import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 
 /// Where the name is actually changed.
@@ -16,6 +17,9 @@ import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 /// that opens here. The write lives in the sheet because the field-level 422
 /// belongs beside the field. The screen behind keeps the confirmation and the
 /// undo, because by then this sheet is gone.
+///
+/// A form sheet: it does not close by dragging, and the close button, the
+/// back button and a tap outside all ask before throwing away a changed name.
 class NameEditSheet extends ConsumerStatefulWidget {
   const NameEditSheet({super.key, required this.currentName});
 
@@ -25,6 +29,7 @@ class NameEditSheet extends ConsumerStatefulWidget {
   static Future<String?> show(BuildContext context, String currentName) {
     return showAppSheet<String>(
       context,
+      isForm: true,
       builder: (sheetContext) => NameEditSheet(currentName: currentName),
     );
   }
@@ -78,36 +83,41 @@ class _NameEditSheetState extends ConsumerState<NameEditSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return AppSheetBody(
-      children: [
-        const AppSheetHeader(title: 'Seu nome', closable: false),
-        const SizedBox(height: AppSpacing.s16),
-        if (_banner != null) AuthFormBanner(message: _banner!),
-        TextField(
-          controller: _controller,
-          enabled: !_saving,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.done,
-          autofillHints: const [AutofillHints.name],
-          inputFormatters: [LengthLimitingTextInputFormatter(120)],
-          onChanged: (_) => setState(() => _fieldError = null),
-          onSubmitted: (_) {
-            if (_dirty && !_saving) _save();
-          },
-          decoration: InputDecoration(
-            labelText: 'Nome',
-            errorText: _fieldError,
+    return AppDiscardGuard(
+      listenable: _controller,
+      isDirty: () => _dirty,
+      busy: _saving,
+      child: AppSheetBody(
+        children: [
+          const AppSheetHeader(title: 'Alterar nome'),
+          const SizedBox(height: AppSpacing.s16),
+          if (_banner != null) AuthFormBanner(message: _banner!),
+          TextField(
+            controller: _controller,
+            enabled: !_saving,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.name],
+            inputFormatters: [LengthLimitingTextInputFormatter(120)],
+            onChanged: (_) => setState(() => _fieldError = null),
+            onSubmitted: (_) {
+              if (_dirty && !_saving) _save();
+            },
+            decoration: InputDecoration(
+              labelText: 'Nome',
+              errorText: _fieldError,
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.s24),
-        AppButton(
-          label: 'Salvar',
-          loading: _saving,
-          onPressed: _dirty && !_saving ? _save : null,
-          expanded: true,
-        ),
-      ],
+          const SizedBox(height: AppSpacing.s24),
+          AppButton(
+            label: 'Salvar',
+            loading: _saving,
+            onPressed: _dirty && !_saving ? _save : null,
+            expanded: true,
+          ),
+        ],
+      ),
     );
   }
 }

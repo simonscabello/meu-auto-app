@@ -1,39 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
-import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
+import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
-import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
+/// The owner's cars, each opening its own detail.
+///
+/// The same row as the switcher — name, make and year, the plate as a plate,
+/// a tick on the car in use — so the two lists read as one list. Adding a
+/// car is the last row of it rather than a button in the bar.
 class VehicleListScreen extends ConsumerWidget {
   const VehicleListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final list = ref.watch(vehiclesProvider);
+    final selectedId = ref.watch(selectedVehicleProvider).valueOrNull?.id;
     return AppScaffold(
       title: 'Meus veículos',
-      actions: [
-        AppIconButton(
-          label: 'Adicionar veículo',
-          icon: Icons.add,
-          onPressed: () => context.push(AppRoutes.vehicleNew),
-        ),
-      ],
       onRefresh: () => ref.read(vehiclesProvider.notifier).reload(),
       body: list.when(
-        loading: () =>
-            const Padding(padding: AppSpacing.screen, child: AppSkeletonList()),
+        loading: () => const Padding(
+          padding: AppSpacing.screen,
+          child: AppSkeletonList(count: 2),
+        ),
         error: (error, _) => AppErrorState.fromError(
           error: error,
           onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
@@ -42,31 +41,33 @@ class VehicleListScreen extends ConsumerWidget {
           if (state.vehicles.isEmpty) {
             return AppEmptyState(
               icon: Icons.directions_car_outlined,
-              title: 'Cadastre seu primeiro veículo',
+              title: 'Nenhum veículo cadastrado',
               message:
-                  'Com o carro cadastrado, os prazos e o histórico ficam neste app.',
-              actionLabel: 'Cadastrar',
+                  'Cadastre o carro para acompanhar prazos, gastos e '
+                  'histórico.',
+              actionLabel: 'Cadastrar veículo',
               onAction: () => context.push(AppRoutes.vehicleNew),
             );
           }
           return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: AppSpacing.screen,
             children: [
               AppGroup(
                 children: [
                   for (final vehicle in state.vehicles)
-                    _VehicleTile(key: ValueKey(vehicle.id), vehicle: vehicle),
-                ],
-              ),
-              const SizedBox(height: appGroupGap),
-              AppGroup(
-                children: [
+                    VehicleChoiceRow(
+                      key: ValueKey(vehicle.id),
+                      vehicle: vehicle,
+                      selected: vehicle.id == selectedId,
+                      showChevron: true,
+                      onTap: () => context.push(AppRoutes.vehicle(vehicle.id)),
+                    ),
                   AppListRow(
                     icon: Icons.add,
                     iconTone: AppIconWellTone.accent,
                     title: 'Adicionar veículo',
                     onTap: () => context.push(AppRoutes.vehicleNew),
-                    showChevron: true,
                   ),
                 ],
               ),
@@ -75,36 +76,5 @@ class VehicleListScreen extends ConsumerWidget {
         },
       ),
     );
-  }
-}
-
-class _VehicleTile extends StatelessWidget {
-  const _VehicleTile({super.key, required this.vehicle});
-
-  final Vehicle vehicle;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppListRow(
-      icon: Icons.directions_car_outlined,
-      title: vehicle.shortName,
-      subtitle: _detail(),
-      onTap: () => context.push(AppRoutes.vehicle(vehicle.id)),
-      showChevron: true,
-    );
-  }
-
-  /// What tells two of the owner's cars apart, in one line.
-  ///
-  /// The nickname is already the title when there is one, so the make and
-  /// model only appear underneath in that case.
-  String _detail() {
-    final nick = vehicle.nickname?.trim();
-    final parts = <String>[
-      if (nick != null && nick.isNotEmpty) '${vehicle.brand} ${vehicle.model}',
-      ?vehicle.plate,
-      formatKm(vehicle.currentMileageKm),
-    ];
-    return parts.join(' · ');
   }
 }

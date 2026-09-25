@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:meu_auto/features/profile/domain/profile_copy.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
@@ -10,12 +11,12 @@ import 'package:meu_auto/core/theme/theme_mode_provider.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
-import 'package:meu_auto/features/profile/domain/profile_copy.dart';
 import 'package:meu_auto/features/profile/presentation/name_edit_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_segmented.dart';
 import 'package:meu_auto/shared/widgets/app_setting_row.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
@@ -115,13 +116,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-/// Perfil as a settings screen: a list of what is set and a way to change
-/// each thing, grouped, with the dangerous rows kept apart from the ordinary
-/// ones.
+/// Under the account group: why the e-mail, shown in the header, has no row
+/// of its own to tap.
+
+/// Perfil: who is signed in, then a list of what is set and a way to change
+/// each thing, grouped, with the exits kept apart and last.
 ///
-/// Nothing here is invented. There is no version row and no privacy link
-/// because the app has neither yet — a settings screen that lies about what
-/// it can do is worse than a short one.
+/// The header is the person — the initial, the name, the e-mail — set as
+/// type on the page, not in a card: it is not a setting and nothing in it is
+/// tapped. Nothing here is invented. There is no version row and no privacy
+/// link because the app has neither yet — a settings screen that lies about
+/// what it can do is worse than a short one.
 class ProfileContent extends StatelessWidget {
   const ProfileContent({
     super.key,
@@ -148,26 +153,20 @@ class ProfileContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return ListView(
-      padding: AppSpacing.screen,
+      padding: AppSpacing.screenHeaded,
       children: [
+        _ProfileHeader(user: user),
+        const SizedBox(height: AppSpacing.s32),
         AppGroup(
           title: 'Conta',
-          dividerIndent: 44,
-          footnote: ProfileCopy.emailExplanation,
+          footnote: ProfileCopy.emailNote,
           children: [
             AppSettingRow(
               label: 'Nome',
               icon: Icons.badge_outlined,
               value: user.name,
               onTap: loggingOut ? null : onEditName,
-            ),
-            AppSettingRow(
-              label: 'E-mail',
-              icon: Icons.mail_outline,
-              value: user.email,
             ),
             AppSettingRow(
               label: 'Alterar senha',
@@ -179,7 +178,6 @@ class ProfileContent extends StatelessWidget {
         const SizedBox(height: appGroupGap),
         AppGroup(
           title: 'Veículos',
-          dividerIndent: 44,
           children: [
             AppSettingRow(
               label: 'Meus veículos',
@@ -189,65 +187,40 @@ class ProfileContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: appGroupGap),
-        AppGroup(
+        // The segmented control is its own surface; a card around it would
+        // be a box in a box.
+        const AppSectionHeader(
           title: 'Aparência',
-          dividerIndent: 0,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Tema',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s12),
-                  AppSegmented<ThemeMode>(
-                    value: themeMode,
-                    enabled: !loggingOut,
-                    onChanged: onThemeMode,
-                    options: const [
-                      AppSegmentedOption(
-                        value: ThemeMode.dark,
-                        label: 'Escuro',
-                      ),
-                      AppSegmentedOption(
-                        value: ThemeMode.light,
-                        label: 'Claro',
-                      ),
-                      AppSegmentedOption(
-                        value: ThemeMode.system,
-                        label: 'Sistema',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          subtitle: 'Vale só neste aparelho.',
+        ),
+        AppSegmented<ThemeMode>(
+          value: themeMode,
+          enabled: !loggingOut,
+          onChanged: onThemeMode,
+          options: const [
+            AppSegmentedOption(value: ThemeMode.dark, label: 'Escuro'),
+            AppSegmentedOption(value: ThemeMode.light, label: 'Claro'),
+            AppSegmentedOption(value: ThemeMode.system, label: 'Sistema'),
           ],
         ),
         const SizedBox(height: AppSpacing.s40),
-        // Kept apart, and last. Signing out and deleting an account are not
-        // settings; they are exits, and they must not sit a thumb's width
-        // from the theme picker.
+        // Kept apart, untitled, and last. Signing out and deleting an account
+        // are not settings; they are exits, and they must not sit a thumb's
+        // width from the theme picker. "Sair" goes nowhere, so it carries no
+        // chevron; the red is only on the words and the glyph.
         AppGroup(
-          title: 'Sessão',
-          dividerIndent: 44,
           children: [
             AppSettingRow(
               label: 'Sair',
               icon: Icons.logout_outlined,
-              onTap: onLogout,
+              onTap: loggingOut ? null : onLogout,
               trailing: loggingOut
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : null,
+                  : const SizedBox.shrink(),
             ),
             AppSettingRow(
               label: 'Excluir minha conta',
@@ -256,6 +229,74 @@ class ProfileContent extends StatelessWidget {
               onTap: loggingOut ? null : onDeleteAccount,
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Who is signed in: the initial large, the name, the e-mail.
+///
+/// The same disc as the account button on every tab, grown, so the screen
+/// visibly is the place that button opens.
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.user});
+
+  final User user;
+
+  static const double _avatar = 64;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final name = user.name.trim();
+    final initial = name.isEmpty ? null : name.characters.first.toUpperCase();
+
+    return Row(
+      children: [
+        ExcludeSemantics(
+          child: Container(
+            width: _avatar,
+            height: _avatar,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: scheme.secondaryContainer,
+            ),
+            child: initial == null
+                ? Icon(
+                    Icons.person_outline,
+                    size: 28,
+                    color: scheme.onSecondaryContainer,
+                  )
+                : Text(
+                    initial,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      color: scheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(name, style: theme.textTheme.headlineSmall),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                user.email,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

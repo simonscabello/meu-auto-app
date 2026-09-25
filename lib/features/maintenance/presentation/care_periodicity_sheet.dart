@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meu_auto/core/domain/phrases.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
@@ -88,10 +89,10 @@ class _CarePeriodicitySheetState extends ConsumerState<CarePeriodicitySheet> {
     super.dispose();
   }
 
-  String get _recommendedLabel {
+  /// "A cada 21 dias" under "Recomendado", when the catalogue says how often.
+  String? get _recommendedDetail {
     final phrase = intervalPhrase(days: widget.defaultIntervalDays);
-    if (phrase == null) return 'Padrão recomendado';
-    return 'Padrão recomendado ($phrase)';
+    return phrase == null ? null : capitalizeFirst(phrase);
   }
 
   Future<void> _submit() async {
@@ -146,32 +147,32 @@ class _CarePeriodicitySheetState extends ConsumerState<CarePeriodicitySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final options = <(CarePeriodicityChoice, String)>[
-      (CarePeriodicityChoice.recommended, _recommendedLabel),
-      (CarePeriodicityChoice.weekly, 'Toda semana'),
-      (CarePeriodicityChoice.everyFifteenDays, 'A cada 15 dias'),
-      (CarePeriodicityChoice.monthly, 'Todo mês'),
-      (CarePeriodicityChoice.custom, 'Personalizado…'),
-      (CarePeriodicityChoice.dontRemind, 'Não lembrar'),
+    final options = <(CarePeriodicityChoice, String, String?)>[
+      (CarePeriodicityChoice.recommended, 'Recomendado', _recommendedDetail),
+      (CarePeriodicityChoice.weekly, 'Toda semana', null),
+      (CarePeriodicityChoice.everyFifteenDays, 'A cada 15 dias', null),
+      (CarePeriodicityChoice.monthly, 'Todo mês', null),
+      (CarePeriodicityChoice.custom, 'Personalizado…', null),
+      (CarePeriodicityChoice.dontRemind, 'Não lembrar', 'Fica só no histórico'),
     ];
 
     return AppSheetBody(
       children: [
         AppSheetHeader(
-          title: widget.plan.itemName,
-          subtitle: 'De quanto em quanto tempo lembrar',
+          title: 'Editar lembrete',
+          subtitle: widget.plan.itemName,
           closable: false,
         ),
         const SizedBox(height: AppSpacing.s16),
         if (_banner != null) AuthFormBanner(message: _banner!),
         AppGroup(
-          dividerIndent: 0,
           children: [
-            for (final (choice, label) in options)
+            for (final (choice, label, detail) in options)
               AppChoiceRow<CarePeriodicityChoice>(
                 value: choice,
                 groupValue: _choice,
                 label: label,
+                subtitle: detail,
                 enabled: !_submitting,
                 onChanged: _choose,
               ),

@@ -11,7 +11,6 @@ import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_detail_screen.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_list_screen.dart';
-import 'package:meu_auto/features/abastecimento/presentation/last_abastecimento_card.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
 import 'package:meu_auto/features/auth/presentation/login_screen.dart';
 import 'package:meu_auto/features/auth/presentation/password_reset_confirm_screen.dart';
@@ -518,13 +517,8 @@ void main() {
       state: PagedState(hasMore: false),
       onRegister: _noop,
     ),
-    'abastecimento detail': () => Scaffold(
-      body: AbastecimentoDetailContent(
-        fill: _abastecimentoFill(),
-        onEdit: _noop,
-        onDelete: _noop,
-      ),
-    ),
+    'abastecimento detail': () =>
+        Scaffold(body: AbastecimentoDetailContent(fill: _abastecimentoFill())),
     'abastecimento form': () => const Scaffold(
       body: AbastecimentoFormSheet(
         vehicleId: '11111111-1111-7111-8111-111111111111',
@@ -532,24 +526,25 @@ void main() {
         fuelTypes: [AbastecimentoFuel.gasolina, AbastecimentoFuel.etanol],
       ),
     ),
-    'last abastecimento card': () => const Scaffold(
-      body: LastAbastecimentoCard(
-        supported: true,
-        last: LastAbastecimento(
-          id: 'bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb',
-          occurredOn: CivilDate(2026, 8, 10),
-          totalCostCents: Money.fromCents(23840),
-          volumeMl: 34700,
-          pricePerLiterCents: Money.fromCents(687),
-          fuel: AbastecimentoFuel.gasolina,
-          consumption: Consumption(
-            value: 17.82,
-            unit: 'km_per_liter',
-            status: ConsumptionStatus.ok,
+    'history summary': () => const Scaffold(
+      // It heads a scrolling list on Histórico.
+      body: SingleChildScrollView(
+        child: TimelineSummary(
+          lastFill: LastAbastecimento(
+            id: 'bbbbbbbb-bbbb-7bbb-8bbb-bbbbbbbbbbbb',
+            occurredOn: CivilDate(2026, 8, 10),
+            totalCostCents: Money.fromCents(23840),
+            volumeMl: 34700,
+            pricePerLiterCents: Money.fromCents(687),
+            fuel: AbastecimentoFuel.gasolina,
+            consumption: Consumption(
+              value: 17.82,
+              unit: 'km_per_liter',
+              status: ConsumptionStatus.ok,
+            ),
           ),
+          onFuelTap: _noop,
         ),
-        onTap: _noop,
-        onRegister: _noop,
       ),
     ),
     'form fields': _FormFieldsHarness.new,

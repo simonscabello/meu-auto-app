@@ -380,32 +380,35 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
                     const SizedBox(height: AppSpacing.block),
                   ],
                   if (_banner != null) AuthFormBanner(message: _banner!),
-                  // Above the fields it fills, because it is the shortcut
-                  // past them. Typing everything by hand still works and is
-                  // never hidden.
-                  if (_catalog != null)
-                    VehicleCatalogSummary(
-                      selection: _catalog!,
-                      enabled: !_submitting,
-                      onChange: _pickFromCatalog,
-                      onClear: _clearCatalog,
-                    )
-                  else
-                    VehicleCatalogPrompt(
-                      enabled: !_submitting,
-                      alreadyLinked: _existingCatalogId != null,
-                      onPressed: _pickFromCatalog,
-                    ),
-                  const AppFormGap(),
-                  if (identified)
-                    AppFoldedSection(
-                      title: 'Marca, modelo, ano e combustível',
-                      subtitle:
-                          'Preenchidos pela tabela FIPE. Dá para corrigir.',
-                      children: [AppFormSection(children: _carFields())],
-                    )
-                  else
-                    AppFormSection(title: 'O carro', children: _carFields()),
+                  // First, because it is the shortcut past the fields under
+                  // it. Typing everything by hand still works and is never
+                  // hidden: the fields stay open until the picker fills them.
+                  AppFormSection(
+                    title: 'Carro',
+                    children: [
+                      if (_catalog != null)
+                        VehicleCatalogSummary(
+                          selection: _catalog!,
+                          enabled: !_submitting,
+                          onChange: _pickFromCatalog,
+                          onClear: _clearCatalog,
+                        )
+                      else
+                        VehicleCatalogPrompt(
+                          enabled: !_submitting,
+                          alreadyLinked: _existingCatalogId != null,
+                          onPressed: _pickFromCatalog,
+                        ),
+                      if (identified)
+                        AppFoldedSection(
+                          title: 'Marca, modelo, ano e combustível',
+                          subtitle: 'Vieram da tabela FIPE. Dá para corrigir.',
+                          children: [AppFormSection(children: _carFields())],
+                        )
+                      else
+                        ..._carFields(),
+                    ],
+                  ),
                   if (!widget.isEditing) ...[
                     const AppFormGap(),
                     AppFormSection(
@@ -416,8 +419,8 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
                           label: 'Quilometragem atual',
                           enabled: !_submitting,
                           helperText:
-                              'O que está no painel hoje. É daqui que o Meu '
-                              'Auto conta as próximas manutenções.',
+                              'O que o painel mostra hoje. As próximas '
+                              'manutenções contam daqui.',
                           errorText: _fieldErrors['current_mileage_km'],
                           onChanged: (_) => _clearError('current_mileage_km'),
                         ),
@@ -426,52 +429,36 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
                   ],
                   const AppFormGap(),
                   AppFormSection(
-                    title: 'Como você reconhece',
+                    title: 'Identificação',
                     children: [
+                      _textField(
+                        controller: _plate,
+                        label: 'Placa',
+                        hint: 'ABC1D23',
+                        fieldKey: 'plate',
+                        optional: true,
+                        textCapitalization: TextCapitalization.characters,
+                        inputFormatters: const [PlateInputFormatter()],
+                      ),
                       _textField(
                         controller: _nickname,
                         label: 'Apelido',
-                        hint: 'como você chama o carro',
+                        hint: 'Como você chama o carro',
                         fieldKey: 'nickname',
                         optional: true,
                         textCapitalization: TextCapitalization.sentences,
-                      ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _textField(
-                              controller: _plate,
-                              label: 'Placa',
-                              hint: 'ABC1D23',
-                              fieldKey: 'plate',
-                              optional: true,
-                              textCapitalization: TextCapitalization.characters,
-                              inputFormatters: const [PlateInputFormatter()],
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.s12),
-                          Expanded(
-                            child: _textField(
-                              controller: _color,
-                              label: 'Cor',
-                              fieldKey: 'color',
-                              optional: true,
-                              textCapitalization: TextCapitalization.sentences,
-                              textInputAction: TextInputAction.done,
-                            ),
-                          ),
-                        ],
+                        textInputAction: TextInputAction.done,
                       ),
                     ],
                   ),
                   const AppFormGap(),
                   AppFoldedSection(
-                    title: 'Dados do documento',
-                    subtitle: 'Renavam e chassi, se você tiver o CRLV à mão.',
+                    title: 'Documentos e cor',
+                    subtitle: 'Renavam, chassi e cor, como estão no CRLV.',
                     initiallyOpen:
                         _fieldErrors.containsKey('renavam') ||
-                        _fieldErrors.containsKey('chassis'),
+                        _fieldErrors.containsKey('chassis') ||
+                        _fieldErrors.containsKey('color'),
                     children: [
                       AppFormSection(
                         children: [
@@ -495,6 +482,13 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
                             inputFormatters: [
                               LengthLimitingTextInputFormatter(17),
                             ],
+                          ),
+                          _textField(
+                            controller: _color,
+                            label: 'Cor',
+                            fieldKey: 'color',
+                            optional: true,
+                            textCapitalization: TextCapitalization.sentences,
                             textInputAction: TextInputAction.done,
                           ),
                         ],
@@ -557,36 +551,28 @@ class _VehicleFormScreenState extends ConsumerState<VehicleFormScreen> {
         optional: true,
         textCapitalization: TextCapitalization.sentences,
       ),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _textField(
-              controller: _manufactureYear,
-              label: 'Ano de fabricação',
-              fieldKey: 'manufacture_year',
-              optional: true,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(4),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(
-            child: _textField(
-              controller: _modelYear,
-              label: 'Ano do modelo',
-              fieldKey: 'model_year',
-              optional: true,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(4),
-              ],
-            ),
-          ),
+      // One under the other: side by side, "Ano de fabricação (opcional)"
+      // was cut to "Ano de fabrica…" on every phone.
+      _textField(
+        controller: _manufactureYear,
+        label: 'Ano de fabricação',
+        fieldKey: 'manufacture_year',
+        optional: true,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
+        ],
+      ),
+      _textField(
+        controller: _modelYear,
+        label: 'Ano do modelo',
+        fieldKey: 'model_year',
+        optional: true,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(4),
         ],
       ),
       DropdownButtonFormField<FuelType?>(

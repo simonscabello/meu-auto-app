@@ -12,7 +12,6 @@ import 'package:meu_auto/features/auth/data/auth_repository.dart';
 import 'package:meu_auto/features/auth/domain/password_reset_copy.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 
 class PasswordResetRequestScreen extends ConsumerStatefulWidget {
@@ -86,23 +85,25 @@ class _PasswordResetRequestScreenState
     }
 
     final theme = Theme.of(context);
+    // The entry screens replace each other rather than stack; the arrow goes
+    // back to the sign-in, which is where "back" leads from here.
     return AppScaffold(
       title: 'Redefinir senha',
+      leading: BackButton(
+        onPressed: _submitting ? null : () => context.go(AppRoutes.login),
+      ),
       body: ListView(
         padding: AppSpacing.screenHeaded,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
-          if (_banner != null) AuthFormBanner(message: _banner!),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-            child: Text(
-              PasswordResetCopy.linkLifetime,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+          Text(
+            PasswordResetCopy.linkLifetime,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppSpacing.s24),
+          if (_banner != null) AuthFormBanner(message: _banner!),
           TextField(
             controller: _emailController,
             enabled: !_submitting,
@@ -124,7 +125,6 @@ class _PasswordResetRequestScreenState
             },
             decoration: InputDecoration(
               labelText: 'E-mail',
-              prefixIcon: const Icon(Icons.mail_outline),
               errorText: _fieldErrors['email'],
             ),
           ),
@@ -135,18 +135,16 @@ class _PasswordResetRequestScreenState
             onPressed: _submit,
             expanded: true,
           ),
-          const SizedBox(height: AppSpacing.s12),
-          AppButton(
-            label: 'Voltar ao login',
-            variant: AppButtonVariant.tertiary,
-            onPressed: _submitting ? null : () => context.go(AppRoutes.login),
-          ),
         ],
       ),
     );
   }
 }
 
+/// After the request, whatever the address was.
+///
+/// The words are the same whether or not an account exists — anything warmer
+/// ("enviamos para você") would tell a stranger which e-mails are registered.
 class PasswordResetRequestSuccess extends StatelessWidget {
   const PasswordResetRequestSuccess({super.key, required this.onBackToLogin});
 
@@ -157,19 +155,23 @@ class PasswordResetRequestSuccess extends StatelessWidget {
     final theme = Theme.of(context);
     return AppScaffold(
       title: 'Redefinir senha',
+      leading: BackButton(onPressed: onBackToLogin),
       body: ListView(
         padding: AppSpacing.screenHeaded,
         children: [
-          const SizedBox(height: AppSpacing.s16),
-          const AppIconWell(
-            icon: Icons.mark_email_read_outlined,
-            size: AppIconWellSize.xl,
-            tone: AppIconWellTone.accent,
+          Semantics(
+            header: true,
+            child: Text(
+              'Confira seu e-mail',
+              style: theme.textTheme.headlineSmall,
+            ),
           ),
-          const SizedBox(height: AppSpacing.s24),
+          const SizedBox(height: AppSpacing.s8),
           Text(
-            PasswordResetCopy.requestAccepted,
-            style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+            '${PasswordResetCopy.requestAccepted}.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.s32),
           AppButton(

@@ -305,7 +305,7 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
       ]),
       isDirty: () => _isDirty,
       busy: _submitting,
-      title: 'Descartar este registro?',
+      title: 'Descartar esta manutenção?',
       message: 'O que você preencheu será perdido.',
       child: AppScaffold(
         title: 'Registrar manutenção',
@@ -327,9 +327,7 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                           AppListRow(
                             icon: Icons.add,
                             iconTone: AppIconWellTone.accent,
-                            title: _items.isEmpty
-                                ? 'Adicionar item'
-                                : 'Adicionar outro item',
+                            title: 'Adicionar item',
                             onTap: _submitting ? null : _openPicker,
                             showChevron: true,
                           ),
@@ -366,14 +364,12 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                             ? 'Quilometragem'
                             : 'Quilometragem no dia do serviço',
                         helperText:
-                            'Hoje: ${formatKm(widget.currentMileageKm)}',
+                            'Atual: ${formatKm(widget.currentMileageKm)}',
                         errorText: _fieldErrors['mileage_km'],
                       ),
                       AppSwitchRow(
-                        title: 'Não tenho o comprovante',
-                        subtitle:
-                            'Para um serviço informado de memória — feito '
-                            'antes de você usar o app, por exemplo',
+                        title: 'Sem comprovante',
+                        subtitle: 'Serviço informado de memória',
                         value: _declared,
                         onChanged: _submitting
                             ? null
@@ -422,8 +418,7 @@ class _MaintenanceFormScreenState extends ConsumerState<MaintenanceFormScreen> {
                     const AppFormGap(),
                     AppFoldedSection(
                       title: 'Detalhes por item',
-                      subtitle:
-                          'Garantia, marca e valor de cada serviço — opcional',
+                      subtitle: 'Garantia, marca e valor de cada item',
                       initiallyOpen: detailsHaveError,
                       children: [
                         for (var i = 0; i < _items.length; i++)

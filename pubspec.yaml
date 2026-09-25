@@ -78,9 +78,9 @@ flutter:
   assets:
     - assets/icon/
 
-  # Inter for text and Rajdhani for the instrument figures. Both under the SIL
-  # Open Font License (the OFL texts sit beside the files). Subsetted to Latin
-  # by the source, which is all pt-BR needs; ~65 KB per weight.
+  # Inter, the one face of the app, under the SIL Open Font License (the OFL
+  # text sits beside the files). Subsetted to Latin by the source, which is
+  # all pt-BR needs; ~65 KB per weight.
   fonts:
     - family: Inter
       fonts:
@@ -91,12 +91,6 @@ flutter:
         - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
         - asset: assets/fonts/Inter-Bold.ttf
-          weight: 700
-    - family: Rajdhani
-      fonts:
-        - asset: assets/fonts/Rajdhani-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/Rajdhani-Bold.ttf
           weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see

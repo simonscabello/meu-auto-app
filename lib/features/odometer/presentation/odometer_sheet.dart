@@ -31,21 +31,28 @@ class OdometerSheet extends ConsumerStatefulWidget {
     super.key,
     required this.vehicleId,
     required this.currentMileageKm,
+    this.showHistoryLink = true,
   });
 
   final String vehicleId;
   final int currentMileageKm;
 
+  /// The "Histórico" link in the header. Off when the sheet is opened from
+  /// the history itself — it would stack a second copy of the screen.
+  final bool showHistoryLink;
+
   static Future<void> show(
     BuildContext context, {
     required String vehicleId,
     required int currentMileageKm,
+    bool showHistoryLink = true,
   }) {
     return showAppSheet<void>(
       context,
       builder: (sheetContext) => OdometerSheet(
         vehicleId: vehicleId,
         currentMileageKm: currentMileageKm,
+        showHistoryLink: showHistoryLink,
       ),
     );
   }
@@ -188,16 +195,18 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
           AppSheetHeader(
             title: 'Atualizar quilometragem',
             closable: false,
-            trailing: AppSectionAction(
-              label: 'Histórico',
-              onPressed: _submitting
-                  ? null
-                  : () {
-                      final router = GoRouter.of(context);
-                      Navigator.of(context).pop();
-                      router.push(AppRoutes.odometer);
-                    },
-            ),
+            trailing: !widget.showHistoryLink
+                ? null
+                : AppSectionAction(
+                    label: 'Histórico',
+                    onPressed: _submitting
+                        ? null
+                        : () {
+                            final router = GoRouter.of(context);
+                            Navigator.of(context).pop();
+                            router.push(AppRoutes.odometer);
+                          },
+                  ),
           ),
           const SizedBox(height: AppSpacing.s16),
           if (_banner != null) AuthFormBanner(message: _banner!),
@@ -206,10 +215,7 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
             controller: _mileage,
             autofocus: true,
             enabled: !_submitting,
-            textStyle: AppTypography.figure(
-              size: 32,
-              color: scheme.onSurface,
-            ),
+            textStyle: AppTypography.figure(size: 32, color: scheme.onSurface),
             textInputAction: _showNotes
                 ? TextInputAction.next
                 : TextInputAction.done,

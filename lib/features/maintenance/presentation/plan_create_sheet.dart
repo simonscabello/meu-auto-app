@@ -7,13 +7,14 @@ import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_item.dart';
+import 'package:meu_auto/features/maintenance/presentation/item_picker_sheet.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
@@ -110,7 +111,7 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
         children: [
           const AppSheetHeader(
             title: 'Acompanhar outro item',
-            subtitle: 'Vamos usar o intervalo sugerido. Você ajusta depois.',
+            subtitle: 'Com o intervalo sugerido. Dá para ajustar depois.',
             closable: false,
           ),
           const SizedBox(height: AppSpacing.s12),
@@ -125,11 +126,10 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
               prefixIcon: Icon(Icons.search),
             ),
           ),
-          const SizedBox(height: AppSpacing.s8),
           Expanded(child: _body(catalogue, taken)),
           const SizedBox(height: AppSpacing.s8),
           AppButton(
-            label: _offline ? 'Tentar de novo' : 'Salvar',
+            label: _offline ? 'Tentar de novo' : 'Acompanhar item',
             loading: _submitting,
             onPressed: _selected == null || _submitting ? null : _submit,
             expanded: true,
@@ -140,9 +140,14 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
   }
 
   Widget _body(AsyncValue<List<MaintenanceItem>> catalogue, Set<String> taken) {
-    final theme = Theme.of(context);
     return catalogue.when(
-      loading: () => const AppSkeletonList(count: 8, itemHeight: 56),
+      // Clipped rather than laid out whole: eight rows are taller than the
+      // room a sheet leaves under its search field on a small phone.
+      loading: () => const SingleChildScrollView(
+        physics: NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.s8),
+        child: AppSkeletonList(count: 8, itemHeight: 56),
+      ),
       error: (error, _) => AppErrorState.fromError(
         error: error,
         onRetry: () => ref.invalidate(maintenanceItemsProvider),
@@ -153,25 +158,19 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
             if (!taken.contains(item.id)) item,
         ];
         final visible = _filtered(available);
-        if (visible.isEmpty) {
-          return Center(
-            child: Text(
-              _query.text.trim().isEmpty
-                  ? 'Todos os itens do catálogo já têm um plano.'
-                  : 'Nada com esse nome. Tente outra busca.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          );
-        }
-        return _GroupedPicker(
+        return CatalogueItemList(
           items: visible,
-          selectedId: _selected?.id,
-          onSelect: _submitting
-              ? null
-              : (item) => setState(() => _selected = item),
+          emptyMessage: _query.text.trim().isEmpty
+              ? 'Todos os itens do catálogo já estão no plano.'
+              : 'Nenhum item com esse nome.',
+          rowBuilder: (item) => _ChoiceItemRow(
+            key: ValueKey(item.id),
+            item: item,
+            selected: _selected?.id == item.id,
+            onSelect: _submitting
+                ? null
+                : (item) => setState(() => _selected = item),
+          ),
         );
       },
     );
@@ -187,61 +186,23 @@ class _PlanCreateSheetState extends ConsumerState<PlanCreateSheet> {
   }
 }
 
-class _GroupedPicker extends StatelessWidget {
-  const _GroupedPicker({
-    required this.items,
-    required this.selectedId,
+/// One catalogue item, chosen alone: the glyph turns to the accent and a tick
+/// appears at the end.
+class _ChoiceItemRow extends StatelessWidget with GroupedRow {
+  const _ChoiceItemRow({
+    super.key,
+    required this.item,
+    required this.selected,
     required this.onSelect,
   });
 
-  final List<MaintenanceItem> items;
-  final String? selectedId;
+  final MaintenanceItem item;
+  final bool selected;
   final ValueChanged<MaintenanceItem>? onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final maintenance = [
-      for (final item in items)
-        if (item.kind != MaintenanceItemKind.care) item,
-    ];
-    final care = [
-      for (final item in items)
-        if (item.kind == MaintenanceItemKind.care) item,
-    ];
-
-    return ListView(
-      children: [
-        if (maintenance.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.s8),
-            child: AppSectionHeader(
-              title: MaintenanceItemKind.maintenance.sectionTitle,
-            ),
-          ),
-          for (var i = 0; i < maintenance.length; i++) ...[
-            if (i > 0) const AppRowDivider(),
-            _tile(context, maintenance[i]),
-          ],
-        ],
-        if (care.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.s16),
-            child: AppSectionHeader(
-              title: MaintenanceItemKind.care.sectionTitle,
-            ),
-          ),
-          for (var i = 0; i < care.length; i++) ...[
-            if (i > 0) const AppRowDivider(),
-            _tile(context, care[i]),
-          ],
-        ],
-      ],
-    );
-  }
-
-  Widget _tile(BuildContext context, MaintenanceItem item) {
     final theme = Theme.of(context);
-    final selected = selectedId == item.id;
     return Semantics(
       button: true,
       selected: selected,
@@ -256,16 +217,11 @@ class _GroupedPicker extends StatelessWidget {
               tone: selected ? AppIconWellTone.accent : AppIconWellTone.neutral,
             ),
             const SizedBox(width: AppSpacing.s12),
-            Expanded(
-              child: Text(
-                item.name,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            if (selected)
+            Expanded(child: Text(item.name, style: theme.textTheme.titleSmall)),
+            if (selected) ...[
+              const SizedBox(width: AppSpacing.s8),
               Icon(Icons.check, size: 20, color: theme.colorScheme.primary),
+            ],
           ],
         ),
       ),

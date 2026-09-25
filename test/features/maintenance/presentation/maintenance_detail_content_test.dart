@@ -77,16 +77,18 @@ void main() {
   });
 
   group('declared records', () {
-    testWidgets('carry an explanation of what they are worth', (tester) async {
+    testWidgets('carry a badge and what they are worth', (tester) async {
       await _pump(tester, _record(kind: MaintenanceRecordKind.declared));
 
-      expect(find.textContaining('Informado pelo dono'), findsOneWidget);
+      expect(find.text('Informado'), findsOneWidget);
+      expect(find.textContaining('Sem comprovante'), findsOneWidget);
     });
 
-    testWidgets('a performed record carries no such banner', (tester) async {
+    testWidgets('a performed record carries no such badge', (tester) async {
       await _pump(tester, _record());
 
-      expect(find.textContaining('Informado pelo dono'), findsNothing);
+      expect(find.text('Informado'), findsNothing);
+      expect(find.textContaining('Sem comprovante'), findsNothing);
     });
   });
 
@@ -97,21 +99,80 @@ void main() {
     expect(find.textContaining('0,00'), findsNothing);
   });
 
-  testWidgets('the header pairs mileage with the workshop when there is one', (
-    tester,
-  ) async {
+  // The header says what was done and where; the strip, when, at what
+  // mileage and for how much.
+  testWidgets('the header names the work and the workshop', (tester) async {
     await _pump(tester, _record(workshop: 'Auto Center Silva'));
 
-    expect(find.text('10 de agosto de 2026'), findsOneWidget);
-    expect(find.text('98.200 km · Auto Center Silva'), findsOneWidget);
+    expect(find.text('Troca de óleo do motor'), findsWidgets);
+    expect(find.text('Auto Center Silva'), findsOneWidget);
+    expect(find.text('Data'), findsOneWidget);
+    expect(find.text('10/08/2026'), findsOneWidget);
+    expect(find.text('Odômetro'), findsOneWidget);
+    expect(find.text('98.200 km'), findsOneWidget);
+    expect(find.text('Total'), findsOneWidget);
+    expect(find.text('R\$ 420,00'), findsOneWidget);
   });
 
-  testWidgets('without a workshop the header is just the mileage', (
+  testWidgets('without a workshop there is no line under the title', (
     tester,
   ) async {
     await _pump(tester, _record(workshop: null));
 
     expect(find.text('98.200 km'), findsOneWidget);
+    expect(find.textContaining(' · '), findsNothing);
+  });
+
+  // A care marked "Feito" carries no mileage and no cost: a strip of one date
+  // would be a box around a single word, so the date goes under the title.
+  testWidgets('with no figures, the date is a sentence under the title', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _record(totalCents: 0, mileageKm: null, workshop: 'Posto Central'),
+    );
+
+    expect(find.text('10 de agosto de 2026 · Posto Central'), findsOneWidget);
+    expect(find.text('Data'), findsNothing);
+  });
+
+  group('the title', () {
+    MaintenanceRecord withItems(List<String> names, {String? revisao}) {
+      return _record(
+        items: [
+          if (revisao != null) _item(name: revisao, slug: 'revisao'),
+          for (final name in names) _item(name: name),
+        ],
+      );
+    }
+
+    test('one item is its name', () {
+      expect(maintenanceRecordTitle(withItems(['Bateria'])), 'Bateria');
+    });
+
+    test('two items are both named', () {
+      expect(
+        maintenanceRecordTitle(withItems(['Troca de óleo', 'Filtro de óleo'])),
+        'Troca de óleo e Filtro de óleo',
+      );
+    });
+
+    test('more than two name the first and count the rest', () {
+      expect(
+        maintenanceRecordTitle(withItems(['Troca de óleo', 'Filtro', 'Velas'])),
+        'Troca de óleo e mais 2 itens',
+      );
+    });
+
+    test('a revisão names the visit', () {
+      expect(
+        maintenanceRecordTitle(
+          withItems(['Troca de óleo', 'Filtro'], revisao: 'Revisão'),
+        ),
+        'Revisão e mais 2 itens',
+      );
+    });
   });
 
   group('360x640 with the font turned up', () {
@@ -158,8 +219,8 @@ void main() {
       var tapped = false;
       await _pump(tester, _record(), onAddItem: () => tapped = true);
 
-      expect(find.text('Adicionar item que faltou'), findsOneWidget);
-      await tester.tap(find.text('Adicionar item que faltou'));
+      expect(find.text('Adicionar item'), findsOneWidget);
+      await tester.tap(find.text('Adicionar item'));
       expect(tapped, isTrue);
     });
 
@@ -167,7 +228,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, _record());
-      expect(find.text('Adicionar item que faltou'), findsNothing);
+      expect(find.text('Adicionar item'), findsNothing);
     });
 
     // Two writes in flight on one record is how a duplicate line gets in.
@@ -177,7 +238,7 @@ void main() {
       var taps = 0;
       await _pump(tester, _record(), onAddItem: () => taps++, addingItem: true);
 
-      await tester.tap(find.text('Adicionar item que faltou'));
+      await tester.tap(find.text('Adicionar item'));
       expect(taps, 0);
     });
   });
@@ -212,13 +273,14 @@ MaintenanceRecord _record({
   MaintenanceRecordKind kind = MaintenanceRecordKind.performed,
   String? workshop = 'Auto Center Silva',
   int totalCents = 42000,
+  int? mileageKm = 98200,
   List<MaintenanceRecordItem>? items,
 }) {
   return MaintenanceRecord(
     id: '11111111-1111-7111-8111-111111111111',
     vehicleId: '22222222-2222-7222-8222-222222222222',
     occurredOn: const CivilDate(2026, 8, 10),
-    mileageKm: 98200,
+    mileageKm: mileageKm,
     kind: kind,
     workshopName: workshop,
     totalCostCents: Money.fromCents(totalCents),
@@ -230,13 +292,14 @@ MaintenanceRecord _record({
 
 MaintenanceRecordItem _item({
   required String name,
+  String slug = 'troca_oleo',
   CivilDate? warrantyUntil,
   int? warrantyUntilKm,
 }) {
   return MaintenanceRecordItem(
-    id: '33333333-3333-7333-8333-333333333333',
+    id: 'line-$name',
     maintenanceItemId: '44444444-4444-7444-8444-444444444444',
-    itemSlug: 'troca_oleo',
+    itemSlug: slug,
     itemName: name,
     warrantyUntil: warrantyUntil,
     warrantyUntilKm: warrantyUntilKm,

@@ -1,4 +1,4 @@
 abstract final class ProfileCopy {
-  static const emailExplanation =
-      'O e-mail é usado para recuperar sua conta e não pode ser alterado por aqui.';
+  /// Under the account group on Perfil. Changing the e-mail does not exist.
+  static const emailNote = 'O e-mail de acesso não pode ser alterado.';
 }

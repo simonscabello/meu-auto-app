@@ -73,14 +73,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(adapter.postedBodies, hasLength(1));
-    final button = tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'Feito'),
+    final button = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Feito'),
     );
     expect(button.onPressed, isNull);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.tap(
-      find.widgetWithText(OutlinedButton, 'Feito'),
+      find.widgetWithText(FilledButton, 'Feito'),
       warnIfMissed: false,
     );
     await tester.pump();

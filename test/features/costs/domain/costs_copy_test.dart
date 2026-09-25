@@ -53,7 +53,7 @@ void main() {
           'seguro',
           'abastecimento',
         ]),
-        'despesas do dia a dia ainda não entram nesta conta.',
+        'Despesas do dia a dia ainda não entram nesta conta.',
       );
     });
 

@@ -195,11 +195,11 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
       busy: _submitting,
       child: AppSheetBody(
         children: [
+          // The lines are not edited here — appending one is its own action
+          // on the record, and the header says where it is.
           const AppSheetHeader(
             title: 'Editar manutenção',
-            subtitle:
-                'Para acrescentar um serviço que ficou de fora, use '
-                'Adicionar item na tela da manutenção.',
+            subtitle: 'Para incluir um item, use "Adicionar item".',
           ),
           const SizedBox(height: AppSpacing.s16),
           if (_banner != null) AuthFormBanner(message: _banner!),
@@ -253,7 +253,7 @@ class _MaintenanceEditSheetState extends ConsumerState<MaintenanceEditSheet> {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.s24),
+          const AppFormGap(),
           AppButton(
             label: _offline ? 'Tentar de novo' : 'Salvar',
             loading: _submitting,

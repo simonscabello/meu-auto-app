@@ -8,6 +8,7 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/obligation/application/obligation_provider.dart';
 import 'package:meu_auto/features/obligation/domain/obligation.dart';
+import 'package:meu_auto/features/obligation/domain/obligation_copy.dart';
 import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
@@ -99,13 +100,17 @@ class _ObligationPaymentSheetState
   Widget build(BuildContext context) {
     return AppSheetBody(
       children: [
-        const AppSheetHeader(title: 'Marcar como pago', closable: false),
+        AppSheetHeader(
+          title: 'Registrar pagamento',
+          subtitle: obligationTitle(widget.obligation),
+          closable: false,
+        ),
         const SizedBox(height: AppSpacing.s16),
         if (_banner != null) AuthFormBanner(message: _banner!),
         AppDateField(
           value: _paidOn,
           onPick: _submitting ? () {} : _pickDate,
-          label: 'Data do pagamento',
+          label: 'Pago em',
           enabled: !_submitting,
           errorText: _fieldErrors['paid_on'],
         ),
@@ -120,7 +125,7 @@ class _ObligationPaymentSheetState
         ),
         const SizedBox(height: AppSpacing.s24),
         AppButton(
-          label: _offline ? 'Tentar de novo' : 'Registrar pagamento',
+          label: _offline ? 'Tentar de novo' : 'Salvar',
           loading: _submitting,
           onPressed: _submitting ? null : _submit,
           expanded: true,

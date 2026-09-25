@@ -86,6 +86,7 @@ class AppMoneyField extends StatelessWidget {
     this.textInputAction = TextInputAction.next,
     this.onChanged,
     this.onSubmitted,
+    this.autofocus = false,
   });
 
   final TextEditingController controller;
@@ -97,11 +98,16 @@ class AppMoneyField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
+  /// Opens the keyboard on this field. For a sheet whose first number is the
+  /// reason it was opened — the amount on the pump's display.
+  final bool autofocus;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       enabled: enabled,
+      autofocus: autofocus,
       keyboardType: const TextInputType.numberWithOptions(signed: false),
       textInputAction: textInputAction,
       inputFormatters: const [MoneyInputFormatter()],

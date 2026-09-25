@@ -22,20 +22,25 @@ import 'package:meu_auto/features/onboarding/application/calibrar_provider.dart'
 import 'package:meu_auto/features/onboarding/domain/calibrar_questions.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
+import 'package:meu_auto/shared/widgets/app_choice_row.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_form_section.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
-import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
-/// The history questions, asked once after a vehicle is registered — and only
-/// with permission.
+/// The history questions: when each item was last done. Asked after a vehicle
+/// is registered, and again from Início while any are unanswered — always
+/// with permission first.
 ///
 /// The first screen is a single yes/no. Somebody who taps "Depois" is on the
-/// dashboard in one tap.
+/// dashboard in one tap. Each question is then a page of its own: the
+/// question as the heading, two answers to choose from, the date and the
+/// mileage only when the answer is "lembro", and one button at the foot.
 ///
 /// Which questions get asked, and how they are worded, comes from the server.
 /// Nothing here knows what a timing belt is.
@@ -57,6 +62,12 @@ class CalibrarFlow extends ConsumerStatefulWidget {
 
 enum _Step { intro, asking, done }
 
+/// The two answers to "quando foi a última vez?".
+///
+/// [dontKnow] is an answer, not a skip: it is written down so the question
+/// stops coming back, and it creates no service record.
+enum CalibrarAnswer { remember, dontKnow }
+
 class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   late final TextEditingController _mileage;
   List<MaintenancePlan>? _questions;
@@ -65,6 +76,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   int _configured = 0;
   bool _submitting = false;
   bool _offline = false;
+  CalibrarAnswer? _answer;
   CivilDate? _occurredOn;
   String? _banner;
   Map<String, String> _fieldErrors = {};
@@ -90,6 +102,7 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
   }
 
   void _resetAnswer() {
+    _answer = null;
     _occurredOn = null;
     _banner = null;
     _offline = false;
@@ -266,6 +279,14 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     });
   }
 
+  void _choose(CalibrarAnswer answer) {
+    if (_submitting) return;
+    setState(() {
+      _answer = answer;
+      _fieldErrors = {};
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final plans = ref.watch(maintenancePlansProvider(widget.vehicleId));
@@ -280,37 +301,49 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
         }
         await _skipAll();
       },
-      child: _shell(_body(plans)),
+      child: _page(plans),
     );
   }
 
-  Widget _body(AsyncValue<List<MaintenancePlan>> plans) {
+  /// The intro, the questions and the end carry their own way out, so they
+  /// have no app bar. Loading and a failed load do not, and get the close
+  /// button instead — without it, a list that never arrives would be a page
+  /// with no exit on iOS, where the swipe back is held by the `PopScope`.
+  Widget _page(AsyncValue<List<MaintenancePlan>> plans) {
     if (_step == _Step.done) {
-      return _doneContent();
+      return AppScaffold(body: _doneContent());
     }
 
     final cached = _questions;
     if (cached != null) {
-      return _stepBody(cached);
+      return AppScaffold(body: _stepBody(cached));
     }
 
     return plans.when(
-      loading: () => const _CalibrarSkeleton(),
-      error: (error, _) => AppErrorState.fromError(
-        error: error,
-        onRetry: () =>
-            ref.invalidate(maintenancePlansProvider(widget.vehicleId)),
+      loading: () => _closable(const _CalibrarSkeleton()),
+      error: (error, _) => _closable(
+        AppErrorState.fromError(
+          error: error,
+          onRetry: () =>
+              ref.invalidate(maintenancePlansProvider(widget.vehicleId)),
+        ),
       ),
       data: (list) {
         _capture(list);
-        return _stepBody(_questions ?? const <MaintenancePlan>[]);
+        return AppScaffold(
+          body: _stepBody(_questions ?? const <MaintenancePlan>[]),
+        );
       },
     );
   }
 
   Widget _stepBody(List<MaintenancePlan> questions) {
     if (questions.isEmpty) {
-      return _doneContent();
+      return CalibrarDoneContent(
+        configured: _configured,
+        nothingToAsk: true,
+        onSeeCar: _submitting ? null : () => unawaited(_seeCar()),
+      );
     }
     if (_step == _Step.intro) {
       return CalibrarIntroContent(
@@ -325,6 +358,8 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
       progressLabel: '${_index + 1} de ${questions.length}',
       progress: (_index + 1) / questions.length,
       title: calibrarQuestionTitle(plan),
+      answer: _answer,
+      onAnswer: _choose,
       occurredOn: _occurredOn,
       mileage: _mileage,
       submitting: _submitting,
@@ -347,22 +382,17 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
     );
   }
 
-  Widget _shell(Widget body) {
+  Widget _closable(Widget body) {
     return AppScaffold(
       titleWidget: const SizedBox.shrink(),
+      // The close button is the way out; a back arrow beside it would be a
+      // second one doing the same thing.
+      leading: const SizedBox.shrink(),
       actions: [
         AppIconButton(
           label: 'Fechar',
           icon: Icons.close,
-          onPressed: _submitting
-              ? null
-              : () {
-                  if (_step == _Step.done) {
-                    unawaited(_seeCar());
-                    return;
-                  }
-                  unawaited(_skipAll());
-                },
+          onPressed: _submitting ? null : () => unawaited(_skipAll()),
         ),
       ],
       body: body,
@@ -373,7 +403,10 @@ class _CalibrarFlowState extends ConsumerState<CalibrarFlow> {
 /// One question, before any question: is this worth doing now at all?
 ///
 /// It exists so the answer "não agora" costs a single tap. Nothing is lost by
-/// saying no — the same questions are waiting on the dashboard afterwards.
+/// saying no — the same questions are waiting on Início afterwards.
+///
+/// The heading does not say "Carro cadastrado": the flow is also opened from
+/// Início for a car registered long ago, and it cannot tell the two apart.
 class CalibrarIntroContent extends StatelessWidget {
   const CalibrarIntroContent({
     super.key,
@@ -389,41 +422,53 @@ class CalibrarIntroContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
-      padding: AppSpacing.screenHeaded,
-      children: [
-        const SizedBox(height: AppSpacing.s16),
-        const AppIconWell(
-          icon: Icons.check_circle_outline,
-          size: AppIconWellSize.xl,
-          tone: AppIconWellTone.accent,
-        ),
-        const SizedBox(height: AppSpacing.s24),
-        Text('Carro cadastrado', style: theme.textTheme.headlineMedium),
-        const SizedBox(height: AppSpacing.s12),
-        Text(
-          'Se você souber quando algumas coisas foram feitas, o Meu Auto já '
-          'consegue avisar na hora certa. São $questionCount perguntas rápidas, '
-          'e dá para responder depois.',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s40),
+    return _CalibrarPage(
+      actions: [
         AppButton(label: 'Contar agora', onPressed: onStart, expanded: true),
         const SizedBox(height: AppSpacing.s8),
         AppButton(
           label: 'Depois',
-          variant: AppButtonVariant.secondary,
+          variant: AppButtonVariant.tertiary,
           onPressed: onLater,
           expanded: true,
+        ),
+      ],
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            'Quando foi a última vez?',
+            style: theme.textTheme.headlineMedium,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s12),
+        Text(
+          calibrarIntroBody(questionCount),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
   }
 }
 
+/// "2 perguntas rápidas…", with the singular said as a singular.
+String calibrarIntroBody(int questionCount) {
+  final count = questionCount == 1
+      ? '1 pergunta rápida'
+      : '$questionCount perguntas rápidas';
+  return '$count sobre o que já foi feito no carro, para o Meu Auto saber '
+      'quando avisar. Dá para responder depois.';
+}
+
+/// One history question: the question as the heading, the two answers as
+/// rows to choose from, the date and the mileage only once the answer is
+/// "lembro", and "Continuar" held at the foot of the page.
+///
+/// "Pular tudo" sits by the progress, as text: it leaves the questions, and
+/// the ones not reached stay unasked for later. "Não sei" is not there — it
+/// is an answer, and it is written down.
 class CalibrarQuestionContent extends StatelessWidget {
   const CalibrarQuestionContent({
     super.key,
@@ -439,11 +484,14 @@ class CalibrarQuestionContent extends StatelessWidget {
     required this.onSkipAll,
     required this.currentMileageKm,
     this.progress,
+    this.answer,
+    this.onAnswer,
     this.banner,
     this.dateError,
     this.mileageError,
   });
 
+  /// "2 de 5".
   final String progressLabel;
 
   /// Which question this is, over how many. A real count, so the bar is
@@ -451,13 +499,23 @@ class CalibrarQuestionContent extends StatelessWidget {
   final double? progress;
 
   final String title;
+
+  /// The answer picked so far, or null before one is.
+  final CalibrarAnswer? answer;
+  final ValueChanged<CalibrarAnswer>? onAnswer;
+
   final CivilDate? occurredOn;
   final TextEditingController mileage;
   final bool submitting;
   final bool offline;
   final VoidCallback onPickDate;
+
+  /// "Continuar" with [CalibrarAnswer.remember]: writes the date and mileage.
   final VoidCallback onConfirm;
+
+  /// "Continuar" with [CalibrarAnswer.dontKnow]: records that nobody knows.
   final VoidCallback onDontKnow;
+
   final VoidCallback onSkipAll;
   final int currentMileageKm;
   final String? banner;
@@ -467,158 +525,245 @@ class CalibrarQuestionContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
-      padding: AppSpacing.screenHeaded,
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+    final scheme = theme.colorScheme;
+    final remembers = answer == CalibrarAnswer.remember;
+    final VoidCallback? onContinue = switch (answer) {
+      CalibrarAnswer.remember => onConfirm,
+      CalibrarAnswer.dontKnow => onDontKnow,
+      null => null,
+    };
+    final choose = submitting || onAnswer == null
+        ? null
+        : (CalibrarAnswer? picked) {
+            if (picked != null) onAnswer!(picked);
+          };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: progress == null
-                  ? const SizedBox.shrink()
-                  : AppProgressBar(value: progress!),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              AppSpacing.s8,
+              AppSpacing.page,
+              AppSpacing.s24,
             ),
-            const SizedBox(width: AppSpacing.s12),
-            Text(
-              progressLabel,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      label: 'Pergunta $progressLabel',
+                      excludeSemantics: true,
+                      child: Text(
+                        progressLabel,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Pulled into the gutter by the button's own padding, so
+                  // the words end where the bar under them ends.
+                  Transform.translate(
+                    offset: const Offset(AppSpacing.s12, 0),
+                    child: AppButton(
+                      label: 'Pular tudo',
+                      variant: AppButtonVariant.tertiary,
+                      onPressed: submitting ? null : onSkipAll,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.s24),
-        Text(title, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: AppSpacing.s8),
-        Text(
-          calibrarQuestionSubtitle,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+              if (progress != null) AppProgressBar(value: progress!),
+              const SizedBox(height: AppSpacing.s32),
+              Semantics(
+                header: true,
+                child: Text(title, style: theme.textTheme.headlineSmall),
+              ),
+              const SizedBox(height: AppSpacing.s8),
+              Text(
+                calibrarQuestionSubtitle,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s24),
+              if (banner != null) AuthFormBanner(message: banner!),
+              AppGroup(
+                children: [
+                  AppChoiceRow<CalibrarAnswer?>(
+                    value: CalibrarAnswer.remember,
+                    groupValue: answer,
+                    label: 'Lembro quando foi',
+                    subtitle: 'Data e quilometragem aproximadas servem',
+                    enabled: !submitting,
+                    onChanged: choose,
+                  ),
+                  AppChoiceRow<CalibrarAnswer?>(
+                    value: CalibrarAnswer.dontKnow,
+                    groupValue: answer,
+                    label: 'Não sei',
+                    subtitle: 'O item fica sem data da última vez',
+                    enabled: !submitting,
+                    onChanged: choose,
+                  ),
+                ],
+              ),
+              if (remembers) ...[
+                const SizedBox(height: AppSpacing.block),
+                AppDateField(
+                  value: occurredOn,
+                  onPick: onPickDate,
+                  enabled: !submitting,
+                  errorText: dateError,
+                ),
+                const SizedBox(height: AppSpacing.s12),
+                AppKmField(
+                  controller: mileage,
+                  enabled: !submitting,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => submitting ? null : onConfirm(),
+                  label: 'Quilometragem na época',
+                  helperText: currentMileageKm > 0
+                      ? 'Hoje o carro está com ${formatKm(currentMileageKm)}.'
+                      : null,
+                  errorText: mileageError,
+                ),
+              ],
+            ],
           ),
         ),
-        if (banner != null) ...[
-          const SizedBox(height: AppSpacing.s16),
-          AuthFormBanner(message: banner!),
-        ],
-        const SizedBox(height: AppSpacing.s24),
-        AppDateField(
-          value: occurredOn,
-          onPick: onPickDate,
-          enabled: !submitting,
-          errorText: dateError,
-        ),
-        const SizedBox(height: AppSpacing.s12),
-        AppKmField(
-          controller: mileage,
-          enabled: !submitting,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => submitting ? null : onConfirm(),
-          label: 'Quilometragem na época',
-          helperText:
-              'Aproximada serve. Hoje o carro está com '
-              '${formatKm(currentMileageKm)}.',
-          errorText: mileageError,
-        ),
-        const SizedBox(height: AppSpacing.s32),
-        AppButton(
-          label: offline ? 'Tentar de novo' : 'Registrar',
-          loading: submitting,
-          onPressed: onConfirm,
-          expanded: true,
-        ),
-        const SizedBox(height: AppSpacing.s8),
-        Row(
-          children: [
-            Expanded(
-              child: AppButton(
-                label: 'Não sei',
-                variant: AppButtonVariant.tertiary,
-                onPressed: submitting ? null : onDontKnow,
-              ),
-            ),
-            Expanded(
-              child: AppButton(
-                label: 'Pular tudo',
-                variant: AppButtonVariant.tertiary,
-                onPressed: submitting ? null : onSkipAll,
-              ),
-            ),
-          ],
+        AppFormFooter(
+          child: AppButton(
+            label: offline && remembers ? 'Tentar de novo' : 'Continuar',
+            loading: submitting,
+            onPressed: onContinue,
+            expanded: true,
+          ),
         ),
       ],
     );
   }
 }
 
+/// The end of the questions: what was recorded, and the way back to the car.
 class CalibrarDoneContent extends StatelessWidget {
   const CalibrarDoneContent({
     super.key,
     required this.configured,
     this.onSeeCar,
+    this.nothingToAsk = false,
   });
 
+  /// How many answers became a record.
   final int configured;
+
   final VoidCallback? onSeeCar;
+
+  /// The server had no question to ask for this car — every item already has
+  /// an answer or a date — so nothing was asked at all.
+  final bool nothingToAsk;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: AppSpacing.screenHeaded,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Spacer(),
-          AppIconWell(
-            icon: configured == 0
-                ? Icons.schedule_outlined
-                : Icons.check_circle_outline,
-            size: AppIconWellSize.xl,
-            tone: configured == 0
-                ? AppIconWellTone.neutral
-                : AppIconWellTone.accent,
+    final (title, body) = _doneCopy(configured, nothingToAsk: nothingToAsk);
+    return _CalibrarPage(
+      actions: [
+        AppButton(label: 'Ver meu carro', onPressed: onSeeCar, expanded: true),
+      ],
+      children: [
+        Semantics(
+          header: true,
+          child: Text(title, style: theme.textTheme.headlineMedium),
+        ),
+        const SizedBox(height: AppSpacing.s12),
+        Text(
+          body,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(height: AppSpacing.s24),
-          Text(
-            configured == 0 ? 'Tudo bem' : 'Pronto',
-            style: theme.textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.s12),
-          Text(
-            _doneBody(configured),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const Spacer(),
-          AppButton(
-            label: 'Ver meu carro',
-            onPressed: onSeeCar,
-            expanded: true,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-String _doneBody(int configured) {
+(String, String) _doneCopy(int configured, {required bool nothingToAsk}) {
+  if (nothingToAsk) {
+    return (
+      'Nada a perguntar agora',
+      'As perguntas sobre este carro já foram respondidas.',
+    );
+  }
   if (configured == 0) {
-    return 'Quando souber, informe na aba Manutenção, em "Sem data da última '
-        'vez". Até lá, esses itens aparecem como sem histórico — o Meu Auto '
-        'não inventa o que você não lembra.';
+    return (
+      'Sem datas por enquanto',
+      'Quando lembrar, informe na aba Manutenção, em "Sem data da última '
+          'vez". Até lá, não há como avisar sobre esses itens.',
+    );
   }
   if (configured == 1) {
-    return '1 item já está no histórico. A partir de agora o Meu Auto '
-        'avisa quando ele estiver perto.';
+    return (
+      'Pronto',
+      '1 item já está no histórico. O Meu Auto avisa quando ele estiver '
+          'perto de vencer.',
+    );
   }
-  return '$configured itens já estão no histórico. A partir de agora '
-      'o Meu Auto avisa quando estiverem perto.';
+  return (
+    'Pronto',
+    '$configured itens já estão no histórico. O Meu Auto avisa quando '
+        'estiverem perto de vencer.',
+  );
 }
 
+/// A page of the flow with no form: the words at the top, the buttons held
+/// at the foot, where the thumb is.
+class _CalibrarPage extends StatelessWidget {
+  const _CalibrarPage({required this.children, required this.actions});
+
+  final List<Widget> children;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              AppSpacing.s48,
+              AppSpacing.page,
+              AppSpacing.s24,
+            ),
+            children: children,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.s12,
+            AppSpacing.page,
+            AppSpacing.s16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: actions,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The shape of the first page while the questions load: a heading and two
+/// lines.
 class _CalibrarSkeleton extends StatelessWidget {
   const _CalibrarSkeleton();
 
@@ -626,7 +771,16 @@ class _CalibrarSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: AppSpacing.screenHeaded,
-      child: AppSkeletonList(count: 4, itemHeight: 72),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSkeleton(width: 240, height: 28),
+          SizedBox(height: AppSpacing.s16),
+          AppSkeleton(width: double.infinity, height: 16),
+          SizedBox(height: AppSpacing.s8),
+          AppSkeleton(width: 200, height: 16),
+        ],
+      ),
     );
   }
 }

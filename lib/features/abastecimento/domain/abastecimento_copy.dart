@@ -70,9 +70,6 @@ const abastecimentoEmptyMessage =
     'os gastos do seu carro.';
 const abastecimentoRegisterLabel = 'Registrar abastecimento';
 
-/// Quiet dashboard invite when the car can refuel but has no fill yet.
-const lastAbastecimentoEmptyPrompt = 'Registre o primeiro abastecimento';
-
 const abastecimentoDeleteTitle = 'Excluir este abastecimento?';
 const abastecimentoDeleteMessage =
     'A quilometragem registrada junto também será apagada.';

@@ -49,14 +49,17 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
-          body: TimelineContent(state: PagedState(hasMore: false)),
+          body: TimelineContent(
+            state: const PagedState(hasMore: false),
+            onAddRecord: () {},
+          ),
         ),
       ),
     );
 
-    expect(find.text('O histórico do seu carro começa aqui'), findsOneWidget);
+    expect(find.text('Nenhum registro ainda'), findsOneWidget);
     // One action, named for what this screen adds. The empty state used to
     // offer two of the seven entries from the old global "+" sheet, which
     // made the first thing a new owner saw a choice rather than a next step.

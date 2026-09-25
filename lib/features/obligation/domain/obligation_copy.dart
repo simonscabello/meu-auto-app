@@ -11,6 +11,16 @@ String obligationKindLabel(ObligationKind kind) {
   };
 }
 
+/// The kind as it reads inside a sentence — "Registrar licenciamento", not
+/// "Registrar Licenciamento"; IPVA stays in capitals because it is an acronym.
+String obligationKindInSentence(ObligationKind kind) {
+  return switch (kind) {
+    ObligationKind.ipva => 'IPVA',
+    ObligationKind.licenciamento => 'licenciamento',
+    ObligationKind.desconhecido => 'registro',
+  };
+}
+
 String obligationTitle(Obligation obligation) {
   return '${obligationKindLabel(obligation.kind)} ${obligation.referenceYear}';
 }

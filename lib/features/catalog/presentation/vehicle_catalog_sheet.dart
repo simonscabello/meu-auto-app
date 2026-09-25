@@ -3,16 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/features/auth/presentation/auth_form_banner.dart';
 import 'package:meu_auto/features/catalog/application/vehicle_catalog_provider.dart';
 import 'package:meu_auto/features/catalog/domain/vehicle_catalog.dart';
+import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
-import 'package:meu_auto/shared/widgets/app_pressable.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_surface.dart';
 
@@ -20,7 +23,8 @@ import 'package:meu_auto/shared/widgets/app_surface.dart';
 ///
 /// One sheet with three steps rather than three dropdowns, because a dropdown
 /// with 107 brands or 222 models is a scroll, not a choice — the list needs a
-/// search field.
+/// search field. The header says which step this is and what was already
+/// chosen, so the way back is never a guess.
 ///
 /// Picking a year fetches the detail and pops with a [VehicleCatalogSelection].
 /// The form fills its own fields from that; this sheet writes nothing.
@@ -117,79 +121,87 @@ class _VehicleCatalogSheetState extends ConsumerState<VehicleCatalogSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return AppSheetFrame(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              if (_brand != null)
-                AppIconButton(
-                  label: 'Voltar',
-                  icon: Icons.arrow_back,
-                  onPressed: _resolving ? null : _back,
-                ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _title,
-                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
+      child: Padding(
+        // The list ends above the keyboard while the search field is in use.
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_brand != null) ...[
+                  Transform.translate(
+                    // The arrow's own padding overhangs the gutter, so the
+                    // glyph lines up with the list below it.
+                    offset: const Offset(-AppSpacing.s12, -AppSpacing.s8),
+                    child: AppIconButton(
+                      label: 'Voltar',
+                      icon: Icons.arrow_back,
+                      onPressed: _resolving ? null : _back,
                     ),
-                    if (_breadcrumb != null)
-                      Text(
-                        _breadcrumb!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
+                  ),
+                ],
+                Expanded(
+                  child: AppSheetHeader(
+                    title: _title,
+                    subtitle: _subtitle,
+                    closable: false,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s12),
-          // The year list is short and already ordered; a search field there
-          // would be a control with nothing to do.
-          if (_model == null) ...[
-            TextField(
-              controller: _query,
-              enabled: !_resolving,
-              textInputAction: TextInputAction.search,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Buscar',
-                prefixIcon: Icon(Icons.search),
-              ),
+              ],
             ),
             const SizedBox(height: AppSpacing.s12),
+            // The year list is short and already ordered; a search field there
+            // would be a control with nothing to do.
+            if (_model == null) ...[
+              TextField(
+                controller: _query,
+                enabled: !_resolving,
+                textInputAction: TextInputAction.search,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: _brand == null ? 'Buscar marca' : 'Buscar modelo',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.text.isEmpty
+                      ? null
+                      : AppIconButton(
+                          label: 'Limpar busca',
+                          icon: Icons.close,
+                          onPressed: () => setState(_query.clear),
+                        ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s16),
+            ],
+            if (_resolving) ...[
+              const LinearProgressIndicator(minHeight: 2),
+              const SizedBox(height: AppSpacing.s12),
+            ],
+            if (_resolveError != null) AuthFormBanner(message: _resolveError!),
+            Expanded(child: _body()),
           ],
-          if (_resolveError != null) ...[
-            _InlineError(message: _resolveError!),
-            const SizedBox(height: AppSpacing.s12),
-          ],
-          Expanded(child: _body()),
-        ],
+        ),
       ),
     );
   }
 
   String get _title {
-    if (_model != null) return 'Ano e combustível';
-    if (_brand != null) return 'Modelo';
-    return 'Marca';
+    if (_model != null) return 'Escolha o ano';
+    if (_brand != null) return 'Escolha o modelo';
+    return 'Escolha a marca';
   }
 
-  String? get _breadcrumb {
-    if (_model != null) return '${_brand!.name} · ${_model!.name}';
-    if (_brand != null) return _brand!.name;
-    return null;
+  /// Where the person is, and what they already picked.
+  String get _subtitle {
+    if (_model != null) {
+      return '${_brand!.name} ${_model!.name} · passo 3 de 3';
+    }
+    if (_brand != null) return '${_brand!.name} · passo 2 de 3';
+    return 'Passo 1 de 3';
   }
 
   Widget _body() {
@@ -222,26 +234,10 @@ String _messageFor(ApiFailure failure) {
   return failure.message;
 }
 
-class _InlineError extends StatelessWidget {
-  const _InlineError({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AppSurface(
-      variant: AppSurfaceVariant.grouped,
-      color: theme.colorScheme.errorContainer,
-      padding: const EdgeInsets.all(AppSpacing.s12),
-      child: Text(
-        message,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onErrorContainer,
-        ),
-      ),
-    );
-  }
+String _messageForError(Object error) {
+  return error is ApiFailure
+      ? _messageFor(error)
+      : 'Algo deu errado. Tente novamente.';
 }
 
 class _BrandStep extends ConsumerWidget {
@@ -255,11 +251,9 @@ class _BrandStep extends ConsumerWidget {
     return ref
         .watch(vehicleBrandsProvider)
         .when(
-          loading: () => const AppSkeletonList(count: 8, itemHeight: 52),
+          loading: () => const _ListSkeleton(count: 8),
           error: (error, _) => AppErrorState(
-            message: error is ApiFailure
-                ? _messageFor(error)
-                : 'Algo deu errado. Tente novamente.',
+            message: _messageForError(error),
             onRetry: () => ref.invalidate(vehicleBrandsProvider),
           ),
           data: (brands) {
@@ -268,6 +262,7 @@ class _BrandStep extends ConsumerWidget {
               count: visible.length,
               labelAt: (index) => visible[index].name,
               onTapAt: (index) => onPick(visible[index]),
+              emptyTitle: 'Nenhuma marca com esse nome',
             );
           },
         );
@@ -290,11 +285,9 @@ class _ModelStep extends ConsumerWidget {
     return ref
         .watch(vehicleModelsProvider(brandId))
         .when(
-          loading: () => const AppSkeletonList(count: 8, itemHeight: 52),
+          loading: () => const _ListSkeleton(count: 8),
           error: (error, _) => AppErrorState(
-            message: error is ApiFailure
-                ? _messageFor(error)
-                : 'Algo deu errado. Tente novamente.',
+            message: _messageForError(error),
             onRetry: () => ref.invalidate(vehicleModelsProvider(brandId)),
           ),
           data: (models) {
@@ -303,6 +296,7 @@ class _ModelStep extends ConsumerWidget {
               count: visible.length,
               labelAt: (index) => visible[index].name,
               onTapAt: (index) => onPick(visible[index]),
+              emptyTitle: 'Nenhum modelo com esse nome',
             );
           },
         );
@@ -325,79 +319,102 @@ class _YearStep extends ConsumerWidget {
     return ref
         .watch(vehicleModelYearsProvider(modelId))
         .when(
-          loading: () => const AppSkeletonList(count: 6, itemHeight: 52),
+          loading: () => const _ListSkeleton(count: 5),
           error: (error, _) => AppErrorState(
-            message: error is ApiFailure
-                ? _messageFor(error)
-                : 'Algo deu errado. Tente novamente.',
+            message: _messageForError(error),
             onRetry: () => ref.invalidate(vehicleModelYearsProvider(modelId)),
           ),
           data: (years) => _NameList(
             count: years.length,
             labelAt: (index) => years[index].displayLabel,
             onTapAt: disabled ? null : (index) => onPick(years[index]),
+            emptyTitle: 'Nenhum ano para este modelo',
           ),
         );
   }
 }
 
-/// The one list widget all three steps use. They differ only in what a row
-/// says and what tapping it does.
+/// The one list all three steps use, as one grouped surface that scrolls
+/// inside itself. They differ only in what a row says and what tapping it
+/// does.
 class _NameList extends StatelessWidget {
   const _NameList({
     required this.count,
     required this.labelAt,
     required this.onTapAt,
+    required this.emptyTitle,
   });
 
   final int count;
   final String Function(int index) labelAt;
   final void Function(int index)? onTapAt;
+  final String emptyTitle;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (count == 0) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.s24),
-          child: Text(
-            'Nada com esse nome. Tente outra busca.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+      // The way out of a catalogue that does not have the car is the form
+      // itself: say so, rather than leaving an empty list.
+      return Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.s24),
+        child: Column(
+          children: [
+            Text(
+              emptyTitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleSmall,
             ),
-          ),
+            const SizedBox(height: AppSpacing.s4),
+            Text(
+              'Tente outra busca, ou feche e digite os dados à mão.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
         ),
       );
     }
-    return ListView.separated(
-      itemCount: count,
-      separatorBuilder: (context, index) => const AppRowDivider(indent: 0),
-      itemBuilder: (context, index) {
-        final tap = onTapAt;
-        return AppListRowShell(
-          onTap: tap == null ? null : () => tap(index),
-          semanticLabel: labelAt(index),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  labelAt(index),
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: theme.colorScheme.outline,
-              ),
-            ],
+    return Align(
+      alignment: Alignment.topCenter,
+      child: AppSurface(
+        variant: AppSurfaceVariant.grouped,
+        padding: EdgeInsets.zero,
+        child: ListView.separated(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          itemCount: count,
+          separatorBuilder: (context, index) => const Padding(
+            padding: EdgeInsets.only(left: AppSpacing.inset),
+            child: AppRowDivider(indent: 0),
           ),
-        );
-      },
+          itemBuilder: (context, index) {
+            final tap = onTapAt;
+            return AppGroupScope(
+              horizontalPadding: AppSpacing.inset,
+              child: AppListRow(
+                title: labelAt(index),
+                showChevron: true,
+                onTap: tap == null ? null : () => tap(index),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ListSkeleton extends StatelessWidget {
+  const _ListSkeleton({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: AppSkeleton(width: double.infinity, height: 49.0 * count),
     );
   }
 }
@@ -418,8 +435,10 @@ List<T> _filterByName<T>(
 /// Shown on the form once a selection exists.
 ///
 /// It is where the FIPE valuation surfaces, and where the person confirms they
-/// picked the right car before saving. `fipe_price` being null is normal — the
-/// block simply says the value is unavailable rather than reading as an error.
+/// picked the right car before saving. `fipe_price` being null is a
+/// documented `200` — the source was unreachable — so the row says the value
+/// is unavailable and never reads as an error: the car was still found, and
+/// it can still be registered.
 class VehicleCatalogSummary extends StatelessWidget {
   const VehicleCatalogSummary({
     super.key,
@@ -436,82 +455,43 @@ class VehicleCatalogSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final price = selection.fipePrice;
+    final fuel = selection.fuelType;
+    final meta = [
+      selection.brandName,
+      if (selection.modelYear != null) '${selection.modelYear}',
+      if (fuel != null && fuel != FuelType.desconhecido) fuel.label,
+    ].join(' · ');
 
-    return AppSurface(
-      variant: AppSurfaceVariant.grouped,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const AppIconWell(
-                icon: Icons.directions_car_outlined,
-                tone: AppIconWellTone.accent,
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              // Expanded, not bare: at a 1.3 text scale on a 360px screen
-              // this label is wider than what is left beside the icon, and a
-              // Row does not wrap on its own.
-              Expanded(
-                child: Text(
-                  'Selecionado da tabela FIPE',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
+    return AppGroup(
+      dividerIndent: AppGroup.textIndent,
+      children: [
+        AppListRow(title: selection.modelName, subtitle: meta),
+        if (price != null)
+          AppListRow(
+            title: 'Valor FIPE',
+            subtitle: 'Referência: ${price.referenceLabel}',
+            value: price.price.format(),
+            strongValue: true,
+          )
+        else
+          const AppListRow(
+            title: 'Valor FIPE',
+            subtitle: 'Indisponível agora. O cadastro funciona sem ele.',
           ),
-          const SizedBox(height: AppSpacing.s12),
-          Text(
-            selection.brandName,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          Text(selection.modelName, style: theme.textTheme.titleMedium),
-          if (selection.modelYear != null)
-            Text(
-              '${selection.modelYear}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          const SizedBox(height: AppSpacing.s12),
-          if (price != null) ...[
-            Text(
-              price.price.format(),
-              style: AppTypography.figure(
-                size: 26,
-                color: scheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Valor FIPE de ${price.referenceLabel}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ] else
-            Text(
-              'Valor FIPE indisponível no momento.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          const SizedBox(height: AppSpacing.s8),
-          // Wrap rather than Row: two buttons fit side by side at the default
-          // text scale and stack at a large one, instead of overflowing.
-          Wrap(
+        // Wrap rather than Row: two buttons fit side by side at the default
+        // text scale and stack at a large one, instead of overflowing.
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
+          child: Wrap(
             spacing: AppSpacing.s8,
+            runSpacing: AppSpacing.s4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               AppButton(
                 label: 'Trocar',
-                variant: AppButtonVariant.tertiary,
+                variant: AppButtonVariant.secondary,
+                compact: true,
                 onPressed: enabled ? onChange : null,
               ),
               AppButton(
@@ -521,14 +501,15 @@ class VehicleCatalogSummary extends StatelessWidget {
               ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-/// The affordance that opens the picker when no selection was made in this
-/// session: a raised tile, the same shape as a quick action.
+/// The first step of the vehicle form when nothing was picked in this
+/// session: one row that opens the picker, in the accent because it is an
+/// action, with the reminder that typing by hand works too.
 ///
 /// [alreadyLinked] is the edit case: the vehicle carries a catalogue link from
 /// when it was registered, but this form has not fetched it. Saying so costs
@@ -547,60 +528,25 @@ class VehicleCatalogPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final title = alreadyLinked
         ? 'Trocar na tabela FIPE'
-        : 'Buscar na tabela FIPE';
+        : 'Escolher na tabela FIPE';
     final help = alreadyLinked
-        ? 'Este veículo foi cadastrado pela tabela FIPE. Buscar de novo '
-              'substitui marca, modelo, ano e combustível.'
-        : 'Preenche marca, modelo, ano e combustível para você. Também dá '
-              'para digitar tudo à mão.';
-    final onTap = enabled ? onPressed : null;
+        ? 'Veio da tabela FIPE. Trocar refaz marca, modelo, ano e '
+              'combustível.'
+        : 'Marca, modelo e ano. Também dá para digitar à mão.';
 
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: '$title. $help',
-      excludeSemantics: true,
-      child: AppPressable(
-        onTap: onTap,
-        child: AppSurface(
-          variant: AppSurfaceVariant.raised,
-          onTap: onTap,
-          child: Row(
-            children: [
-              AppIconWell(
-                icon: Icons.search,
-                size: AppIconWellSize.l,
-                color: scheme.primary,
-              ),
-              const SizedBox(width: AppSpacing.s16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.labelLarge?.copyWith(fontSize: 15),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      help,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s8),
-              Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-            ],
-          ),
+    return AppGroup(
+      children: [
+        AppListRow(
+          icon: Icons.search,
+          iconTone: AppIconWellTone.accent,
+          title: title,
+          subtitle: help,
+          showChevron: true,
+          onTap: enabled ? onPressed : null,
         ),
-      ),
+      ],
     );
   }
 }

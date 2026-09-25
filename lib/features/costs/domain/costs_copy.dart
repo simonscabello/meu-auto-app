@@ -58,7 +58,8 @@ String? excludedCategoriesNote(List<String> categoryKeys) {
   if (missing.length == 1) {
     final item = missing.single;
     final verb = item == 'Combustível' ? 'entra' : 'entram';
-    return '$item ainda não $verb nesta conta.';
+    final opening = '${item[0].toUpperCase()}${item.substring(1)}';
+    return '$opening ainda não $verb nesta conta.';
   }
   return '${missing.first} e ${missing.last} ainda não entram nesta conta.';
 }
