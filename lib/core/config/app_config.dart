@@ -28,6 +28,10 @@ final class AppConfig {
 
   static const Duration receiveTimeout = Duration(seconds: 15);
 
+  /// Sending a photo. Below the server's 30-second write window, so a slow
+  /// upload fails here with a message rather than as a dropped connection.
+  static const Duration uploadTimeout = Duration(seconds: 25);
+
   static bool _isPrivateIpv4(String host) {
     final parts = host.split('.');
     if (parts.length != 4) {

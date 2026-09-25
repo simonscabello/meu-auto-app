@@ -126,6 +126,23 @@ String _monthName(CivilDate date) {
   return DateFormat('MMMM', 'pt_BR').format(anchor);
 }
 
+/// A Brazilian phone as it is read: `(11) 91234-5678`, `(11) 3456-7890`.
+///
+/// Partial input is formatted as far as it goes, so the same function masks
+/// a field while it is typed. The server stores and sends the digits alone.
+String formatPhone(String raw) {
+  final digits = digitsOnly(raw);
+  if (digits.isEmpty) return '';
+  final d = digits.length > 11 ? digits.substring(0, 11) : digits;
+  if (d.length <= 2) return '($d';
+  final area = d.substring(0, 2);
+  final rest = d.substring(2);
+  // Eleven digits is a mobile (5 + 4); ten or fewer splits 4 + 4.
+  final split = d.length == 11 ? 5 : 4;
+  if (rest.length <= split) return '($area)$nbsp$rest';
+  return '($area)$nbsp${rest.substring(0, split)}-${rest.substring(split)}';
+}
+
 /// Every digit in [raw], in order. The bridge between a masked field and the
 /// integer behind it: `'R$ 4.200,00'` is `'420000'`, `'98.450'` is `'98450'`.
 String digitsOnly(String raw) {

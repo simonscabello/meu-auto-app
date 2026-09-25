@@ -5,9 +5,14 @@
   "refresh_token": "refresh-secret",
   "token_type": "Bearer",
   "user": {
+    "birth_date": null,
+    "cnh_category": null,
+    "cnh_expires_on": null,
     "created_at": "2026-01-15T12:00:00Z",
     "email": "ana@example.com",
     "id": "11111111-1111-1111-1111-111111111111",
-    "name": "Ana"
+    "name": "Ana",
+    "phone": null,
+    "photo_url": null
   }
 }

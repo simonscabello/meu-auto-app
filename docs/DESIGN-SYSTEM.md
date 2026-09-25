@@ -119,7 +119,10 @@ Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
   (36) para dentro de linha.
 - `AppQuickAction` — os dois atalhos iguais do Início.
 - `AppIconButton`, `AppOverflowMenu` + `AppMenuAction`.
-- `ProfileButton` — o avatar com a inicial.
+- `ProfileButton` — o avatar do dono: a foto, ou a inicial.
+- `AppAvatar` — foto ou inicial num disco, em qualquer tamanho. A inicial é o
+  padrão e o fallback (carregando, URL expirada, sem sinal): nenhuma tela
+  depende da foto, e ela nunca aparece quebrada.
 
 ### Formulários e folhas
 

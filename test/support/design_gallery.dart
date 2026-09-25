@@ -33,6 +33,7 @@ import 'package:meu_auto/shared/widgets/app_setting_row.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_status_chip.dart';
 import 'package:meu_auto/shared/widgets/app_surface.dart';
+import 'package:meu_auto/shared/widgets/app_avatar.dart';
 import 'package:meu_auto/shared/widgets/app_switch_row.dart';
 import 'package:meu_auto/shared/widgets/app_tab_header.dart';
 import 'package:meu_auto/shared/widgets/app_wordmark.dart';
@@ -300,6 +301,22 @@ class _DesignGalleryState extends State<DesignGallery> {
             const Align(
               alignment: Alignment.centerLeft,
               child: AppPlateChip(plate: 'QAF5G33'),
+            ),
+            const _SectionTitle('Avatar'),
+            // Without a photo, the initial; a photo that fails to load falls
+            // back to the same initial rather than a broken image.
+            const Row(
+              children: [
+                AppAvatar(name: 'Simon', size: 36),
+                SizedBox(width: 12),
+                AppAvatar(name: 'Simon', size: 64),
+                SizedBox(width: 12),
+                AppAvatar(
+                  name: 'Ana',
+                  size: 64,
+                  photoUrl: 'https://invalid.test/foto.jpg',
+                ),
+              ],
             ),
             const _SectionTitle('Cabeçalho de seção'),
             AppSectionHeader(

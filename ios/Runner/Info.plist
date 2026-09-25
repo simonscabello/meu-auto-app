@@ -47,6 +47,10 @@
 		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSCameraUsageDescription</key>
+		<string>Para tirar a foto do seu perfil.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Para escolher a foto do seu perfil.</string>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsLocalNetworking</key>

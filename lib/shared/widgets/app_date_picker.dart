@@ -36,6 +36,30 @@ Future<CivilDate?> pickPastDate(
   return CivilDate(picked.year, picked.month, picked.day);
 }
 
+/// A birth date: up to 120 years back, never the future. [pickPastDate]
+/// stops thirty years back, which is right for a car and wrong for its
+/// owner. The picker opens on the year view, since a birthday is found by
+/// its year first.
+Future<CivilDate?> pickBirthDate(
+  BuildContext context, {
+  required CivilDate? initial,
+}) async {
+  final now = DateTime.now();
+  final picked = await showDatePicker(
+    context: context,
+    initialDate: initial == null
+        ? DateTime(now.year - 30, now.month, now.day)
+        : DateTime(initial.year, initial.month, initial.day),
+    firstDate: DateTime(now.year - 120),
+    lastDate: now,
+    initialDatePickerMode: DatePickerMode.year,
+  );
+  if (picked == null) {
+    return null;
+  }
+  return CivilDate(picked.year, picked.month, picked.day);
+}
+
 /// A civil date that may be in the future — a due date, a policy start.
 ///
 /// [pickPastDate] refuses tomorrow because a service that has not happened

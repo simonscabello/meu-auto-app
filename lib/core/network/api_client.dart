@@ -76,6 +76,43 @@ final class ApiClient {
     return _send('DELETE', path, body: body, query: query);
   }
 
+  /// Sends [bytes] as the [field] part of a multipart/form-data body.
+  ///
+  /// The only upload in the app is a photo already shrunk on the phone, but a
+  /// slow mobile link still takes longer to send a few hundred KB than any
+  /// JSON body, so the send timeout is its own.
+  Future<Map<String, dynamic>> putFile(
+    String path, {
+    required String field,
+    required List<int> bytes,
+    required String filename,
+    String? contentType,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        field: MultipartFile.fromBytes(
+          bytes,
+          filename: filename,
+          contentType: contentType == null
+              ? null
+              : DioMediaType.parse(contentType),
+        ),
+      });
+      final response = await _dio.request<dynamic>(
+        path,
+        data: form,
+        options: Options(
+          method: 'PUT',
+          contentType: 'multipart/form-data',
+          sendTimeout: AppConfig.uploadTimeout,
+        ),
+      );
+      return _asMap(response.data);
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {

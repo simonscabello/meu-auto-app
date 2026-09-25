@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_client.dart';
 import 'package:meu_auto/core/network/api_paths.dart';
+import 'package:meu_auto/features/auth/domain/profile_update.dart';
 import 'package:meu_auto/features/auth/domain/session.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
 
@@ -62,6 +63,31 @@ final class AuthRepository {
   Future<User> updateMe({required String name}) async {
     final body = await api.patch(ApiPaths.me, body: {'name': name});
     return User.fromJson(body);
+  }
+
+  /// A PATCH of the personal data: only what [update] names is sent.
+  Future<User> updateProfile(ProfileUpdate update) async {
+    final body = await api.patch(ApiPaths.me, body: update.toJson());
+    return User.fromJson(body);
+  }
+
+  Future<User> uploadPhoto({
+    required List<int> bytes,
+    required String filename,
+    String? contentType,
+  }) async {
+    final body = await api.putFile(
+      ApiPaths.mePhoto,
+      field: 'photo',
+      bytes: bytes,
+      filename: filename,
+      contentType: contentType,
+    );
+    return User.fromJson(body);
+  }
+
+  Future<void> deletePhoto() async {
+    await api.delete(ApiPaths.mePhoto);
   }
 
   Future<Session> changePassword({

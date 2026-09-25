@@ -69,6 +69,10 @@ Confirmed in scope:
 - Logging of services, expenses, fuel and mileage against a vehicle.
 - Deadline tracking and reminders for the dated obligations above.
 - Cost reporting derived from the logged entries.
+- **A profile with a photo and personal data** (added 25/09/2026 at the owner's request):
+  birth date, phone, and the driving licence's category and expiry — all optional. The
+  licence expiry is recorded, not yet reminded; turning it into a reminder like IPVA is a
+  natural next step, not a decision made.
 
 Confirmed out of scope:
 

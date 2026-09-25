@@ -126,4 +126,35 @@ void main() {
       expect(controller.selection.extentOffset, '120.000'.length);
     });
   });
+
+  group('PhoneInputFormatter', () {
+    TextEditingValue type(String old, String next) =>
+        const PhoneInputFormatter().formatEditUpdate(
+          TextEditingValue(text: old),
+          TextEditingValue(text: next),
+        );
+
+    test('writes a mobile number with its DDD as it is typed', () {
+      expect(type('', '1').text, '(1');
+      expect(type('', '11').text, '(11');
+      expect(type('', '119').text, '(11)${nbsp}9');
+      expect(type('', '1191234').text, '(11)${nbsp}9123-4');
+      expect(type('', '11912345678').text, '(11)${nbsp}91234-5678');
+    });
+
+    test('a landline splits four and four', () {
+      expect(type('', '1134567890').text, '(11)${nbsp}3456-7890');
+    });
+
+    test('stops at eleven digits', () {
+      expect(type('', '119123456789').text, '(11)${nbsp}91234-5678');
+    });
+
+    test('backspacing over the mask removes a digit', () {
+      final masked = formatPhone('119');
+      final erased = masked.substring(0, masked.length - 1);
+      expect(digitsOnly(type(masked, erased).text), '11');
+      expect(digitsOnly(type('(11', '(1').text), '1');
+    });
+  });
 }

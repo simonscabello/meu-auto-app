@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meu_auto/core/domain/civil_date.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/features/profile/domain/profile_copy.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
@@ -19,6 +21,44 @@ void main() {
     expect(find.text('ana@example.com'), findsOneWidget);
     // The name heads the page and is also the value of its setting row.
     expect(find.text('Ana'), findsNWidgets(2));
+  });
+
+  testWidgets('personal data reads as values, and says what is missing', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      user: User(
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'Ana',
+        email: 'ana@example.com',
+        createdAt: DateTime.parse('2026-01-15T12:00:00Z').toLocal(),
+        phone: '11912345678',
+        cnhCategory: CnhCategory.ab,
+        cnhExpiresOn: const CivilDate(2031, 6, 30),
+      ),
+    );
+
+    expect(find.text('Dados pessoais'), findsOneWidget);
+    expect(find.text(ProfileCopy.personalNote), findsOneWidget);
+    expect(find.text(formatPhone('11912345678')), findsOneWidget);
+    expect(find.text('AB${dotSep}até 30/06/2031'), findsOneWidget);
+    // No birth date yet: the row asks for it rather than showing a blank.
+    expect(
+      find.descendant(
+        of: find.widgetWithText(AppSettingRow, 'Data de nascimento'),
+        matching: find.text(ProfileCopy.notInformed),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a personal row opens its sheet', (tester) async {
+    var opened = 0;
+    await _pump(tester, onPhone: () => opened++);
+
+    await tester.tap(find.text('Telefone'));
+    expect(opened, 1);
   });
 
   testWidgets('the e-mail is read-only and explained', (tester) async {
@@ -140,18 +180,28 @@ Future<void> _pump(
   VoidCallback? onChangePassword,
   VoidCallback? onLogout,
   ValueChanged<ThemeMode>? onThemeMode,
+  VoidCallback? onPhone,
+  User? user,
 }) async {
+  // Tall enough that the whole list is built: ListView only builds what is
+  // on screen, and the exits sit below the personal data.
+  tester.view.physicalSize = const Size(400, 1800) * 3;
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     MaterialApp(
       theme: AppTheme.light,
       home: Scaffold(
         body: ProfileContent(
-          user: User(
-            id: '11111111-1111-1111-1111-111111111111',
-            name: 'Ana',
-            email: 'ana@example.com',
-            createdAt: DateTime.parse('2026-01-15T12:00:00Z').toLocal(),
-          ),
+          user:
+              user ??
+              User(
+                id: '11111111-1111-1111-1111-111111111111',
+                name: 'Ana',
+                email: 'ana@example.com',
+                createdAt: DateTime.parse('2026-01-15T12:00:00Z').toLocal(),
+              ),
+          onPhone: onPhone,
           themeMode: themeMode,
           onEditName: onEditName ?? () {},
           onThemeMode: onThemeMode ?? (_) {},

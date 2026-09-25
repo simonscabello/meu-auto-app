@@ -7,6 +7,7 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
+import 'package:meu_auto/shared/widgets/app_avatar.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
@@ -57,8 +58,8 @@ String vehicleContextLabel(Vehicle vehicle) {
   return '${vehicle.headlineName}$dotSep$plate';
 }
 
-/// The way into the account from any main tab: the owner's initial in a
-/// small disc, at the end of the header where their other apps keep it.
+/// The way into the account from any main tab: the owner's photo, or their
+/// initial, in a small disc, at the end of the header where their other apps keep it.
 ///
 /// Perfil is not a tab. It is visited a few times a year — a name, a
 /// password, the theme, the list of cars — while what happened to the car
@@ -78,12 +79,9 @@ class ProfileButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final tones = AppTones.of(context);
     final auth = ref.watch(authControllerProvider).valueOrNull;
-    final name = auth is AuthLoggedIn ? auth.user.name.trim() : '';
-    final initial = name.isEmpty ? null : name.characters.first.toUpperCase();
+    final user = auth is AuthLoggedIn ? auth.user : null;
 
     final open = onPressed ?? () => context.push(AppRoutes.profile);
     return Semantics(
@@ -107,27 +105,10 @@ class ProfileButton extends ConsumerWidget {
               width: AppSpacing.minTapTarget,
               height: AppSpacing.minTapTarget,
               child: Center(
-                child: Container(
-                  width: _disc,
-                  height: _disc,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: scheme.secondaryContainer,
-                  ),
-                  child: initial == null
-                      ? Icon(
-                          Icons.person_outline,
-                          size: 20,
-                          color: scheme.onSecondaryContainer,
-                        )
-                      : Text(
-                          initial,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: scheme.onSecondaryContainer,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                child: AppAvatar(
+                  name: user?.name ?? '',
+                  photoUrl: user?.photoUrl,
+                  size: _disc,
                 ),
               ),
             ),

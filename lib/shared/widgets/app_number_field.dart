@@ -74,6 +74,32 @@ class KmInputFormatter extends TextInputFormatter {
   }
 }
 
+/// Formats digits into `(11) 91234-5678` while they are typed; eleven
+/// digits at most (DDD + a mobile number).
+class PhoneInputFormatter extends TextInputFormatter {
+  const PhoneInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var digits = digitsOnly(newValue.text);
+    // Backspacing over the mask ("(11) " then "(") must remove a digit, or
+    // the caret sits behind punctuation that keeps coming back.
+    if (newValue.text.length < oldValue.text.length &&
+        digits == digitsOnly(oldValue.text) &&
+        digits.isNotEmpty) {
+      digits = digits.substring(0, digits.length - 1);
+    }
+    final text = formatPhone(digits);
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+}
+
 /// A money field. Reads back with [centsFromMoneyField].
 class AppMoneyField extends StatelessWidget {
   const AppMoneyField({

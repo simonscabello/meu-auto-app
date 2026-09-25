@@ -24,6 +24,7 @@ abstract final class ApiPaths {
 
   static const me = '/me';
   static const changePassword = '/me/password';
+  static const mePhoto = '/me/photo';
 
   static const vehicles = '/vehicles';
 

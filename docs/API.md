@@ -44,7 +44,12 @@ Authorization: Bearer <access_token>
 | `refresh_token` | `String` | não | Opaco; guardar em storage seguro; rotaciona a cada refresh |
 | `refresh_expires_at` | `DateTime` | não | Fim de vida do refresh token |
 
-`User`: `id` (UUID), `name`, `email`, `created_at` (RFC 3339). Sem `updated_at`.
+`User`: `id` (UUID), `name`, `email`, `created_at` (RFC 3339), e os opcionais —
+sempre presentes, `null` quando vazios — `birth_date` e `cnh_expires_on` (data civil),
+`phone` (só dígitos, com DDD), `cnh_category` (`A`…`AE`; desconhecida vira
+`CnhCategory.desconhecido`) e `photo_url` (URL assinada, 24 h, muda a cada resposta — nunca
+guardar). Sem `updated_at`. Um servidor anterior a esses campos não os manda, e o parse
+aceita.
 
 ### Tempos de vida
 
@@ -191,10 +196,15 @@ Auth: `pública` ou `Bearer`. Request/response são nomes de schema do OpenAPI, 
 | --- | --- | --- | --- | --- | --- | --- |
 | GET | `/v1/me` | Bearer | nenhum | `User` | `unauthorized` | não |
 | PATCH | `/v1/me` | Bearer | `UpdateMeRequest` | `User` | `unauthorized`, `validation_failed` | não |
+| PUT | `/v1/me/photo` | Bearer | multipart, parte `photo` | `User` | `unauthorized`, `validation_failed` | não |
+| DELETE | `/v1/me/photo` | Bearer | nenhum | `NoContent` (204) | `unauthorized` | não |
 | POST | `/v1/me/password` | Bearer | `ChangePasswordRequest` | `Session` (200) | `unauthorized`, `validation_failed` | não |
 | DELETE | `/v1/me` | Bearer | `DeleteMeRequest` | `NoContent` (204) | `unauthorized`, `validation_failed` | não |
 
-`PATCH /v1/me` só altera `name`. Troca de e-mail não existe. A troca de senha exige a
+`PATCH /v1/me` é PATCH de verdade: `name`, `birth_date`, `phone`, `cnh_category` e
+`cnh_expires_on`, todos opcionais; esvaziar é `clear: [...]` (`ProfileUpdate` no app).
+A foto vai por `ApiClient.putFile`, já reduzida a 1024 px pelo `image_picker`; o servidor
+decide o tipo pelos bytes (JPEG, PNG, WebP) e recusa acima de 5 MB. Troca de e-mail não existe. A troca de senha exige a
 senha atual, encerra os refresh tokens anteriores e devolve a sessão substituta.
 `DELETE /v1/me` é irreversível (conta + veículos + histórico) e exige a senha atual.
 
@@ -899,7 +909,7 @@ Não inventar tela, endpoint ou cálculo local para isto.
 
 - Abastecimento e combustível (enum `abastecimento` no odômetro existe; não há rota)
 - Despesas avulsas: estacionamento, pedágio, lavagem, multa, outros
-- Fotos, recibos, anexos, CRLV, object storage
+- Recibos, anexos de registro, CRLV (o armazenamento existe desde a foto do perfil, mas não há endpoint de anexo)
 - Notificações push ou e-mail além do link de reset
 - Cadastro de moto (`vehicle_type` no veículo só aceita `car`)
 - Troca de e-mail

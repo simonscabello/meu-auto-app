@@ -5,6 +5,7 @@ import 'package:meu_auto/core/session/session_manager.dart';
 import 'package:meu_auto/core/session/session_tokens.dart';
 import 'package:meu_auto/features/auth/data/auth_repository.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
+import 'package:meu_auto/features/auth/domain/profile_update.dart';
 import 'package:meu_auto/features/auth/domain/session.dart';
 
 final authControllerProvider =
@@ -86,6 +87,35 @@ class AuthController extends AsyncNotifier<AuthStatus> {
 
   Future<void> updateName(String name) async {
     final user = await ref.read(authRepositoryProvider).updateMe(name: name);
+    state = AsyncData(AuthLoggedIn(user));
+  }
+
+  Future<void> updateProfile(ProfileUpdate update) async {
+    final user = await ref.read(authRepositoryProvider).updateProfile(update);
+    state = AsyncData(AuthLoggedIn(user));
+  }
+
+  Future<void> setPhoto({
+    required List<int> bytes,
+    required String filename,
+    String? contentType,
+  }) async {
+    final user = await ref
+        .read(authRepositoryProvider)
+        .uploadPhoto(
+          bytes: bytes,
+          filename: filename,
+          contentType: contentType,
+        );
+    state = AsyncData(AuthLoggedIn(user));
+  }
+
+  /// The server answers 204, so the account is read again rather than
+  /// patched by hand: the next response is the truth about the photo.
+  Future<void> removePhoto() async {
+    final repository = ref.read(authRepositoryProvider);
+    await repository.deletePhoto();
+    final user = await repository.me();
     state = AsyncData(AuthLoggedIn(user));
   }
 

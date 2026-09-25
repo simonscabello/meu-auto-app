@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/session/session_tokens.dart';
 import 'package:meu_auto/features/auth/domain/session.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
@@ -18,6 +19,44 @@ void main() {
       expect(user.name, 'Ana');
       expect(user.email, 'ana@example.com');
       expect(user.createdAt, DateTime.parse('2026-01-15T12:00:00Z').toLocal());
+    });
+
+    test('reads the personal data and the photo', () {
+      final user = User.fromJson({
+        ...userJson,
+        'birth_date': '1990-04-12',
+        'phone': '11912345678',
+        'cnh_category': 'AB',
+        'cnh_expires_on': '2031-06-30',
+        'photo_url': 'https://t3.storageapi.dev/foto.jpg?X-Amz-Signature=x',
+      });
+
+      expect(user.birthDate, const CivilDate(1990, 4, 12));
+      expect(user.phone, '11912345678');
+      expect(user.cnhCategory, CnhCategory.ab);
+      expect(user.cnhExpiresOn, const CivilDate(2031, 6, 30));
+      expect(user.photoUrl, startsWith('https://'));
+    });
+
+    test('a server from before the personal data still parses', () {
+      final user = User.fromJson({
+        for (final entry in userJson.entries)
+          if (!{
+            'birth_date',
+            'phone',
+            'cnh_category',
+            'cnh_expires_on',
+            'photo_url',
+          }.contains(entry.key))
+            entry.key: entry.value,
+      });
+      expect(user.birthDate, isNull);
+      expect(user.photoUrl, isNull);
+    });
+
+    test('a licence category this build does not know is not a crash', () {
+      final user = User.fromJson({...userJson, 'cnh_category': 'ACC'});
+      expect(user.cnhCategory, CnhCategory.desconhecido);
     });
 
     test('fails clearly when a required field is missing', () {
