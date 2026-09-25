@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/domain/money.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
@@ -157,7 +158,7 @@ class _Total extends StatelessWidget {
   final Money amount;
   final String window;
 
-  static const _symbol = 'R\$ ';
+  static const _symbol = 'R\$$nbsp';
 
   @override
   Widget build(BuildContext context) {
@@ -240,30 +241,9 @@ class _CategoryBar extends StatelessWidget with GroupedRow {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // The name wraps before the amount moves: at a large text size
-              // "IPVA e licenciamento" takes two lines and the figure stays
-              // whole at the edge.
-              Expanded(
-                child: Text(
-                  label,
-                  style: theme.textTheme.titleSmall,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              Text(
-                amount.format(),
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontFeatures: AppTypography.tabular,
-                ),
-              ),
-            ],
-          ),
+          // The name wraps before the amount moves; a wide amount or a large
+          // text size puts it under the name (AppRowBody).
+          AppRowBody(title: label, titleMaxLines: 2, value: amount.format()),
           const SizedBox(height: AppSpacing.s8),
           Row(
             children: [

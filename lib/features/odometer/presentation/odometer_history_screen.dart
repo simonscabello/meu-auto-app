@@ -288,7 +288,7 @@ class OdometerReadingRow extends StatelessWidget with GroupedRow {
       formatCivilDayMonthAbbrev(reading.occurredOn),
       ?_originOf(reading.source),
       if (distance != null) '+${formatKm(distance)}',
-    ].join(' · ');
+    ].join(dotSep);
 
     final action = deleting
         ? const Padding(
@@ -337,7 +337,10 @@ class OdometerReadingRow extends StatelessWidget with GroupedRow {
                       fontFeatures: AppTypography.tabular,
                     ),
                     children: [
-                      TextSpan(text: ' km', style: theme.textTheme.bodySmall),
+                      TextSpan(
+                        text: '${nbsp}km',
+                        style: theme.textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),

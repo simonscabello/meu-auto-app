@@ -7,6 +7,9 @@ import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_row_body.dart';
+
+export 'package:meu_auto/shared/widgets/app_row_body.dart';
 
 /// One scannable line: a glyph, a name, one line of state, and whatever the
 /// row is worth on the right.
@@ -34,6 +37,7 @@ class AppListRow extends StatelessWidget with GroupedRow {
     this.value,
     this.strongValue = false,
     this.titleMaxLines,
+    this.footnote,
     this.onTap,
     this.showChevron = false,
     this.semanticLabel,
@@ -60,8 +64,11 @@ class AppListRow extends StatelessWidget with GroupedRow {
   /// An action of its own. Never part of [onTap].
   final Widget? trailing;
 
-  /// A short figure on the right that belongs to the row — "R$ 389,90",
-  /// "Rafael" — and is part of its tap target, unlike [trailing].
+  /// A short figure on the title's line that belongs to the row —
+  /// "R$ 389,90", "12,4 km/L" — and is part of its tap target, unlike
+  /// [trailing]. A figure, never a phrase: "Sem consumo ainda" as a value
+  /// squeezed "Consumo" into a column that broke it mid-word. A phrase is
+  /// the [subtitle]. See [AppRowBody] for where it goes when it is wide.
   final String? value;
 
   /// Sets [value] as a figure — an amount, a total — in the text colour and
@@ -71,6 +78,10 @@ class AppListRow extends StatelessWidget with GroupedRow {
   /// Caps the name — a service record names every item it covered, and six
   /// of them made a row seven lines tall. Null lets the name wrap freely.
   final int? titleMaxLines;
+
+  /// A second supporting line under [subtitle], for the rare row that has
+  /// one more fact of its own — a part's warranty.
+  final String? footnote;
 
   final VoidCallback? onTap;
   final bool showChevron;
@@ -94,13 +105,6 @@ class AppListRow extends StatelessWidget with GroupedRow {
     final isAdd = iconTone == AppIconWellTone.accent;
     final inset = AppGroupScope.paddingOf(context);
 
-    final large = AppTypography.isLargeText(context);
-    final valueStyle = strongValue
-        ? theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            fontFeatures: AppTypography.tabular,
-          )
-        : theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant);
     final main = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -115,59 +119,26 @@ class AppListRow extends StatelessWidget with GroupedRow {
           const SizedBox(width: AppSpacing.s12),
         ],
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                maxLines: titleMaxLines,
-                overflow: titleMaxLines == null ? null : TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  // An "add" row is an action, and reads in the accent like
-                  // every other action that is text.
-                  color: isAdd ? scheme.primary : null,
-                  fontWeight: isAdd ? FontWeight.w600 : null,
-                ),
-              ),
-              if (subtitle != null && subtitle!.isNotEmpty) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: textAccent ?? scheme.onSurfaceVariant,
-                    fontWeight: textAccent == null ? null : FontWeight.w500,
-                  ),
-                ),
-              ],
-              if (value != null && large) ...[
-                const SizedBox(height: AppSpacing.s4),
-                Text(value!, style: valueStyle),
-              ],
-            ],
+          child: AppRowBody(
+            title: title,
+            titleMaxLines: titleMaxLines,
+            titleStyle: isAdd
+                // An "add" row is an action, and reads in the accent like
+                // every other action that is text.
+                ? TextStyle(color: scheme.primary, fontWeight: FontWeight.w600)
+                : null,
+            subtitle: subtitle,
+            subtitleStyle: textAccent == null
+                ? null
+                : TextStyle(color: textAccent, fontWeight: FontWeight.w500),
+            footnote: footnote,
+            value: value,
+            strongValue: strongValue,
           ),
         ),
-        if (value != null && !large) ...[
-          const SizedBox(width: AppSpacing.s12),
-          // At most a little under half the line: a long amount or a phrase
-          // like "Sem consumo ainda" wraps inside its column instead of
-          // pushing the name off the row at a large text size.
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.sizeOf(context).width * 0.4,
-            ),
-            child: Text(value!, textAlign: TextAlign.end, style: valueStyle),
-          ),
-        ],
         if (showChevron) ...[
           const SizedBox(width: AppSpacing.s4),
-          Icon(
-            Icons.chevron_right,
-            size: 20,
-            // Fainter than the supporting text: the arrow is the least
-            // important thing on the row.
-            color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
-          ),
+          const AppRowChevron(),
         ],
       ],
     );
@@ -226,7 +197,7 @@ class AppListRow extends StatelessWidget with GroupedRow {
       return tappable;
     }
 
-    if (large) {
+    if (AppTypography.isLargeText(context)) {
       // Beside the words, a "Feito" left the name a column wide enough for
       // "arrefeciment / o". Under them, on the text's own edge, it keeps
       // its size and the name keeps the line.
@@ -263,6 +234,7 @@ class AppListRow extends StatelessWidget with GroupedRow {
     final parts = [
       title,
       if (detail != null && detail.isNotEmpty) detail,
+      ?footnote,
       ?value,
     ];
     return parts.join('. ');
@@ -273,11 +245,12 @@ class AppListRow extends StatelessWidget with GroupedRow {
 /// own.
 ///
 /// [AppListRow] is the common shape — glyph, name, one line of state — and
-/// most lists want exactly that. A few genuinely do not: a fill carries a
-/// third line explaining a consumption the server could not compute, and a
-/// service record carries a cost column. Those build their own interior and
-/// take the rest from here, so every row in the app still has the same
-/// height, the same rhythm and the same 48dp minimum whatever is inside it.
+/// most lists want exactly that. A few genuinely do not: a reading with a
+/// delete button beside it, a cost with a bar under it, a vehicle with a
+/// tick. Those build their own interior and take the rest from here, so
+/// every row in the app still has the same height, the same rhythm and the
+/// same 48dp minimum whatever is inside it. A name with a figure beside it
+/// is [AppRowBody], so it breaks its lines the way every other row does.
 class AppListRowShell extends StatelessWidget with GroupedRow {
   const AppListRowShell({
     super.key,

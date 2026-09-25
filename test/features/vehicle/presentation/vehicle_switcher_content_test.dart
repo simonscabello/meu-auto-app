@@ -63,7 +63,7 @@ void main() {
 
   testWidgets('each car says its make and year under the name', (tester) async {
     await _pump(tester, selectedId: 'v1');
-    expect(find.text('Toyota · 2020'), findsNWidgets(3));
+    expect(find.text('Toyota\u00A0· 2020'), findsNWidgets(3));
     expect(find.text('Seus veículos'), findsOneWidget);
   });
 

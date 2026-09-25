@@ -135,7 +135,7 @@ class AbastecimentoDetailContent extends StatelessWidget {
         AppDetailHeader(
           title: formatCivilDateLong(fill.occurredOn),
           subtitle:
-              '${abastecimentoFuelLabel(fill.fuel)} · ${formatKm(fill.mileageKm)}',
+              '${abastecimentoFuelLabel(fill.fuel)}$dotSep${formatKm(fill.mileageKm)}',
         ),
         const SizedBox(height: AppSpacing.s24),
         AppFactsStrip(
@@ -146,11 +146,16 @@ class AbastecimentoDetailContent extends StatelessWidget {
               value: litersTextFromVolumeMl(fill.volumeMl),
               unit: 'L',
             ),
-            AppFact(
-              label: 'Consumo',
-              value: kmPerLiter ?? '—',
-              unit: kmPerLiter == null ? null : 'km/L',
-            ),
+            // Without a consumption the third column is the price per
+            // litre, not a lone dash; the sentence under the strip says why
+            // there is no consumption yet.
+            if (kmPerLiter != null)
+              AppFact(label: 'Consumo', value: kmPerLiter, unit: 'km/L')
+            else
+              AppFact(
+                label: 'Por litro',
+                value: fill.pricePerLiterCents.format(),
+              ),
           ],
         ),
         if (kmPerLiter == null) ...[
@@ -168,11 +173,12 @@ class AbastecimentoDetailContent extends StatelessWidget {
           title: 'Detalhes',
           dividerIndent: AppGroup.textIndent,
           children: [
-            AppFactRow(
-              label: 'Preço por litro',
-              value: fill.pricePerLiterCents.format(),
-              inline: true,
-            ),
+            if (kmPerLiter != null)
+              AppFactRow(
+                label: 'Preço por litro',
+                value: fill.pricePerLiterCents.format(),
+                inline: true,
+              ),
             AppFactRow(
               label: 'Tanque cheio',
               value: fill.fullTank ? 'Sim' : 'Não',

@@ -6,7 +6,6 @@ import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_record.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
@@ -15,7 +14,6 @@ import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
-import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_paged_footer.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -201,69 +199,23 @@ class MaintenanceRecordRow extends StatelessWidget with GroupedRow {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final showCost = record.totalCostCents.cents > 0;
-    final when = maintenanceRecordWhen(record);
-    // With the text enlarged the cost goes under the words, as it does in
-    // every row (see [AppTypography.isLargeText]).
-    final large = AppTypography.isLargeText(context);
-    final cost = Text(
-      record.totalCostCents.format(),
-      style: theme.textTheme.titleSmall?.copyWith(
-        fontFeatures: AppTypography.tabular,
+    return AppListRow(
+      icon: maintenanceIconFor(
+        record.items.isEmpty ? '' : record.items.first.itemSlug,
       ),
-    );
-
-    return AppListRowShell(
-      onTap: onTap,
+      title: record.title,
+      titleMaxLines: 2,
+      subtitle: maintenanceRecordWhen(record),
+      value: showCost ? record.totalCostCents.format() : null,
+      strongValue: true,
       semanticLabel: [
         record.itemsSummary,
-        when,
+        maintenanceRecordWhen(record),
         if (showCost) record.totalCostCents.format(),
       ].join('. '),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          AppIconWell(
-            icon: maintenanceIconFor(
-              record.items.isEmpty ? '' : record.items.first.itemSlug,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  record.title,
-                  style: theme.textTheme.titleSmall,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(when, style: theme.textTheme.bodySmall),
-                if (showCost && large) ...[
-                  const SizedBox(height: AppSpacing.s4),
-                  cost,
-                ],
-              ],
-            ),
-          ),
-          if (showCost && !large) ...[
-            const SizedBox(width: AppSpacing.s12),
-            cost,
-          ],
-          if (onTap != null) ...[
-            const SizedBox(width: AppSpacing.s4),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
-            ),
-          ],
-        ],
-      ),
+      onTap: onTap,
+      showChevron: onTap != null,
     );
   }
 }
@@ -276,5 +228,5 @@ String maintenanceRecordWhen(MaintenanceRecord record) {
     formatCivilDayMonthAbbrev(record.occurredOn),
     if (km != null) formatKm(km),
     if (record.kind == MaintenanceRecordKind.declared) 'Informado',
-  ].join(' · ');
+  ].join(dotSep);
 }

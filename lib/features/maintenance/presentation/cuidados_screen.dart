@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/client_id.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
@@ -493,7 +494,7 @@ class _PlanRow extends StatelessWidget with GroupedRow {
   String _recordedLine() {
     final next = careNextCheckPhrase(plan.remainingDays);
     if (next == null) return careRecordedTodayPhrase;
-    return '$careRecordedTodayPhrase · $next';
+    return '$careRecordedTodayPhrase$dotSep$next';
   }
 }
 

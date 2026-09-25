@@ -59,8 +59,8 @@ void main() {
       );
 
       expect(find.text('PRIUS 1.8 16V 5p Aut. (Híbrido)'), findsOneWidget);
-      expect(find.text('Toyota · 2017 · Híbrido'), findsOneWidget);
-      expect(find.text(r'R$ 80.055,00'), findsOneWidget);
+      expect(find.text('Toyota\u00A0· 2017\u00A0· Híbrido'), findsOneWidget);
+      expect(find.text('R\$\u00A080.055,00'), findsOneWidget);
       expect(find.text('Referência: agosto de 2026'), findsOneWidget);
     });
 

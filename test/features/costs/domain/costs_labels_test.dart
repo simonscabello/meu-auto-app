@@ -5,8 +5,8 @@ import 'package:meu_auto/features/costs/domain/costs_copy.dart';
 /// the cost figure they describe.
 void main() {
   test('the window is a rolling one, never "este mês"', () {
-    expect(costPeriodLabel(12), 'Gastos registrados · últimos 12 meses');
-    expect(costPeriodLabel(1), 'Gastos registrados · últimos 30 dias');
+    expect(costPeriodLabel(12), 'Gastos registrados\u00A0· últimos 12 meses');
+    expect(costPeriodLabel(1), 'Gastos registrados\u00A0· últimos 30 dias');
   });
 
   test('a single category is not joined with "e"', () {

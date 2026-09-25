@@ -25,8 +25,8 @@ void main() {
     expect(find.text('6 meses'), findsOneWidget);
     expect(find.text('12 meses'), findsOneWidget);
     expect(find.text('24 meses'), findsOneWidget);
-    expect(find.text(r'R$ 50,00'), findsOneWidget);
-    expect(find.text(r'R$ 300,00'), findsNothing);
+    expect(find.text('R\$\u00A050,00'), findsOneWidget);
+    expect(find.text('R\$\u00A0300,00'), findsNothing);
     expect(find.textContaining('custo total'), findsNothing);
     expect(find.textContaining('gasto do mês'), findsNothing);
     expect(find.textContaining('este mês'), findsNothing);
@@ -63,12 +63,12 @@ void main() {
       ),
     );
 
-    expect(find.text(r'R$ 8.662,87'), findsOneWidget);
+    expect(find.text('R\$\u00A08.662,87'), findsOneWidget);
     expect(find.text('Manutenção'), findsOneWidget);
     expect(find.text('IPVA e licenciamento'), findsOneWidget);
     expect(find.text('Seguro'), findsOneWidget);
     expect(find.text('Combustível'), findsOneWidget);
-    expect(find.text(r'R$ 2.912,87'), findsOneWidget);
+    expect(find.text('R\$\u00A02.912,87'), findsOneWidget);
     expect(
       find.text('Despesas do dia a dia ainda não entram nesta conta.'),
       findsOneWidget,
@@ -89,7 +89,7 @@ void main() {
       ),
     );
 
-    expect(find.text(r'R$ 1.540,00'), findsOneWidget);
+    expect(find.text('R\$\u00A01.540,00'), findsOneWidget);
     expect(find.text('Manutenção'), findsOneWidget);
     expect(find.text('IPVA e licenciamento'), findsOneWidget);
     expect(find.text('Seguro'), findsOneWidget);
@@ -108,7 +108,7 @@ void main() {
     await _pump(tester, _costs(periodMonths: 6));
 
     expect(find.text('Custo registrado'), findsOneWidget);
-    expect(find.text(r'R$ 0,00'), findsWidgets);
+    expect(find.text('R\$\u00A00,00'), findsWidgets);
     expect(
       find.text(
         'Nenhum custo nos últimos 6 meses. Troque o intervalo ou registre um serviço.',

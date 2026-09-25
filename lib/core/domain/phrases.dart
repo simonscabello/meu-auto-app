@@ -85,7 +85,7 @@ String? urgencyPhrase({int? remainingKm, int? remainingDays}) {
   final daysLate = days < 0;
   final kmLate = km < 0;
   if (daysLate && kmLate) {
-    return '${dueInDaysPhrase(days)} · ${remainingKmPhrase(km)}';
+    return '${dueInDaysPhrase(days)}$dotSep${remainingKmPhrase(km)}';
   }
   if (kmLate) return capitalizeFirst(remainingKmPhrase(km)!);
   if (daysLate) return dueInDaysPhrase(days);
@@ -138,8 +138,8 @@ String? dueSummary({int? remainingKm, int? remainingDays}) {
   final days = remainingDaysPhrase(remainingDays);
   if (km == null) return days;
   if (days == null) return km;
-  if (remainingDays! <= remainingKm!) return '$days · $km';
-  return '$km · $days';
+  if (remainingDays! <= remainingKm!) return '$days$dotSep$km';
+  return '$km$dotSep$days';
 }
 
 String maintenanceStatusPhrase(

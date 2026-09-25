@@ -25,7 +25,7 @@ void main() {
       // The value the form sends straight back. If this were the source's own
       // word the server would reject the write.
       expect(year.fuelType, FuelType.hibrido);
-      expect(year.displayLabel, '2017 · Híbrido');
+      expect(year.displayLabel, '2017\u00A0· Híbrido');
     });
 
     test('a null year is the zero-kilometre entry, not a missing field', () {
@@ -41,7 +41,7 @@ void main() {
       expect(year.year, isNull);
       // The source's `name` starts with the pseudo-year 32000, which would be
       // nonsense on screen.
-      expect(year.displayLabel, 'Zero km · Híbrido');
+      expect(year.displayLabel, 'Zero km\u00A0· Híbrido');
     });
 
     test('a fuel with no equivalent leaves the field empty, not wrong', () {
@@ -57,7 +57,7 @@ void main() {
       // Null, not `desconhecido`: the server said nothing, so the form shows an
       // empty fuel and the owner picks it.
       expect(year.fuelType, isNull);
-      expect(year.displayLabel, '2019 · Vapor');
+      expect(year.displayLabel, '2019\u00A0· Vapor');
     });
 
     test('a fuel this build does not know falls back instead of throwing', () {

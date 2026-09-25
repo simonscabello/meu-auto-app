@@ -56,7 +56,7 @@ class _DesignGalleryState extends State<DesignGallery> {
   bool _switch = true;
   int _segment = 2;
   int _choice = 1;
-  final _money = TextEditingController(text: 'R\$ 420,00');
+  final _money = TextEditingController(text: 'R\$\u00A0420,00');
   late final TextEditingController _km = kmController(98450);
   final _liters = TextEditingController(text: '34,7');
 
@@ -141,7 +141,7 @@ class _DesignGalleryState extends State<DesignGallery> {
             ),
             const SizedBox(height: AppSpacing.s8),
             Text(
-              '48.320 km   R\$ 1.234,56',
+              '48.320\u00A0km   R\$\u00A01.234,56',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontFeatures: AppTypography.tabular,
               ),
@@ -149,7 +149,7 @@ class _DesignGalleryState extends State<DesignGallery> {
             const _SectionTitle('Cabeçalho de aba'),
             AppTabHeader(
               title: 'Manutenção',
-              contextLabel: 'Prius · QAF5G33',
+              contextLabel: 'Prius\u00A0· QAF5G33',
               onContextTap: () {},
               actions: [
                 AppOverflowMenu(
@@ -291,7 +291,7 @@ class _DesignGalleryState extends State<DesignGallery> {
             const SizedBox(height: AppSpacing.s16),
             const AppFactsStrip(
               facts: [
-                AppFact(label: 'Total', value: 'R\$ 246,55'),
+                AppFact(label: 'Total', value: 'R\$\u00A0246,55'),
                 AppFact(label: 'Litros', value: '39,83', unit: 'L'),
                 AppFact(label: 'Consumo', value: '17,2', unit: 'km/L'),
               ],
@@ -318,7 +318,7 @@ class _DesignGalleryState extends State<DesignGallery> {
             const AppListRow(
               icon: Icons.oil_barrel_outlined,
               title: 'Troca de óleo do motor',
-              subtitle: 'Em dia · próxima em 11 set',
+              subtitle: 'Em dia\u00A0· próxima em 11\u00A0set',
             ),
             const AppRowDivider(),
             AppListRow(
@@ -326,6 +326,18 @@ class _DesignGalleryState extends State<DesignGallery> {
               title: 'Correia dentada',
               subtitle: 'Venceu há 40 dias',
               status: AppStatus.vencido,
+              onTap: () {},
+              showChevron: true,
+            ),
+            const AppRowDivider(),
+            // The figure on the name's line, the state line the full width
+            // under both (AppRowBody).
+            AppListRow(
+              icon: Icons.local_gas_station_outlined,
+              title: 'Gasolina · 37,65 L',
+              subtitle: '5 set · Sem consumo ainda',
+              value: 'R\$ 240,58',
+              strongValue: true,
               onTap: () {},
               showChevron: true,
             ),
@@ -350,7 +362,7 @@ class _DesignGalleryState extends State<DesignGallery> {
                 AppListRow(
                   icon: Icons.receipt_long_outlined,
                   title: 'IPVA 2026',
-                  subtitle: 'Pago em 12 fev',
+                  subtitle: 'Pago em 12\u00A0fev',
                   onTap: () {},
                   showChevron: true,
                 ),
@@ -375,11 +387,11 @@ class _DesignGalleryState extends State<DesignGallery> {
               children: [
                 const AppFactRow(
                   label: 'Última vez',
-                  value: '12/02/2026 · 98.450 km',
+                  value: '12/02/2026\u00A0· 98.450\u00A0km',
                 ),
                 AppFactRow(
                   label: 'Intervalo',
-                  value: 'a cada 10.000 km ou 12 meses',
+                  value: 'a cada 10.000\u00A0km ou 12 meses',
                   onTap: () {},
                 ),
                 const AppFactRow(
@@ -399,15 +411,15 @@ class _DesignGalleryState extends State<DesignGallery> {
                 AppListRow(
                   icon: Icons.air_outlined,
                   title: 'Filtro de ar',
-                  subtitle: 'Faltam 8.000 km',
+                  subtitle: 'Faltam 8.000\u00A0km',
                   onTap: () {},
                   showChevron: true,
                 ),
                 const AppListRow(
                   icon: Icons.bolt_outlined,
                   title: 'Velas',
-                  subtitle: 'Faltam 21.000 km',
-                  value: 'R\$ 320,00',
+                  subtitle: 'Faltam 21.000\u00A0km',
+                  value: 'R\$\u00A0320,00',
                   strongValue: true,
                 ),
               ],
@@ -513,7 +525,7 @@ class _DesignGalleryState extends State<DesignGallery> {
             const SizedBox(height: AppSpacing.s12),
             AppMoneyField(controller: _money, label: 'Valor total'),
             const SizedBox(height: AppSpacing.s12),
-            AppKmField(controller: _km, helperText: 'Atual: 98.450 km'),
+            AppKmField(controller: _km, helperText: 'Atual: 98.450\u00A0km'),
             const SizedBox(height: AppSpacing.s12),
             AppLitersField(controller: _liters),
             const SizedBox(height: AppSpacing.s12),

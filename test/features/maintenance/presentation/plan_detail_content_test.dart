@@ -22,7 +22,7 @@ void main() {
     );
 
     expect(find.text('A cada 12 meses'), findsOneWidget);
-    expect(find.textContaining('0 km'), findsNothing);
+    expect(find.textContaining('0\u00A0km'), findsNothing);
     // One dimension is not a strip: the date is a line of the details.
     expect(find.text('10/08/2027'), findsOneWidget);
     expect(find.text('Vence em 10/08/2027'), findsOneWidget);
@@ -48,14 +48,14 @@ void main() {
 
     expect(find.text('Troca de óleo do motor'), findsOneWidget);
     expect(find.text('Em dia'), findsOneWidget);
-    expect(find.text('Faltam 2.000 km ou até 21/03/2027'), findsOneWidget);
+    expect(find.text('Faltam 2.000\u00A0km ou até 21/03/2027'), findsOneWidget);
     expect(find.text('Última vez'), findsOneWidget);
     expect(find.text('21/03/2026'), findsOneWidget);
     expect(find.text('Próxima'), findsOneWidget);
-    expect(find.text('141.011 km'), findsOneWidget);
+    expect(find.text('141.011\u00A0km'), findsOneWidget);
     expect(find.text('Ou em'), findsOneWidget);
     expect(find.text('21/03/2027'), findsOneWidget);
-    expect(find.text('A cada 10.000 km ou 12 meses'), findsOneWidget);
+    expect(find.text('A cada 10.000\u00A0km ou 12 meses'), findsOneWidget);
   });
 
   testWidgets('a late item says by how much, in the closer dimension', (
@@ -76,7 +76,7 @@ void main() {
     );
 
     expect(find.text('Vencido'), findsOneWidget);
-    expect(find.text('Passou 2.000 km'), findsOneWidget);
+    expect(find.text('Passou 2.000\u00A0km'), findsOneWidget);
   });
 
   // A tyre that has run its suggested distance is "vencido" on the wire and
@@ -162,7 +162,7 @@ void main() {
 
     expect(find.text('Histórico'), findsOneWidget);
     expect(find.text('10 de agosto de 2026'), findsOneWidget);
-    expect(find.text('R\$ 180,00'), findsOneWidget);
+    expect(find.text('R\$\u00A0180,00'), findsOneWidget);
   });
 
   testWidgets('no history says so under the group', (tester) async {
@@ -186,7 +186,10 @@ void main() {
       ],
     );
 
-    expect(find.textContaining('10.000 km desde a anterior'), findsOneWidget);
+    expect(
+      find.textContaining('10.000\u00A0km desde a anterior'),
+      findsOneWidget,
+    );
   });
 
   group('360x640 with the font turned up', () {

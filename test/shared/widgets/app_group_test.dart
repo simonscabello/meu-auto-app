@@ -49,7 +49,7 @@ void main() {
       const AppGroup(
         title: 'Custo registrado',
         footnote: 'Inclui manutenção e seguro',
-        children: [AppListRow(title: 'R\$ 1.540,00')],
+        children: [AppListRow(title: 'R\$\u00A01.540,00')],
       ),
     );
 

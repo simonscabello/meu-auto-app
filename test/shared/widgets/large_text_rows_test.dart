@@ -32,7 +32,7 @@ void main() {
   const row = AppListRow(
     title: 'Gastos em 12 meses',
     icon: Icons.payments_outlined,
-    value: r'R$ 9.655,32',
+    value: 'R\$\u00A09.655,32',
     strongValue: true,
   );
 
@@ -43,7 +43,7 @@ void main() {
     expect(
       isUnder(
         tester,
-        find.text(r'R$ 9.655,32'),
+        find.text('R\$\u00A09.655,32'),
         find.text('Gastos em 12 meses'),
       ),
       isFalse,
@@ -57,7 +57,7 @@ void main() {
     expect(
       isUnder(
         tester,
-        find.text(r'R$ 9.655,32'),
+        find.text('R\$\u00A09.655,32'),
         find.text('Gastos em 12 meses'),
       ),
       isTrue,
@@ -93,13 +93,13 @@ void main() {
       tester,
       const AppFactRow(
         label: 'Preço por litro',
-        value: r'R$ 6,19',
+        value: 'R\$\u00A06,19',
         inline: true,
       ),
       1.6,
     );
     expect(
-      isUnder(tester, find.text(r'R$ 6,19'), find.text('Preço por litro')),
+      isUnder(tester, find.text('R\$\u00A06,19'), find.text('Preço por litro')),
       isTrue,
     );
   });

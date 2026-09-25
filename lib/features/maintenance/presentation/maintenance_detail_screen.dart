@@ -7,7 +7,6 @@ import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/network/api_form_errors.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
-import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
@@ -256,7 +255,7 @@ class MaintenanceDetailContent extends StatelessWidget {
     final subtitle = [
       if (!showStrip) formatCivilDateLong(record.occurredOn),
       if (hasWorkshop) workshop,
-    ].join(' · ');
+    ].join(dotSep);
 
     return ListView(
       padding: AppSpacing.screenHeaded,
@@ -317,10 +316,8 @@ class MaintenanceDetailContent extends StatelessWidget {
 /// One line of the record: what was done, what it cost, and what it is
 /// warranted for.
 ///
-/// [AppListRowShell] rather than [AppListRow]: the cost is a column of its
-/// own and the warranty is a line of its own, which is more than the one line
-/// of state a plain row carries. The shell keeps the height, the padding and
-/// the 48dp minimum identical to every other row in the app.
+/// One part of the service: the price on the name's line, what was bought
+/// under it, and the warranty as a line of its own ([AppListRow.footnote]).
 class _ItemRow extends StatelessWidget with GroupedRow {
   const _ItemRow({super.key, required this.item});
 
@@ -328,66 +325,25 @@ class _ItemRow extends StatelessWidget with GroupedRow {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final detail = [
-      if (item.description != null && item.description!.trim().isNotEmpty)
-        item.description!.trim(),
-      if (item.partBrand != null && item.partBrand!.trim().isNotEmpty)
-        item.partBrand!.trim(),
-    ].join(' · ');
+    final detail = joinParts([
+      item.description?.trim(),
+      item.partBrand?.trim(),
+    ]);
     final warranty = _warrantyLine(item);
     final cost = item.costCents;
-    // With the text enlarged the price goes under the words, as it does in
-    // every row (see [AppTypography.isLargeText]).
-    final large = AppTypography.isLargeText(context);
-    final price = cost == null
-        ? null
-        : Text(
-            cost.format(),
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontFeatures: AppTypography.tabular,
-            ),
-          );
-
-    return AppListRowShell(
+    return AppListRow(
+      icon: maintenanceIconFor(item.itemSlug),
+      title: item.itemName,
+      subtitle: detail,
+      footnote: warranty,
+      value: cost?.format(),
+      strongValue: true,
       semanticLabel: [
         item.itemName,
         if (detail.isNotEmpty) detail,
-        if (cost != null) cost.format(),
+        ?cost?.format(),
         ?warranty,
       ].join('. '),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          AppIconWell(icon: maintenanceIconFor(item.itemSlug)),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.itemName, style: theme.textTheme.titleSmall),
-                if (detail.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(detail, style: theme.textTheme.bodySmall),
-                ],
-                if (warranty != null) ...[
-                  const SizedBox(height: 2),
-                  Text(warranty, style: theme.textTheme.bodySmall),
-                ],
-                if (price != null && large) ...[
-                  const SizedBox(height: AppSpacing.s4),
-                  price,
-                ],
-              ],
-            ),
-          ),
-          if (price != null && !large) ...[
-            const SizedBox(width: AppSpacing.s12),
-            price,
-          ],
-        ],
-      ),
     );
   }
 }

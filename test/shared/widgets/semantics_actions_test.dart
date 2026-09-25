@@ -45,11 +45,11 @@ void main() {
       tester,
       AppListRow(
         title: 'Troca de óleo',
-        subtitle: 'Faltam 2.000 km',
+        subtitle: 'Faltam 2.000\u00A0km',
         onTap: () {},
       ),
     );
-    expectTappable(tester, 'Troca de óleo. Faltam 2.000 km');
+    expectTappable(tester, 'Troca de óleo. Faltam 2.000\u00A0km');
     handle.dispose();
   });
 
@@ -121,11 +121,11 @@ void main() {
       tester,
       AppTabHeader(
         title: 'Manutenção',
-        contextLabel: 'Prius · QAF5G33',
+        contextLabel: 'Prius\u00A0· QAF5G33',
         onContextTap: () {},
       ),
     );
-    expectTappable(tester, 'Prius · QAF5G33. Trocar veículo');
+    expectTappable(tester, 'Prius\u00A0· QAF5G33. Trocar veículo');
     handle.dispose();
   });
 
@@ -188,8 +188,8 @@ void main() {
       AppGroup(
         title: 'O que foi feito',
         children: [
-          const AppListRow(title: 'Alinhamento', value: r'R$ 70,00'),
-          const AppListRow(title: 'Balanceamento', value: r'R$ 80,00'),
+          const AppListRow(title: 'Alinhamento', value: 'R\$\u00A070,00'),
+          const AppListRow(title: 'Balanceamento', value: 'R\$\u00A080,00'),
           AppListRow(title: 'Adicionar item', icon: Icons.add, onTap: () {}),
         ],
       ),

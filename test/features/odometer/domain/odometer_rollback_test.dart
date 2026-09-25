@@ -59,8 +59,8 @@ void main() {
 
       expect(
         rollback.explain('mensagem do servidor'),
-        'Em 10/08/2026 o carro já estava com 98.200 km. '
-        'Você informou 90.000 km, que é menos.',
+        'Em 10/08/2026 o carro já estava com 98.200\u00A0km. '
+        'Você informou 90.000\u00A0km, que é menos.',
       );
     });
 
@@ -75,8 +75,8 @@ void main() {
 
       expect(
         rollback.explain('mensagem do servidor'),
-        'Existe um registro de 15/09/2026 com 98.200 km. '
-        'Você informou 99.000 km, que ficaria acima dele.',
+        'Existe um registro de 15/09/2026 com 98.200\u00A0km. '
+        'Você informou 99.000\u00A0km, que ficaria acima dele.',
       );
     });
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
@@ -198,9 +199,9 @@ class _VehicleCatalogSheetState extends ConsumerState<VehicleCatalogSheet> {
   /// Where the person is, and what they already picked.
   String get _subtitle {
     if (_model != null) {
-      return '${_brand!.name} ${_model!.name} · passo 3 de 3';
+      return '${_brand!.name} ${_model!.name}${dotSep}passo 3 de 3';
     }
-    if (_brand != null) return '${_brand!.name} · passo 2 de 3';
+    if (_brand != null) return '${_brand!.name}${dotSep}passo 2 de 3';
     return 'Passo 1 de 3';
   }
 
@@ -461,7 +462,7 @@ class VehicleCatalogSummary extends StatelessWidget {
       selection.brandName,
       if (selection.modelYear != null) '${selection.modelYear}',
       if (fuel != null && fuel != FuelType.desconhecido) fuel.label,
-    ].join(' · ');
+    ].join(dotSep);
 
     return AppGroup(
       dividerIndent: AppGroup.textIndent,

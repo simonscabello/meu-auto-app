@@ -1,4 +1,5 @@
 import 'package:meu_auto/core/domain/civil_date.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/domain/money.dart';
 // The catalogue exists to produce a value the vehicle write accepts, so the
 // fuel it reports is the vehicle module's enum rather than a second copy of it.
@@ -102,12 +103,12 @@ final class VehicleModelYear {
   String get displayLabel {
     final fuel = fuelLabel?.trim();
     if (year == null) {
-      return fuel == null || fuel.isEmpty ? 'Zero km' : 'Zero km · $fuel';
+      return fuel == null || fuel.isEmpty ? 'Zero km' : 'Zero km$dotSep$fuel';
     }
     if (fuel == null || fuel.isEmpty) {
       return '$year';
     }
-    return '$year · $fuel';
+    return '$year$dotSep$fuel';
   }
 
   factory VehicleModelYear.fromJson(Map<String, dynamic> json) {

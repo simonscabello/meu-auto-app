@@ -251,7 +251,7 @@ class VehicleDetailContent extends StatelessWidget {
         model,
       ?version,
     ];
-    return parts.isEmpty ? null : parts.join(' · ');
+    return parts.isEmpty ? null : parts.join(dotSep);
   }
 
   /// The numbers on the CRLV. The plate is already drawn under the title, so

@@ -24,7 +24,7 @@ void main() {
     await _pump(tester, _prius());
 
     expect(find.text('Odômetro'), findsOneWidget);
-    expect(find.text('139.011 km', findRichText: true), findsOneWidget);
+    expect(find.text('139.011\u00A0km', findRichText: true), findsOneWidget);
     expect(find.text('2017', findRichText: true), findsOneWidget);
     expect(find.text('Híbrido', findRichText: true), findsOneWidget);
     expect(find.text('Odômetro atualizado em 24/09/2026'), findsOneWidget);

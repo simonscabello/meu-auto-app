@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import 'formatters.dart' show nbsp;
+
 /// An amount in integer cents. Never a [double].
 final class Money implements Comparable<Money> {
   const Money.fromCents(this.cents);
@@ -44,5 +46,6 @@ final class Money implements Comparable<Money> {
   @override
   String toString() => format();
 
-  static String _withSymbol(String amount) => 'R\$ $amount';
+  /// The symbol never ends a line without its figure.
+  static String _withSymbol(String amount) => 'R\$$nbsp$amount';
 }

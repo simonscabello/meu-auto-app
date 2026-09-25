@@ -33,7 +33,7 @@ void main() {
             remainingKm: -2000,
           ),
         ),
-        'Passou 2.000 km',
+        'Passou 2.000\u00A0km',
       );
     });
 
@@ -62,7 +62,7 @@ void main() {
             intervalMonths: 12,
           ),
         ),
-        'A cada 10.000 km ou 12 meses',
+        'A cada 10.000\u00A0km ou 12 meses',
       );
       expect(
         planStatusPhrase(_plan(status: MaintenanceStatus.semBaseline)),
@@ -106,7 +106,7 @@ void main() {
             remainingKm: -80000,
           ),
         ),
-        'Nunca feito · Passou 80.000 km',
+        'Nunca feito\u00A0· Passou 80.000\u00A0km',
       );
     });
   });

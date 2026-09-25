@@ -99,10 +99,10 @@ void main() {
         find.text('Troca de óleo do motor, Filtro de óleo'),
         findsOneWidget,
       );
-      expect(find.text(r'R$ 420,00'), findsOneWidget);
+      expect(find.text('R\$\u00A0420,00'), findsOneWidget);
       // One line under the name: when, and where on the odometer. The
       // workshop is on the record's own screen.
-      expect(find.text('10 ago · 98.200 km'), findsOneWidget);
+      expect(find.text('10\u00A0ago\u00A0· 98.200\u00A0km'), findsOneWidget);
       expect(find.text('Agosto de 2026'), findsOneWidget);
     });
 
@@ -119,9 +119,9 @@ void main() {
 
       expect(find.text('Quilometragem registrada'), findsOneWidget);
       expect(find.text('IPVA'), findsOneWidget);
-      expect(find.text('10 ago · 48.320 km'), findsOneWidget);
+      expect(find.text('10\u00A0ago\u00A0· 48.320\u00A0km'), findsOneWidget);
       // A tax has no mileage, so the reference year takes its place.
-      expect(find.text('15 mar · 2026'), findsOneWidget);
+      expect(find.text('15\u00A0mar\u00A0· 2026'), findsOneWidget);
       expect(find.text('Março de 2026'), findsOneWidget);
     });
 
@@ -138,8 +138,8 @@ void main() {
       ]);
 
       expect(find.text('Abastecimento'), findsOneWidget);
-      expect(find.text(r'R$ 241,30'), findsOneWidget);
-      expect(find.text('10 ago · 96.420 km'), findsOneWidget);
+      expect(find.text('R\$\u00A0241,30'), findsOneWidget);
+      expect(find.text('10\u00A0ago\u00A0· 96.420\u00A0km'), findsOneWidget);
     });
 
     testWidgets('a care record is labelled Cuidado, not Manutenção', (

@@ -46,7 +46,7 @@ void main() {
       {'maintenance_item_id': _care.maintenanceItemId},
     ]);
     expect(
-      find.text('Registrado hoje · Próxima verificação em 15 dias'),
+      find.text('Registrado hoje\u00A0· Próxima verificação em 15 dias'),
       findsOneWidget,
     );
   });

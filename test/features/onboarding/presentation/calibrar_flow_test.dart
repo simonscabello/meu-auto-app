@@ -213,7 +213,7 @@ void main() {
       ),
     );
     expect(field.controller!.text, isEmpty);
-    expect(find.textContaining('48.320 km'), findsOneWidget);
+    expect(find.textContaining('48.320\u00A0km'), findsOneWidget);
 
     await tester.tap(find.text('Escolher data'));
     await tester.pumpAndSettle();

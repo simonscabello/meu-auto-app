@@ -23,8 +23,38 @@ Future<T?> showAppSheet<T>(
     useSafeArea: true,
     showDragHandle: !isForm,
     enableDrag: !isForm,
-    builder: builder,
+    builder: (sheetContext) => _SystemBarInset(child: builder(sheetContext)),
   );
+}
+
+/// Keeps a sheet's last widget above the phone's navigation bar.
+///
+/// `useSafeArea` guards only the top and the sides of a modal sheet; the
+/// bottom is left to the content. With the app drawn edge to edge (target
+/// SDK 35+), the three-button bar covered whatever a sheet ended with, and
+/// on "Editar abastecimento" that was "Salvar". The inset is applied here,
+/// inside the sheet's own surface so its colour runs behind the bar, and
+/// removed from the [MediaQuery] below so nothing inside pads for it twice.
+/// With the keyboard up the padding is already zero: the keyboard's inset
+/// covers the bar, and [AppSheetBody] lifts above that.
+class _SystemBarInset extends StatelessWidget {
+  const _SystemBarInset({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    if (bottom == 0) return child;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: MediaQuery.removePadding(
+        context: context,
+        removeBottom: true,
+        child: child,
+      ),
+    );
+  }
 }
 
 /// The interior of a sheet that fits its content: side gutters, room for the
@@ -66,7 +96,9 @@ class AppSheetBody extends StatelessWidget {
 /// a body that scrolls on its own.
 ///
 /// For the pickers — catalogue items, brands, models — where the list is
-/// long and the sheet has to be tall enough to search inside.
+/// long and the sheet has to be tall enough to search inside. The height is
+/// a share of what is left once the system bars are taken out, so the frame
+/// plus the navigation-bar inset never asks for more than the screen.
 class AppSheetFrame extends StatelessWidget {
   const AppSheetFrame({
     super.key,
@@ -79,7 +111,9 @@ class AppSheetFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.sizeOf(context).height * heightFactor;
+    final media = MediaQuery.of(context);
+    final height =
+        (media.size.height - media.viewPadding.vertical) * heightFactor;
     return SizedBox(
       height: height,
       child: Padding(

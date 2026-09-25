@@ -22,7 +22,26 @@ void ensurePtBrFormatting() {
 
 final _integer = NumberFormat('#,##0', 'pt_BR');
 
-String formatKm(int km) => '${formatKmNumber(km)} km';
+/// A space a line never breaks at. Between a figure and its unit — "37,65 L",
+/// "R$ 240,58", "139.011 km" — so a narrow row cannot leave the "L" alone on
+/// a line of its own, which it did on a 360dp phone.
+const nbsp = ' ';
+
+/// The " · " between the parts of a row's line, with the dot glued to the
+/// part before it: a line can break after a dot but never start with one.
+/// Every " · " on screen is this — `parts.join(dotSep)`, `'$a$dotSep$b'`.
+const dotSep = '$nbsp· ';
+
+/// The parts that exist, joined with [dotSep]; null and blank parts are
+/// skipped, so an optional fact never leaves a dangling dot.
+String joinParts(Iterable<String?> parts) {
+  return parts
+      .whereType<String>()
+      .where((part) => part.trim().isNotEmpty)
+      .join(dotSep);
+}
+
+String formatKm(int km) => '${formatKmNumber(km)}${nbsp}km';
 
 String formatKmNumber(int km) => _integer.format(km);
 
@@ -55,7 +74,7 @@ String formatCivilDayMonthShort(CivilDate date) {
 /// 11 set" — while [formatCivilDayMonthShort] is a column heading and is
 /// padded so a list of them lines up.
 String formatCivilDayMonthAbbrev(CivilDate date) {
-  return '${date.day} ${_shortMonths[date.month - 1].toLowerCase()}';
+  return '${date.day}$nbsp${_shortMonths[date.month - 1].toLowerCase()}';
 }
 
 /// The weekday, short and lower case: `'qui'`.

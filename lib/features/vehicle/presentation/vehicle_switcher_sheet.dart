@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
@@ -44,38 +45,34 @@ class VehicleSwitcherSheet extends ConsumerWidget {
       router.push(location);
     }
 
-    return SafeArea(
-      child: list.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.fromLTRB(
-            AppSpacing.page,
-            0,
-            AppSpacing.page,
-            AppSpacing.s24,
-          ),
-          child: AppSkeletonList(count: 2),
+    return list.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.page,
+          0,
+          AppSpacing.page,
+          AppSpacing.s24,
         ),
-        error: (error, _) => Padding(
-          padding: const EdgeInsets.all(AppSpacing.s16),
-          child: AppErrorState.fromError(
-            error: error,
-            onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
-          ),
+        child: AppSkeletonList(count: 2),
+      ),
+      error: (error, _) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.s16),
+        child: AppErrorState.fromError(
+          error: error,
+          onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
         ),
-        data: (state) => VehicleSwitcherContent(
-          vehicles: state.vehicles,
-          selectedId: selected?.id,
-          onSelect: (vehicle) async {
-            await ref
-                .read(selectedVehicleIdProvider.notifier)
-                .select(vehicle.id);
-            if (context.mounted) {
-              Navigator.pop(context);
-            }
-          },
-          onAdd: () => leaveTo(AppRoutes.vehicleNew),
-          onOpenDetail: (vehicle) => leaveTo(AppRoutes.vehicle(vehicle.id)),
-        ),
+      ),
+      data: (state) => VehicleSwitcherContent(
+        vehicles: state.vehicles,
+        selectedId: selected?.id,
+        onSelect: (vehicle) async {
+          await ref.read(selectedVehicleIdProvider.notifier).select(vehicle.id);
+          if (context.mounted) {
+            Navigator.pop(context);
+          }
+        },
+        onAdd: () => leaveTo(AppRoutes.vehicleNew),
+        onOpenDetail: (vehicle) => leaveTo(AppRoutes.vehicle(vehicle.id)),
       ),
     );
   }
@@ -208,7 +205,7 @@ class VehicleChoiceRow extends StatelessWidget with GroupedRow {
     final plate = vehicle.plate?.trim();
     final hasPlate = plate != null && plate.isNotEmpty;
     final name = vehicle.headlineName;
-    final meta = vehicle.brandAndYear.join(' · ');
+    final meta = vehicle.brandAndYear.join(dotSep);
     final spoken = [
       name,
       if (meta.isNotEmpty) meta,

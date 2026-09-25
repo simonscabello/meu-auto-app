@@ -86,7 +86,7 @@ abstract final class AppTheme {
         // A hairline instead of a shadow. The bar is the page's colour, and
         // without an edge the content simply vanished under it on scroll.
         shape: Border(bottom: BorderSide(color: tones.divider)),
-        systemOverlayStyle: _overlay(scheme, dark),
+        systemOverlayStyle: overlay(scheme.brightness),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -422,11 +422,21 @@ abstract final class AppTheme {
     );
   }
 
-  static SystemUiOverlayStyle _overlay(ColorScheme scheme, bool dark) {
+  /// The status and navigation bars for a theme of this [brightness].
+  ///
+  /// The app is drawn edge to edge (Android forces it from target SDK 35),
+  /// so both bars are transparent and the page runs behind them; only the
+  /// icons change with the theme. It used to ride on [AppBarTheme], which
+  /// meant the four tabs — none of which has an app bar — never got it.
+  /// `MeuAutoApp` applies it at the root.
+  static SystemUiOverlayStyle overlay(Brightness brightness) {
+    final dark = brightness == Brightness.dark;
     final base = dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
     return base.copyWith(
       statusBarColor: Colors.transparent,
-      systemNavigationBarColor: scheme.surfaceContainerLow,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
       systemNavigationBarIconBrightness: dark
           ? Brightness.light
           : Brightness.dark,

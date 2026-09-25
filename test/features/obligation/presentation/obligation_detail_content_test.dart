@@ -61,7 +61,7 @@ void main() {
     // The facts answer "by when and how much".
     expect(find.text('Vencimento'), findsOneWidget);
     expect(find.text('15/03/2026'), findsOneWidget);
-    expect(find.text('R\$ 1.842,37'), findsOneWidget);
+    expect(find.text('R\$\u00A01.842,37'), findsOneWidget);
   });
 
   testWidgets('paid on time says so, and offers no payment button', (
@@ -96,14 +96,14 @@ void main() {
     expect(find.text('Pago com 3 dias de atraso'), findsOneWidget);
   });
 
-  testWidgets('a missing amount is omitted, never written as R\$ 0,00', (
+  testWidgets('a missing amount is omitted, never written as R\$\u00A00,00', (
     tester,
   ) async {
     await _pump(tester, _obligation(amountCents: null));
 
     expect(find.text('Valor'), findsNothing);
-    expect(find.text('R\$ 0,00'), findsNothing);
-    expect(find.text('R\$ 1.842,37'), findsNothing);
+    expect(find.text('R\$\u00A00,00'), findsNothing);
+    expect(find.text('R\$\u00A01.842,37'), findsNothing);
   });
 
   testWidgets('a paid amount that differs from the predicted one shows both', (
@@ -119,8 +119,8 @@ void main() {
       ),
     );
 
-    expect(find.text('R\$ 1.842,37'), findsOneWidget);
-    expect(find.text('R\$ 1.900,00'), findsOneWidget);
+    expect(find.text('R\$\u00A01.842,37'), findsOneWidget);
+    expect(find.text('R\$\u00A01.900,00'), findsOneWidget);
     expect(find.text('Valor pago'), findsOneWidget);
     expect(find.text('Valor previsto'), findsOneWidget);
   });

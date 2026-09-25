@@ -61,11 +61,11 @@ void main() {
 
       // The row carries the date and, when there is one, a short clause; the
       // full sentence lives on the fill's own screen.
-      expect(find.text('10 ago · 17,8 km/L'), findsOneWidget);
-      expect(find.text('10 ago · Tanque parcial'), findsOneWidget);
-      expect(find.text('10 ago · Sem consumo ainda'), findsOneWidget);
+      expect(find.text('10\u00A0ago\u00A0· 17,8\u00A0km/L'), findsOneWidget);
+      expect(find.text('10\u00A0ago\u00A0· Tanque parcial'), findsOneWidget);
+      expect(find.text('10\u00A0ago\u00A0· Sem consumo ainda'), findsOneWidget);
       // Unavailable and unknown have nothing worth a clause: the date alone.
-      expect(find.text('10 ago'), findsNWidgets(2));
+      expect(find.text('10\u00A0ago'), findsNWidgets(2));
       expect(find.textContaining('17,82'), findsNothing);
     },
   );
@@ -116,7 +116,7 @@ void main() {
     );
 
     expect(find.text('Preço por litro'), findsOneWidget);
-    expect(find.text('R\$ 6,87'), findsOneWidget);
+    expect(find.text('R\$\u00A06,87'), findsOneWidget);
   });
 }
 

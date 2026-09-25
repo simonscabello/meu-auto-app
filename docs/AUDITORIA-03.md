@@ -113,7 +113,7 @@ A lista de veículos ganhou uma frase sob o título. A timeline já estava certa
 
 Preferência do Prompt 19 (`themeModeProvider` + `SharedPreferences`) não foi relitigada: continua persistindo claro / escuro / sistema, com teste em `test/core/theme/theme_mode_store_test.dart`.
 
-`AppScaffold` já limitava a largura a 640. Sheets de formulário passaram a `useSafeArea: true` e continuam empurrando o teclado com `viewInsets`. Skeleton já respeitava `MediaQuery.disableAnimations`.
+`AppScaffold` já limitava a largura a 640. Sheets de formulário passaram a `useSafeArea: true` e continuam empurrando o teclado com `viewInsets`. (Correção de 25/09/2026: `useSafeArea` só protege topo e laterais; a barra de navegação do Android cobria o último botão da folha. O recuo de baixo agora é de `showAppSheet` — ver `DESIGN-SYSTEM.md`, "Formulários e folhas".) Skeleton já respeitava `MediaQuery.disableAnimations`.
 
 ### 6. Texto
 

@@ -125,7 +125,7 @@ String seguroHeaderPhrase(Seguro seguro) {
       seguro.remainingDays > 0 ? dueInDaysPhrase(seguro.remainingDays) : '',
     SeguroStatus.venceEmBreve => dueInDaysPhrase(seguro.remainingDays),
     SeguroStatus.vencido =>
-      '${dueInDaysPhrase(seguro.remainingDays)} · carro sem cobertura',
+      '${dueInDaysPhrase(seguro.remainingDays)}${dotSep}carro sem cobertura',
     SeguroStatus.desconhecido => '',
   };
 }
@@ -193,7 +193,7 @@ class SeguroDetailContent extends StatelessWidget {
         _CallRow(label: 'Emergência', phone: emergency, onTap: onEmergencyCall),
       if (brokerPhone != null)
         _CallRow(
-          label: brokerName == null ? 'Corretor' : 'Corretor · $brokerName',
+          label: brokerName == null ? 'Corretor' : 'Corretor$dotSep$brokerName',
           phone: brokerPhone,
           onTap: onBrokerCall,
         ),

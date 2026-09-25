@@ -16,7 +16,7 @@ void main() {
             status: ConsumptionStatus.ok,
           ),
         ),
-        '17,8 km/L',
+        '17,8\u00A0km/L',
       );
     });
 

@@ -3,18 +3,18 @@ import 'package:meu_auto/core/domain/money.dart';
 
 void main() {
   test('formats reais from integer cents', () {
-    expect(const Money.fromCents(0).format(), r'R$ 0,00');
-    expect(const Money.fromCents(1).format(), r'R$ 0,01');
-    expect(const Money.fromCents(5).format(), r'R$ 0,05');
-    expect(const Money.fromCents(42000).format(), r'R$ 420,00');
-    expect(const Money.fromCents(123456).format(), r'R$ 1.234,56');
-    expect(const Money.fromCents(100000000).format(), r'R$ 1.000.000,00');
-    expect(Money.zero.format(), r'R$ 0,00');
+    expect(const Money.fromCents(0).format(), 'R\$\u00A00,00');
+    expect(const Money.fromCents(1).format(), 'R\$\u00A00,01');
+    expect(const Money.fromCents(5).format(), 'R\$\u00A00,05');
+    expect(const Money.fromCents(42000).format(), 'R\$\u00A0420,00');
+    expect(const Money.fromCents(123456).format(), 'R\$\u00A01.234,56');
+    expect(const Money.fromCents(100000000).format(), 'R\$\u00A01.000.000,00');
+    expect(Money.zero.format(), 'R\$\u00A00,00');
   });
 
   test('formatWhole rounds to the nearest real for tight spaces', () {
-    expect(const Money.fromCents(123456).formatWhole(), r'R$ 1.235');
-    expect(const Money.fromCents(42000).formatWhole(), r'R$ 420');
+    expect(const Money.fromCents(123456).formatWhole(), 'R\$\u00A01.235');
+    expect(const Money.fromCents(42000).formatWhole(), 'R\$\u00A0420');
   });
 
   test('adds and compares by cents', () {

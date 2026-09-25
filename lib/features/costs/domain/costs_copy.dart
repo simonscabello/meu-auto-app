@@ -1,3 +1,5 @@
+import 'package:meu_auto/core/domain/formatters.dart';
+
 /// Rolling window measured back from `since`, never a calendar month.
 ///
 /// `cost_months=1` is thirty days, not "este mês" — on any day but the 1st
@@ -11,7 +13,7 @@ String costWindowLabel(int periodMonths) {
 
 /// The label over the registered-cost figure: what it is, and the window.
 String costPeriodLabel(int periodMonths) {
-  return 'Gastos registrados · ${costWindowLabel(periodMonths)}';
+  return 'Gastos registrados$dotSep${costWindowLabel(periodMonths)}';
 }
 
 const _categoryLabels = {

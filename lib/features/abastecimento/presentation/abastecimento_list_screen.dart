@@ -6,7 +6,6 @@ import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/features/abastecimento/application/abastecimento_provider.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento_copy.dart';
@@ -18,7 +17,6 @@ import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
-import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_paged_footer.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -215,56 +213,20 @@ class AbastecimentoRow extends StatelessWidget with GroupedRow {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final title =
-        '${abastecimentoFuelLabel(fill.fuel)} · '
-        '${litersTextFromVolumeMl(fill.volumeMl)} L';
-    final consumption = consumptionShortPhrase(fill.consumption);
-    final detail = [
-      formatCivilDayMonthAbbrev(fill.occurredOn),
-      ?consumption,
-    ].join(' · ');
-
-    // With the text enlarged the amount goes under the words, as it does
-    // in every row (see [AppTypography.isLargeText]).
-    final large = AppTypography.isLargeText(context);
-    final cost = Text(
-      fill.totalCostCents.format(),
-      style: theme.textTheme.titleSmall?.copyWith(
-        fontFeatures: AppTypography.tabular,
-      ),
-    );
-    return AppListRowShell(
+    return AppListRow(
+      icon: Icons.local_gas_station_outlined,
+      title: joinParts([
+        abastecimentoFuelLabel(fill.fuel),
+        formatLiters(fill.volumeMl),
+      ]),
+      subtitle: joinParts([
+        formatCivilDayMonthAbbrev(fill.occurredOn),
+        consumptionShortPhrase(fill.consumption),
+      ]),
+      value: fill.totalCostCents.format(),
+      strongValue: true,
       onTap: onTap,
-      semanticLabel: '$title. $detail. ${fill.totalCostCents.format()}',
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const AppIconWell(icon: Icons.local_gas_station_outlined),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(detail, style: theme.textTheme.bodySmall),
-                if (large) ...[const SizedBox(height: AppSpacing.s4), cost],
-              ],
-            ),
-          ),
-          if (!large) ...[const SizedBox(width: AppSpacing.s12), cost],
-          if (onTap != null) ...[
-            const SizedBox(width: AppSpacing.s4),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
-            ),
-          ],
-        ],
-      ),
+      showChevron: onTap != null,
     );
   }
 }

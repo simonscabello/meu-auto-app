@@ -727,7 +727,7 @@ class _HistoryRow extends StatelessWidget with GroupedRow {
       if (km != null) formatKm(km),
       ?delta,
       if (record.kind == MaintenanceRecordKind.declared) 'Informado',
-    ].join(' · ');
+    ].join(dotSep);
 
     return AppListRow(
       title: formatCivilDateLong(record.occurredOn),

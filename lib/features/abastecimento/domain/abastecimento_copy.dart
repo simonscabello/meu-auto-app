@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 
 const _unavailablePhrase =
@@ -12,7 +13,7 @@ String consumptionPhrase(Consumption consumption) {
     case ConsumptionStatus.ok:
       final value = consumption.value;
       if (value == null) return _unavailablePhrase;
-      return '${_oneDecimal.format(value)} km/L';
+      return '${_oneDecimal.format(value)}${nbsp}km/L';
     case ConsumptionStatus.partialFill:
       return 'Abastecimento parcial — o consumo entra no próximo tanque cheio.';
     case ConsumptionStatus.insufficientData:
@@ -30,7 +31,7 @@ String? consumptionShortPhrase(Consumption consumption) {
   switch (consumption.status) {
     case ConsumptionStatus.ok:
       final value = consumption.value;
-      return value == null ? null : '${_oneDecimal.format(value)} km/L';
+      return value == null ? null : '${_oneDecimal.format(value)}${nbsp}km/L';
     case ConsumptionStatus.partialFill:
       return 'Tanque parcial';
     case ConsumptionStatus.insufficientData:

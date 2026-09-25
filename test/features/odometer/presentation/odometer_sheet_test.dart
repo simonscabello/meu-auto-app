@@ -35,8 +35,8 @@ void main() {
     expect(find.text('Confira a quilometragem'), findsOneWidget);
     expect(
       find.text(
-        'Em 10/08/2026 o carro já estava com 98.200 km. '
-        'Você informou 90.000 km, que é menos.',
+        'Em 10/08/2026 o carro já estava com 98.200\u00A0km. '
+        'Você informou 90.000\u00A0km, que é menos.',
       ),
       findsOneWidget,
     );
@@ -99,7 +99,7 @@ void main() {
     expect(field.controller!.text, '48.320');
     expect(field.controller!.selection.baseOffset, 0);
     expect(field.controller!.selection.extentOffset, '48.320'.length);
-    expect(find.text('Atual: 48.320 km'), findsOneWidget);
+    expect(find.text('Atual: 48.320\u00A0km'), findsOneWidget);
   });
 
   testWidgets('a retry after a dropped connection resends the same reading', (
@@ -133,7 +133,7 @@ void main() {
     expect(adapter.postedBodies.single['source'], 'manual');
     expect(find.text('Atualizar quilometragem'), findsNothing);
     expect(
-      find.text('Quilometragem atualizada para 48.900 km.'),
+      find.text('Quilometragem atualizada para 48.900\u00A0km.'),
       findsOneWidget,
     );
   });

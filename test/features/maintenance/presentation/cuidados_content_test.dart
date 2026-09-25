@@ -24,9 +24,9 @@ void main() {
     expect(find.text('Calibrar os pneus'), findsOneWidget);
     expect(find.text('Vence em 8 dias'), findsOneWidget);
     expect(find.text('faltam 8 dias'), findsNothing);
-    expect(find.text('0 km'), findsNothing);
-    expect(find.text('aos 0 km'), findsNothing);
-    expect(find.text('a cada 0 km'), findsNothing);
+    expect(find.text('0\u00A0km'), findsNothing);
+    expect(find.text('aos 0\u00A0km'), findsNothing);
+    expect(find.text('a cada 0\u00A0km'), findsNothing);
     expect(find.text('vence agora'), findsNothing);
   });
 
@@ -335,7 +335,10 @@ void main() {
       // "Última verificação", a long date, "Próxima" and a second long date,
       // which is unreadable eighteen times over and buried the two items
       // that actually needed doing. The last-done date lives on the plan.
-      expect(find.text('Tudo certo · próxima em 11 set'), findsOneWidget);
+      expect(
+        find.text('Tudo certo\u00A0· próxima em 11\u00A0set'),
+        findsOneWidget,
+      );
       expect(find.text('Última verificação'), findsNothing);
       expect(find.text('15 de julho de 2026'), findsNothing);
     });
@@ -358,7 +361,7 @@ void main() {
       );
 
       expect(
-        find.text('Registrado hoje · Próxima verificação em 15 dias'),
+        find.text('Registrado hoje\u00A0· Próxima verificação em 15 dias'),
         findsOneWidget,
       );
       expect(find.text('Feito'), findsNothing);

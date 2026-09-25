@@ -80,52 +80,50 @@ class DocumentosScreen extends ConsumerWidget {
   Future<void> _chooseKind(BuildContext context, String vehicleId) {
     return showAppSheet<void>(
       context,
-      builder: (sheetContext) => SafeArea(
-        child: AppSheetBody(
-          children: [
-            const AppSheetHeader(title: 'Registrar', closable: false),
-            const SizedBox(height: AppSpacing.s8),
-            AppGroup(
-              children: [
-                AppListRow(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'IPVA',
-                  showChevron: true,
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    ObligationFormSheet.show(
-                      context,
-                      vehicleId: vehicleId,
-                      kind: ObligationKind.ipva,
-                    );
-                  },
-                ),
-                AppListRow(
-                  icon: Icons.description_outlined,
-                  title: 'Licenciamento',
-                  showChevron: true,
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    ObligationFormSheet.show(
-                      context,
-                      vehicleId: vehicleId,
-                      kind: ObligationKind.licenciamento,
-                    );
-                  },
-                ),
-                AppListRow(
-                  icon: Icons.shield_outlined,
-                  title: 'Seguro',
-                  showChevron: true,
-                  onTap: () {
-                    Navigator.pop(sheetContext);
-                    context.push(AppRoutes.seguroNew);
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
+      builder: (sheetContext) => AppSheetBody(
+        children: [
+          const AppSheetHeader(title: 'Registrar', closable: false),
+          const SizedBox(height: AppSpacing.s8),
+          AppGroup(
+            children: [
+              AppListRow(
+                icon: Icons.receipt_long_outlined,
+                title: 'IPVA',
+                showChevron: true,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  ObligationFormSheet.show(
+                    context,
+                    vehicleId: vehicleId,
+                    kind: ObligationKind.ipva,
+                  );
+                },
+              ),
+              AppListRow(
+                icon: Icons.description_outlined,
+                title: 'Licenciamento',
+                showChevron: true,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  ObligationFormSheet.show(
+                    context,
+                    vehicleId: vehicleId,
+                    kind: ObligationKind.licenciamento,
+                  );
+                },
+              ),
+              AppListRow(
+                icon: Icons.shield_outlined,
+                title: 'Seguro',
+                showChevron: true,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  context.push(AppRoutes.seguroNew);
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

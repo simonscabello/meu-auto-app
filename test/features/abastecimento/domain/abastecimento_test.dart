@@ -176,7 +176,7 @@ void main() {
   });
 
   group('volumeMlFromLitersText', () {
-    test('34,7 L becomes 34700 ml', () {
+    test('34,7\u00A0L becomes 34700 ml', () {
       expect(volumeMlFromLitersText('34,7'), 34700);
     });
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/core/domain/phrases.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
@@ -71,7 +72,7 @@ String? alertDetailLine(Alert alert) {
   if (due != null) {
     parts.add(due);
   }
-  return parts.isEmpty ? null : parts.join(' · ');
+  return parts.isEmpty ? null : parts.join(dotSep);
 }
 
 IconData alertIconOf(AlertKind kind) {

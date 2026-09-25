@@ -25,7 +25,7 @@ void main() {
       );
 
       expect(
-        find.text('Garantia até 20/08/2028 ou até 138.200 km'),
+        find.text('Garantia até 20/08/2028 ou até 138.200\u00A0km'),
         findsOneWidget,
       );
     });
@@ -92,7 +92,7 @@ void main() {
     });
   });
 
-  testWidgets('a zero total is not shown as R\$ 0,00', (tester) async {
+  testWidgets('a zero total is not shown as R\$\u00A00,00', (tester) async {
     await _pump(tester, _record(totalCents: 0));
 
     expect(find.text('Total'), findsNothing);
@@ -109,9 +109,9 @@ void main() {
     expect(find.text('Data'), findsOneWidget);
     expect(find.text('10/08/2026'), findsOneWidget);
     expect(find.text('Odômetro'), findsOneWidget);
-    expect(find.text('98.200 km'), findsOneWidget);
+    expect(find.text('98.200\u00A0km'), findsOneWidget);
     expect(find.text('Total'), findsOneWidget);
-    expect(find.text('R\$ 420,00'), findsOneWidget);
+    expect(find.text('R\$\u00A0420,00'), findsOneWidget);
   });
 
   testWidgets('without a workshop there is no line under the title', (
@@ -119,8 +119,8 @@ void main() {
   ) async {
     await _pump(tester, _record(workshop: null));
 
-    expect(find.text('98.200 km'), findsOneWidget);
-    expect(find.textContaining(' · '), findsNothing);
+    expect(find.text('98.200\u00A0km'), findsOneWidget);
+    expect(find.textContaining('\u00A0· '), findsNothing);
   });
 
   // A care marked "Feito" carries no mileage and no cost: a strip of one date
@@ -133,7 +133,10 @@ void main() {
       _record(totalCents: 0, mileageKm: null, workshop: 'Posto Central'),
     );
 
-    expect(find.text('10 de agosto de 2026 · Posto Central'), findsOneWidget);
+    expect(
+      find.text('10 de agosto de 2026\u00A0· Posto Central'),
+      findsOneWidget,
+    );
     expect(find.text('Data'), findsNothing);
   });
 

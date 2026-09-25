@@ -6,10 +6,10 @@ void main() {
   setUpAll(ensurePtBrFormatting);
 
   test('formatKm(98450) uses a thousands separator and the unit', () {
-    expect(formatKm(0), '0 km');
-    expect(formatKm(1), '1 km');
-    expect(formatKm(98450), '98.450 km');
-    expect(formatKm(1000000), '1.000.000 km');
+    expect(formatKm(0), '0\u00A0km');
+    expect(formatKm(1), '1\u00A0km');
+    expect(formatKm(98450), '98.450\u00A0km');
+    expect(formatKm(1000000), '1.000.000\u00A0km');
     expect(formatKmNumber(98450), '98.450');
   });
 
@@ -33,10 +33,10 @@ void main() {
 
   group('masked fields read back as integers', () {
     test('money reads the digits, masked or not', () {
-      expect(centsFromMoneyField('R\$ 420,00'), 42000);
-      expect(centsFromMoneyField('R\$ 4.200,00'), 420000);
+      expect(centsFromMoneyField('R\$\u00A0420,00'), 42000);
+      expect(centsFromMoneyField('R\$\u00A04.200,00'), 420000);
       expect(centsFromMoneyField('42000'), 42000);
-      expect(centsFromMoneyField('R\$ 0,00'), 0);
+      expect(centsFromMoneyField('R\$\u00A00,00'), 0);
       expect(centsFromMoneyField(''), isNull);
       expect(centsFromMoneyField('   '), isNull);
     });
@@ -49,7 +49,7 @@ void main() {
     });
 
     test('digitsOnly keeps order and drops everything else', () {
-      expect(digitsOnly('R\$ 1.234,56'), '123456');
+      expect(digitsOnly('R\$\u00A01.234,56'), '123456');
       expect(digitsOnly('abc'), '');
     });
   });

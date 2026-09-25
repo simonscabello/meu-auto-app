@@ -149,7 +149,7 @@ void main() {
 
         expect(find.text('Bateria'), findsOneWidget);
         expect(
-          find.text('Garantia · Vence em cerca de 8 meses'),
+          find.text('Garantia\u00A0· Vence em cerca de 8 meses'),
           findsOneWidget,
         );
       },
@@ -207,7 +207,7 @@ void main() {
       );
 
       expect(find.text('Próximos cuidados'), findsOneWidget);
-      expect(find.text('Faltam 4.200 km ou 30 dias'), findsOneWidget);
+      expect(find.text('Faltam 4.200\u00A0km ou 30 dias'), findsOneWidget);
       expect(find.text('Vence em 20/01/2027'), findsOneWidget);
     });
 
@@ -268,7 +268,7 @@ void main() {
     testWidgets('the costs block', (tester) async {
       await _pump(tester, _dashboard(totalCents: 154000));
       expect(find.textContaining('Gastos registrados'), findsNothing);
-      expect(find.text('R\$ 1.540,00'), findsNothing);
+      expect(find.text('R\$\u00A01.540,00'), findsNothing);
     });
 
     testWidgets('the last fill, even on a car that refuels', (tester) async {

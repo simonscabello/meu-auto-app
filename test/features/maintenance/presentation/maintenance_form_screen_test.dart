@@ -88,7 +88,7 @@ void main() {
       '42000',
     );
     await tester.pump();
-    expect(find.text('R\$ 420,00'), findsOneWidget);
+    expect(find.text('R\$\u00A0420,00'), findsOneWidget);
 
     await tester.tap(find.text('Salvar'));
     await tester.pumpAndSettle();

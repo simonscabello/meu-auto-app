@@ -5,11 +5,11 @@ void main() {
   group('remainingKmPhrase', () {
     test('covers null, overdue, due now and remaining km', () {
       expect(remainingKmPhrase(null), isNull);
-      expect(remainingKmPhrase(-320), 'passou 320 km');
-      expect(remainingKmPhrase(-1), 'passou 1 km');
+      expect(remainingKmPhrase(-320), 'passou 320\u00A0km');
+      expect(remainingKmPhrase(-1), 'passou 1\u00A0km');
       expect(remainingKmPhrase(0), 'vence agora');
-      expect(remainingKmPhrase(1), 'faltam 1 km');
-      expect(remainingKmPhrase(1550), 'faltam 1.550 km');
+      expect(remainingKmPhrase(1), 'faltam 1\u00A0km');
+      expect(remainingKmPhrase(1550), 'faltam 1.550\u00A0km');
     });
   });
 
@@ -38,11 +38,11 @@ void main() {
 
   group('dueSummary', () {
     test('uses only km, only days, both, or neither', () {
-      expect(dueSummary(remainingKm: 1550), 'faltam 1.550 km');
+      expect(dueSummary(remainingKm: 1550), 'faltam 1.550\u00A0km');
       expect(dueSummary(remainingDays: 12), 'faltam 12 dias');
       expect(
         dueSummary(remainingKm: 1550, remainingDays: 12),
-        'faltam 12 dias · faltam 1.550 km',
+        'faltam 12 dias\u00A0· faltam 1.550\u00A0km',
       );
       expect(dueSummary(), isNull);
       expect(dueSummary(remainingKm: null, remainingDays: null), isNull);
@@ -51,11 +51,11 @@ void main() {
     test('leads with the closer remaining dimension', () {
       expect(
         dueSummary(remainingKm: -320, remainingDays: 12),
-        'passou 320 km · faltam 12 dias',
+        'passou 320\u00A0km\u00A0· faltam 12 dias',
       );
       expect(
         dueSummary(remainingKm: 10, remainingDays: 100),
-        'faltam 10 km · faltam cerca de 3 meses',
+        'faltam 10\u00A0km\u00A0· faltam cerca de 3 meses',
       );
     });
   });
@@ -71,7 +71,7 @@ void main() {
           remainingKm: -1200,
           remainingDays: -20,
         ),
-        'Venceu há 20 dias · passou 1.200 km',
+        'Venceu há 20 dias\u00A0· passou 1.200\u00A0km',
       );
       expect(
         maintenanceStatusPhrase(
@@ -79,7 +79,7 @@ void main() {
           remainingKm: 1550,
           remainingDays: 12,
         ),
-        'Faltam 1.550 km ou 12 dias',
+        'Faltam 1.550\u00A0km ou 12 dias',
       );
       expect(maintenanceStatusPhrase('vence_em_breve'), '');
       expect(maintenanceStatusPhrase('em_dia'), 'Em dia');

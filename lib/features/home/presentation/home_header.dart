@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
@@ -47,7 +48,7 @@ class HomeHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final tones = AppTones.of(context);
-    final meta = metaParts.join(' · ');
+    final meta = metaParts.join(dotSep);
     final plateText = plate?.trim();
     final hasPlate = plateText != null && plateText.isNotEmpty;
 

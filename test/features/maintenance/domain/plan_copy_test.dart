@@ -7,16 +7,16 @@ import 'package:meu_auto/features/maintenance/domain/plan_copy.dart';
 void main() {
   group('intervalPhrase', () {
     test('spells out only the dimensions that exist', () {
-      expect(intervalPhrase(km: 10000), 'a cada 10.000 km');
+      expect(intervalPhrase(km: 10000), 'a cada 10.000\u00A0km');
       expect(intervalPhrase(months: 12), 'a cada 12 meses');
       expect(intervalPhrase(days: 15), 'a cada 15 dias');
       expect(
         intervalPhrase(km: 10000, months: 12),
-        'a cada 10.000 km ou 12 meses',
+        'a cada 10.000\u00A0km ou 12 meses',
       );
       expect(
         intervalPhrase(km: 10000, months: 12, days: 15),
-        'a cada 10.000 km, 12 meses ou 15 dias',
+        'a cada 10.000\u00A0km, 12 meses ou 15 dias',
       );
       expect(intervalPhrase(), isNull);
       expect(intervalPhrase(km: null, months: null, days: null), isNull);
@@ -30,14 +30,14 @@ void main() {
 
   group('dueNextPhrase', () {
     test('omits a null dimension rather than writing zero', () {
-      expect(dueNextPhrase(dueAtKm: 108200), 'aos 108.200 km');
+      expect(dueNextPhrase(dueAtKm: 108200), 'aos 108.200\u00A0km');
       expect(
         dueNextPhrase(dueOn: const CivilDate(2026, 9, 3)),
         'em 03/09/2026',
       );
       expect(
         dueNextPhrase(dueAtKm: 108200, dueOn: const CivilDate(2026, 9, 3)),
-        'aos 108.200 km · em 03/09/2026',
+        'aos 108.200\u00A0km\u00A0· em 03/09/2026',
       );
       expect(dueNextPhrase(), isNull);
       expect(dueNextPhrase(dueAtKm: null, dueOn: null), isNull);
@@ -63,7 +63,7 @@ void main() {
           occurredOn: const CivilDate(2025, 8, 10),
           mileageKm: 98200,
         ),
-        '10/08/2025 · 98.200 km',
+        '10/08/2025\u00A0· 98.200\u00A0km',
       );
       expect(lastDonePhrase(), isNull);
     });
@@ -73,11 +73,11 @@ void main() {
     test('is subtraction of two numbers the API already returned', () {
       expect(
         mileageSincePreviousPhrase(108200, 98200),
-        '10.000 km desde a anterior',
+        '10.000\u00A0km desde a anterior',
       );
       expect(
         mileageSincePreviousPhrase(90000, 98200),
-        '8.200 km a menos que a anterior',
+        '8.200\u00A0km a menos que a anterior',
       );
       expect(mileageSincePreviousPhrase(98200, 98200), isNull);
     });

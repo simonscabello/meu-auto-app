@@ -86,9 +86,13 @@ Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
   vai de borda a borda do cartão. Toda linha nova de lista deve misturar
   `with GroupedRow` se ela mesma é uma linha (usa `AppListRow` ou
   `AppListRowShell`).
-- `AppListRow` — ícone (sem círculo), nome, uma linha de estado, `value` à
-  direita (`strongValue` para valores monetários), chevron. `status` tinge
-  ícone e frase só quando é vencido/perto.
+- `AppListRow` — ícone (sem círculo), nome, uma linha de estado, `value` na
+  linha do nome (`strongValue` para valores monetários), `footnote` para uma
+  segunda linha rara (a garantia de uma peça), chevron. `status` tinge
+  ícone e frase só quando é vencido/perto. `value` é um número curto, nunca
+  uma frase: frase vai no subtítulo.
+- `AppRowBody` — o miolo de toda linha (ver "Texto e quebra de linha");
+  `AppRowChevron`.
 - `AppListRowShell`, `AppFactRow` (`inline` para fatos curtos),
   `AppSettingRow`, `AppChoiceRow`, `AppSwitchRow`.
 - `AppSectionHeader` — `title` (padrão: 16/600, texto) ou `label` (quieto,
@@ -99,7 +103,10 @@ Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
 
 - `AppTabHeader` / `VehicleTabHeader` — cabeçalho de aba.
 - `AppDetailHeader` — sem ícone e sem caixa.
-- `AppFactsStrip` + `AppFact` — faixa de 2–4 fatos, colunas iguais.
+- `AppFactsStrip` + `AppFact` — faixa de 2–4 fatos, colunas iguais; quando
+  um valor não cabe, **todos** encolhem pelo mesmo fator. Fato sem número
+  ("Consumo" antes do segundo tanque cheio) não vira "—": troque por outro
+  fato que exista e explique a ausência embaixo.
 - `AppStatusChip` — selo com a palavra do estado; só em detalhe.
 - `AppPlateChip` — a placa.
 - `AppMetric` — número como leitura (use pouco; a faixa de fatos cobre a
@@ -120,8 +127,16 @@ Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
 - `AppMoneyField`, `AppKmField`, `AppLitersField`, `AppDateField` — campos com
   máscara; nunca número cru.
 - `showAppSheet`, `AppSheetBody`, `AppSheetFrame`, `AppSheetHeader`
-  (`trailing` para um link no título).
-- `AppSegmented` — escolha entre 2–4 opções.
+  (`trailing` para um link no título). O app é desenhado de borda a borda
+  (Android com target SDK 35+), e `useSafeArea` só protege topo e laterais:
+  a barra de 3 botões cobria o "Salvar" da folha. **O recuo de baixo é de
+  `showAppSheet`**, dentro da superfície da folha; nenhuma folha se embrulha
+  em `SafeArea` (`test/shared/widgets/sheet_insets_test.dart`). As barras do
+  sistema são transparentes e o estilo delas vem de `AppTheme.overlay`,
+  aplicado na raiz do app — as abas não têm `AppBar`.
+- `AppSegmented` — escolha entre 2–4 opções. Cada segmento tem a largura
+  do rótulo mais uma fatia igual da sobra; se nem assim couber, todos os
+  rótulos encolhem juntos, no mesmo tamanho.
 - `confirmAction`, `AppDiscardGuard`.
 
 ### Estados
@@ -138,6 +153,26 @@ dias", "Faltam 2.000 km", "Pago em 12 jan", "Vigente até 28/12/2026",
 "Registrado hoje". Nada de "seu veículo merece atenção". Um prazo em dias é
 sempre `dueInDaysPhrase` (`core/domain/phrases.dart`) — a mesma frase no
 Início e na aba do item.
+
+## Texto e quebra de linha
+
+Num Galaxy S23 (360dp) o app mostrava "Gasolina · 37,65 / L", "5 set · Sem
+consumo / ainda" e "Consum / o", com todos os testes de overflow passando:
+nada estourava, só quebrava feio. As regras que vieram disso:
+
+- **Número e unidade não se separam.** `nbsp` (`core/domain/formatters.dart`)
+  entre valor e unidade: `Money.format`, `formatKm`, `formatLiters`,
+  "12,4 km/L", "5 set". Unidade nova usa o mesmo espaço.
+- **" · " é `dotSep`** (ou `joinParts` para partes opcionais): o ponto gruda
+  na palavra anterior, e a linha pode quebrar depois dele, nunca começar
+  com ele.
+- **O valor fica na linha do nome** (`AppRowBody`), numa linha só, e o
+  subtítulo corre a largura inteira do texto embaixo dos dois. Se o valor
+  passar de metade da linha, ou a letra for grande, ele desce para baixo do
+  texto.
+- `test/ux/line_breaks_test.dart` roda as listas e o detalhe de 1,0 a 1,3 e
+  falha com palavra cortada ou 1–2 caracteres sozinhos numa linha
+  (`test/support/line_breaks.dart`). Tela nova com lista entra lá.
 
 ## Texto grande
 

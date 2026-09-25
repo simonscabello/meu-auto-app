@@ -15,8 +15,8 @@ void main() {
 
     expect(find.text('Setembro de 2026'), findsOneWidget);
     expect(find.text('Agosto de 2026'), findsOneWidget);
-    expect(find.text('139.011 km'), findsOneWidget);
-    expect(find.text('137.900 km'), findsOneWidget);
+    expect(find.text('139.011\u00A0km'), findsOneWidget);
+    expect(find.text('137.900\u00A0km'), findsOneWidget);
   });
 
   testWidgets('each reading says how far the car went since the one before', (
@@ -24,14 +24,20 @@ void main() {
   ) async {
     await _pump(tester, _readings);
 
-    expect(find.text('24 set · +166 km'), findsOneWidget);
-    expect(find.text('21 set · Abastecimento · +685 km'), findsOneWidget);
-    expect(find.text('6 set · Abastecimento · +430 km'), findsOneWidget);
+    expect(find.text('24\u00A0set\u00A0· +166\u00A0km'), findsOneWidget);
+    expect(
+      find.text('21\u00A0set\u00A0· Abastecimento\u00A0· +685\u00A0km'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('6\u00A0set\u00A0· Abastecimento\u00A0· +430\u00A0km'),
+      findsOneWidget,
+    );
     // Lower than the reading before it: a correction, not the car driving
     // backwards, so no distance.
-    expect(find.text('27 ago · Manutenção'), findsOneWidget);
+    expect(find.text('27\u00A0ago\u00A0· Manutenção'), findsOneWidget);
     // The oldest reading has nothing before it.
-    expect(find.text('20 ago · Correção'), findsOneWidget);
+    expect(find.text('20\u00A0ago\u00A0· Correção'), findsOneWidget);
     expect(find.textContaining('-'), findsNothing);
     expect(find.textContaining('−'), findsNothing);
   });
@@ -41,8 +47,8 @@ void main() {
   ) async {
     await _pump(tester, _readings.sublist(0, 2), hasMore: true);
 
-    expect(find.text('24 set · +166 km'), findsOneWidget);
-    expect(find.text('21 set · Abastecimento'), findsOneWidget);
+    expect(find.text('24\u00A0set\u00A0· +166\u00A0km'), findsOneWidget);
+    expect(find.text('21\u00A0set\u00A0· Abastecimento'), findsOneWidget);
   });
 
   testWidgets('only readings typed by the owner can be deleted', (

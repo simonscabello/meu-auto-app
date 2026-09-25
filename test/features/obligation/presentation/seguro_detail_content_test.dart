@@ -34,7 +34,10 @@ void main() {
       _seguro(status: SeguroStatus.vencido, remainingDays: -2),
     );
     expect(find.text('Vencido'), findsOneWidget);
-    expect(find.text('Venceu há 2 dias · carro sem cobertura'), findsOneWidget);
+    expect(
+      find.text('Venceu há 2 dias\u00A0· carro sem cobertura'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a renewed policy is history, not a warning', (tester) async {
@@ -56,7 +59,7 @@ void main() {
     expect(find.text('Porto Seguro'), findsOneWidget);
     expect(find.text('Fim'), findsOneWidget);
     expect(find.text('10/01/2027'), findsOneWidget);
-    expect(find.text('R\$ 2.500,00'), findsOneWidget);
+    expect(find.text('R\$\u00A02.500,00'), findsOneWidget);
     expect(find.text('12345'), findsOneWidget);
   });
 
@@ -91,7 +94,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Corretor · Ana'), findsOneWidget);
+    expect(find.text('Corretor\u00A0· Ana'), findsOneWidget);
     await tester.tap(find.text('11999999999'));
     await tester.pump();
     expect(called, 1);
@@ -123,13 +126,13 @@ void main() {
     expect(deleted, 1);
   });
 
-  testWidgets('a missing premium is omitted, never written as R\$ 0,00', (
+  testWidgets('a missing premium is omitted, never written as R\$\u00A00,00', (
     tester,
   ) async {
     await _pump(tester, _seguro(premiumCents: null));
 
     expect(find.text('Prêmio'), findsNothing);
-    expect(find.text('R\$ 0,00'), findsNothing);
+    expect(find.text('R\$\u00A00,00'), findsNothing);
   });
 
   testWidgets('lays out at 360x640 with the font turned up', (tester) async {

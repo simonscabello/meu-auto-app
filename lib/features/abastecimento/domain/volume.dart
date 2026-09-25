@@ -45,3 +45,7 @@ String litersTextFromVolumeMl(int volumeMl) {
   final sign = volumeMl < 0 ? '-' : '';
   return '$sign$whole,$fracText';
 }
+
+/// A volume as it is read: `'37,65 L'`, the unit glued to the figure.
+String formatLiters(int volumeMl) =>
+    '${litersTextFromVolumeMl(volumeMl)}${nbsp}L';

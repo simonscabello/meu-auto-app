@@ -48,16 +48,29 @@ class AppFactRow extends StatelessWidget with GroupedRow {
             );
 
     final Widget body = inline
-        ? Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: Text(label, style: labelStyle)),
-              const SizedBox(width: AppSpacing.s16),
-              Expanded(
-                flex: 2,
-                child: Text(value, style: valueStyle, textAlign: TextAlign.end),
-              ),
-            ],
+        // The label keeps its own width, up to 60% of the line, and the
+        // value has the rest. A fixed third for the label broke "Tanque /
+        // cheio" beside a "Sim" with the whole line to spare.
+        ? LayoutBuilder(
+            builder: (context, constraints) => Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: constraints.maxWidth * 0.6,
+                  ),
+                  child: Text(label, style: labelStyle),
+                ),
+                const SizedBox(width: AppSpacing.s16),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: valueStyle,
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ],
+            ),
           )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,

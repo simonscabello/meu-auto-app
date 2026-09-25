@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
@@ -53,7 +54,7 @@ class VehicleTabHeader extends ConsumerWidget {
 String vehicleContextLabel(Vehicle vehicle) {
   final plate = vehicle.plate?.trim();
   if (plate == null || plate.isEmpty) return vehicle.headlineName;
-  return '${vehicle.headlineName} · $plate';
+  return '${vehicle.headlineName}$dotSep$plate';
 }
 
 /// The way into the account from any main tab: the owner's initial in a

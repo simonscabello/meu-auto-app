@@ -87,7 +87,7 @@ String planStatusPhrase(MaintenancePlan plan) {
   // "passou 80.000 km" on a part nobody registered reads like a mistake unless
   // the line explains where it counts from.
   if (plan.countsFromNew) {
-    return phrase.isEmpty ? 'Nunca feito' : 'Nunca feito · $phrase';
+    return phrase.isEmpty ? 'Nunca feito' : 'Nunca feito$dotSep$phrase';
   }
   return phrase;
 }
@@ -133,7 +133,7 @@ String planListSubtitle(MaintenancePlan plan) {
   final dueOn = plan.dueOn;
   if (dueOn == null) return phrase;
   final next = 'próxima em ${formatCivilDayMonthAbbrev(dueOn)}';
-  return phrase.isEmpty ? next : '$phrase · $next';
+  return phrase.isEmpty ? next : '$phrase$dotSep$next';
 }
 
 /// One line explaining how the item is looked after, for the plan detail.
@@ -183,7 +183,7 @@ String? dueNextPhrase({int? dueAtKm, CivilDate? dueOn}) {
     parts.add('em ${formatCivilDate(dueOn)}');
   }
   if (parts.isEmpty) return null;
-  return parts.join(' · ');
+  return parts.join(dotSep);
 }
 
 String? lastDonePhrase({CivilDate? occurredOn, int? mileageKm}) {
@@ -195,7 +195,7 @@ String? lastDonePhrase({CivilDate? occurredOn, int? mileageKm}) {
     parts.add(formatKm(mileageKm));
   }
   if (parts.isEmpty) return null;
-  return parts.join(' · ');
+  return parts.join(dotSep);
 }
 
 /// Distance between two mileages the API already returned. Display only.

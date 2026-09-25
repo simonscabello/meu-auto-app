@@ -41,11 +41,11 @@ void main() {
     const formatter = MoneyInputFormatter();
 
     test('fills from the cents up, the way a card machine does', () {
-      expect(_type(formatter, '4'), 'R\$ 0,04');
-      expect(_type(formatter, '42'), 'R\$ 0,42');
-      expect(_type(formatter, '420'), 'R\$ 4,20');
-      expect(_type(formatter, '42000'), 'R\$ 420,00');
-      expect(_type(formatter, '420000'), 'R\$ 4.200,00');
+      expect(_type(formatter, '4'), 'R\$\u00A00,04');
+      expect(_type(formatter, '42'), 'R\$\u00A00,42');
+      expect(_type(formatter, '420'), 'R\$\u00A04,20');
+      expect(_type(formatter, '42000'), 'R\$\u00A0420,00');
+      expect(_type(formatter, '420000'), 'R\$\u00A04.200,00');
     });
 
     test('what the person sees is what the write sends', () {
@@ -54,21 +54,21 @@ void main() {
 
     test('non-digits typed by a stray keyboard are ignored', () {
       // Four digits reach the field: 4, 2, 0, 0.
-      expect(_type(formatter, '4a2,0.0'), 'R\$ 42,00');
+      expect(_type(formatter, '4a2,0.0'), 'R\$\u00A042,00');
     });
 
     test('stops at nine digits, the ceiling the write already had', () {
       // The tenth keystroke onwards changes nothing.
-      expect(_type(formatter, '123456789'), 'R\$ 1.234.567,89');
-      expect(_type(formatter, '1234567890123'), 'R\$ 1.234.567,89');
+      expect(_type(formatter, '123456789'), 'R\$\u00A01.234.567,89');
+      expect(_type(formatter, '1234567890123'), 'R\$\u00A01.234.567,89');
     });
 
     test('backspacing through zero clears the field', () {
-      expect(_backspace(formatter, 'R\$ 0,04').text, isEmpty);
+      expect(_backspace(formatter, 'R\$\u00A00,04').text, isEmpty);
     });
 
     test('backspacing a real amount drops one digit', () {
-      expect(_backspace(formatter, 'R\$ 4,20').text, 'R\$ 0,42');
+      expect(_backspace(formatter, 'R\$\u00A04,20').text, 'R\$\u00A00,42');
     });
 
     test('the caret stays at the end so the next digit lands there', () {

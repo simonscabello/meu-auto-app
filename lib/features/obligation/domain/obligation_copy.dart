@@ -168,7 +168,7 @@ String seguroListSubtitle(Seguro seguro) {
     SeguroStatus.futuro => seguroStartsPhrase(seguro.remainingDays),
     SeguroStatus.vigente => 'Vigente até ${formatCivilDate(seguro.endsOn)}',
     SeguroStatus.venceEmBreve => dueInDaysPhrase(seguro.remainingDays),
-    SeguroStatus.vencido => 'Vencido · carro sem cobertura',
+    SeguroStatus.vencido => 'Vencido${dotSep}carro sem cobertura',
     SeguroStatus.desconhecido => '',
   };
 }

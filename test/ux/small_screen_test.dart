@@ -620,7 +620,7 @@ class _FormFieldsHarness extends StatefulWidget {
 }
 
 class _FormFieldsHarnessState extends State<_FormFieldsHarness> {
-  final money = TextEditingController(text: 'R\$ 1.234.567,89');
+  final money = TextEditingController(text: 'R\$\u00A01.234.567,89');
   late final TextEditingController km = kmController(1234567);
 
   @override

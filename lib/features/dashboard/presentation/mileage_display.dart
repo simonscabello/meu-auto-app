@@ -52,7 +52,7 @@ class MileageDisplay extends StatelessWidget {
               style: AppTypography.figure(size: 44, color: scheme.onSurface),
               children: [
                 TextSpan(
-                  text: ' km',
+                  text: '${nbsp}km',
                   style: theme.textTheme.titleLarge?.copyWith(
                     color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,

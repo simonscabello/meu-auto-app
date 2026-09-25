@@ -11,7 +11,7 @@ void main() {
     expect(record.occurredOn, const CivilDate(2026, 8, 10));
     expect(record.mileageKm, 98200);
     expect(record.kind, MaintenanceRecordKind.performed);
-    expect(record.totalCostCents.format(), r'R$ 420,00');
+    expect(record.totalCostCents.format(), 'R\$\u00A0420,00');
     expect(record.items, hasLength(1));
     expect(record.itemsSummary, 'Troca de óleo do motor');
   });

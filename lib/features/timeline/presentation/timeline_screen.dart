@@ -343,6 +343,29 @@ class TimelineSummary extends StatelessWidget {
   final VoidCallback? onCostsTap;
   final VoidCallback? onFuelTap;
 
+  /// The figure when there is one ("12,4 km/L"); otherwise the phrase says
+  /// why there is none, on the state line beside the date. A phrase set as
+  /// the value left "Consumo" a column narrow enough to break mid-word.
+  AppListRow _consumptionRow(LastAbastecimento fill) {
+    final figure = consumptionValueText(fill.consumption) == null
+        ? null
+        : consumptionShortPhrase(fill.consumption);
+    final phrase = figure == null
+        ? consumptionShortPhrase(fill.consumption)
+        : null;
+    return AppListRow(
+      icon: Icons.local_gas_station_outlined,
+      title: 'Consumo',
+      subtitle: phrase == null
+          ? 'Abastecido em ${formatCivilDayMonthAbbrev(fill.occurredOn)}'
+          : joinParts([phrase, formatCivilDayMonthAbbrev(fill.occurredOn)]),
+      value: figure,
+      strongValue: true,
+      onTap: onFuelTap,
+      showChevron: onFuelTap != null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final costs = this.costs;
@@ -353,24 +376,14 @@ class TimelineSummary extends StatelessWidget {
           AppListRow(
             icon: Icons.payments_outlined,
             title: costs.periodMonths == 12
-                ? 'Gastos em 12 meses'
+                ? 'Gastos em 12${nbsp}meses'
                 : 'Gastos nos ${costWindowLabel(costs.periodMonths)}',
             value: costs.totalCents.format(),
             strongValue: true,
             onTap: onCostsTap,
             showChevron: onCostsTap != null,
           ),
-        if (fill != null)
-          AppListRow(
-            icon: Icons.local_gas_station_outlined,
-            title: 'Consumo',
-            subtitle:
-                'Abastecido em ${formatCivilDayMonthAbbrev(fill.occurredOn)}',
-            value: consumptionShortPhrase(fill.consumption) ?? '—',
-            strongValue: consumptionValueText(fill.consumption) != null,
-            onTap: onFuelTap,
-            showChevron: onFuelTap != null,
-          ),
+        if (fill != null) _consumptionRow(fill),
       ],
     );
   }
@@ -394,7 +407,7 @@ class TimelineRow extends StatelessWidget with GroupedRow {
     final detail = [
       formatCivilDayMonthAbbrev(entry.occurredOn),
       if (mileage != null) formatKm(mileage) else ?timelineSubtitleOf(entry),
-    ].join(' · ');
+    ].join(dotSep);
 
     return AppListRow(
       icon: timelineIconOf(entry),
