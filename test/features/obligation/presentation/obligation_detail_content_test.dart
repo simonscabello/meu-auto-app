@@ -64,7 +64,7 @@ void main() {
     expect(find.text('R\$ 1.842,37'), findsOneWidget);
   });
 
-  testWidgets('paid on time says when, and offers no payment button', (
+  testWidgets('paid on time says so, and offers no payment button', (
     tester,
   ) async {
     await _pump(
@@ -77,7 +77,7 @@ void main() {
     );
 
     expect(find.text('Pago'), findsOneWidget);
-    expect(find.text('Pago em 11 mar'), findsOneWidget);
+    expect(find.text('No prazo'), findsOneWidget);
     expect(find.text('Registrar pagamento'), findsNothing);
     expect(find.text('11/03/2026'), findsOneWidget);
   });

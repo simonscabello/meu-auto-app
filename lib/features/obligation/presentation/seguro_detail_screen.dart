@@ -201,11 +201,6 @@ class SeguroDetailContent extends StatelessWidget {
     final policyRows = [
       if (policy != null)
         AppFactRow(label: 'Número', value: policy, inline: true),
-      AppFactRow(
-        label: 'Início',
-        value: formatCivilDate(seguro.startsOn),
-        inline: true,
-      ),
       // A broker with no number to call is a name, and a name is a fact of
       // the policy rather than a contact.
       if (brokerName != null && brokerPhone == null)

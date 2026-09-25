@@ -468,7 +468,10 @@ class PlanDetailContent extends StatelessWidget {
           statusLabel: _statusLabel(plan),
           phrase: _statePhrase(plan),
         ),
-        if (progress != null) ...[
+        // Not on a late item: a full red bar under a red badge and a red
+        // sentence is the same fact a third time, and turns the screen into
+        // an error state.
+        if (progress != null && plan.status != MaintenanceStatus.vencido) ...[
           const SizedBox(height: AppSpacing.s16),
           AppProgressBar(
             value: progress,

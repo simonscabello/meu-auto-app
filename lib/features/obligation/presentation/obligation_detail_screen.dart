@@ -136,12 +136,11 @@ Future<void> _delete(
 String obligationHeaderPhrase(Obligation obligation) {
   switch (obligation.status) {
     case ObligationStatus.pago:
+      // The strip already says when it was paid; the line adds only what
+      // it does not — that the payment was on time, or how late it was.
       final late = paidLatePhrase(daysPaidLate(obligation) ?? 0);
       if (late != null) return capitalizeFirst(late);
-      final paidOn = obligation.paidOn;
-      return paidOn == null
-          ? ''
-          : 'Pago em ${formatCivilDayMonthAbbrev(paidOn)}';
+      return obligation.paidOn == null ? '' : 'No prazo';
     case ObligationStatus.vencido:
     case ObligationStatus.venceEmBreve:
     case ObligationStatus.pendente:

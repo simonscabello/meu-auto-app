@@ -307,7 +307,7 @@ class MaintenanceDetailContent extends StatelessWidget {
                 icon: addingItem ? Icons.hourglass_empty : Icons.add,
                 iconTone: AppIconWellTone.accent,
                 title: 'Adicionar item',
-                subtitle: 'Feito junto e que ficou de fora',
+                subtitle: 'Algo feito junto que ficou de fora',
                 onTap: addingItem ? null : onAddItem,
                 showChevron: !addingItem,
               ),
