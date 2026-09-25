@@ -39,12 +39,13 @@ comparadas antes da escolha (`TICK` no `tool/recolor_icons.dart`).
 O azul de sinal `#5B9DFF` sobre `#F2F4F7` não passa de 3:1. Por isso existem
 dois arquivos de splash, e não se troca um pelo outro.
 
-## Os quatro assets
+## Os cinco assets
 
 Todos em `assets/icon/`. 1024×1024. Não redimensionar, não recortar, não
 recentralizar, não "otimizar" o alfa (`-fuzz`, threshold, remoção de fundo). O
 alfa foi desmultiplicado contra o fundo conhecido; reprocessar devolve franja
-cinza nas bordas.
+cinza nas bordas. O quinto é a exceção que confirma a regra: ele é gerado dos
+outros por uma ferramenta, nunca editado (ver abaixo).
 
 As re-tintagens de 24 e 25/09/2026 foram feitas por `tool/recolor_icons.dart`,
 que mapeia cada pixel como a mesma mistura das âncoras novas que ele era das
@@ -58,17 +59,30 @@ sempre o que os arquivos têm hoje.
 | Arquivo | Uso | O que não pode mudar |
 | --- | --- | --- |
 | `icon.png` | iOS e Android legado | RGB opaco, fundo `#090C10`. A App Store rejeita canal alfa; `remove_alpha_ios: true` no gerador é a rede de segurança. |
-| `icon_foreground.png` | Camada adaptativa do Android, e splash do Android 12+ | RGBA. A marca ocupa **58,2%** do lado. A zona segura do ícone adaptativo é **61%**; a arte original ocupava 77,5% e as graduações externas seriam cortadas pela máscara circular. |
+| `icon_foreground.png` | Camada adaptativa do Android, e splash do Android 12+ no tema escuro | RGBA. A marca ocupa **58,2%** do lado. A zona segura do ícone adaptativo é **61%**; a arte original ocupava 77,5% e as graduações externas seriam cortadas pela máscara circular. |
 | `splash_light.png` | Símbolo da splash no tema claro | RGBA, azul `#1A66DA`. Só no claro. |
 | `splash_dark.png` | Símbolo da splash no tema escuro | RGBA, azul `#5B9DFF`. Só no escuro. |
+| `splash_android12_light.png` | Splash do Android 12+ no tema claro | Gerado por `tool/android12_light_splash.dart` a partir de `splash_light.png`: a mesma arte, reduzida para a marca ter a largura e o centro da de `icon_foreground.png`. Nunca editar à mão; regerar. |
+
+`icon_foreground.png` tem um halo escuro em volta das marcas — o brilho da
+arte original. Sobre o fundo escuro do ícone ele some; sobre o `#F2F4F7` da
+splash clara ele aparecia como sombra suja em volta de cada graduação. Por isso
+o Android 12+ claro tem arquivo próprio, feito da arte limpa da splash clara
+(25/09/2026). A redução é feita pelo motor em cor pré-multiplicada, então as
+bordas continuam azuis, sem franja; nada ali mexe em alfa. Um teste
+(`test/core/theme/native_identity_colors_test.dart`) falha se o bloco
+`android_12` voltar a usar a camada adaptativa no claro ou se o arquivo ganhar
+halo.
 
 ### Medidas travadas
 
 - **58,2%** — ocupação da marca em `icon_foreground.png`.
 - **61%** — zona segura do ícone adaptativo do Android.
 - **66,7%** — o que a splash do Android 12+ mostra, recortada num círculo.
-  `splash_dark.png` ocupa ~70% e seria cortado; por isso o bloco `android_12`
-  aponta para `icon_foreground.png`. Não "corrigir" para `splash_dark.png`.
+  `splash_light.png` e `splash_dark.png` ocupam ~70% e seriam cortados; por
+  isso o bloco `android_12` aponta para `splash_android12_light.png` (`image`)
+  e `icon_foreground.png` (`image_dark`), ambos com a marca a 58,2%. Não
+  "corrigir" para as splashes normais.
 
 ## Como regenerar
 
@@ -81,6 +95,11 @@ flutter pub get
 dart run flutter_launcher_icons
 dart run flutter_native_splash:create
 ```
+
+Se a arte (e não só a cor) de `splash_light.png` ou `icon_foreground.png`
+mudar, rodar antes `flutter test tool/android12_light_splash.dart` para refazer
+o quinto arquivo. Uma troca só de paleta não precisa: o
+`tool/recolor_icons.dart` já re-tinge os cinco.
 
 Dois detalhes do `pubspec.yaml` que não estão no template óbvio dos pacotes:
 
@@ -103,14 +122,7 @@ O app abre no tema escuro por padrão (`ThemeModeStore`); a splash nativa segue
 o tema do sistema. Num aparelho em modo claro a emenda mostra a splash clara e
 depois o app escuro — é o tema persistido, não a arte.
 
-## Pontos abertos
-
-`icon_foreground.png` tem um halo preto em volta das marcas — era o brilho da
-arte original, e some sobre o fundo escuro do ícone adaptativo. Mas o bloco
-`android_12` usa esse mesmo arquivo na splash clara (`#F2F4F7`), onde o halo
-aparece como sombra suja. Já era assim antes do grafite. Resolver pede um
-quinto arquivo — a camada adaptativa sem halo, só para a splash clara do
-Android 12+ — e não uma edição deste.
+## Ponto aberto
 
 A **29 px** as graduações se dissolvem e sobra o check. Continua identificável
 e não bloqueia publicar. Se um dia incomodar, o caminho é vetorizar a marca e

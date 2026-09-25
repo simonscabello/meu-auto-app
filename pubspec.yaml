@@ -138,9 +138,12 @@ flutter_native_splash:
   web: false
   android_12:
     # A splash do Android 12+ recorta o icone num circulo e mostra apenas os
-    # ~66,7% centrais. splash_dark.png ocupa 70% e seria cortado; a camada
-    # adaptativa ja respeita esse limite (58,2%), entao e' ela que vai aqui.
-    image: "assets/icon/icon_foreground.png"
+    # ~66,7% centrais. As splashes normais ocupam 70% e seriam cortadas; aqui
+    # vai a marca a 58,2%. No escuro, a camada adaptativa; no claro, o halo
+    # escuro dela sujaria o fundo, entao vai a arte limpa da splash clara no
+    # mesmo tamanho (tool/android12_light_splash.dart).
+    image: "assets/icon/splash_android12_light.png"
+    image_dark: "assets/icon/icon_foreground.png"
     color: "#F2F4F7"
     color_dark: "#090C10"
     icon_background_color: "#F2F4F7"

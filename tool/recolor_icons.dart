@@ -59,6 +59,14 @@ const _files = <String, List<String>>{
     'tealLight',
     'tipLight',
   ],
+  // Built from splash_light.png by tool/android12_light_splash.dart; same art,
+  // same anchors.
+  'assets/icon/splash_android12_light.png': [
+    'shadow',
+    'tickLight',
+    'tealLight',
+    'tipLight',
+  ],
 };
 
 void main() {
