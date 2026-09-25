@@ -7,11 +7,8 @@ import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/client_id.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
-import 'package:meu_auto/core/theme/app_motion.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
-import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_item_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_profile_provider.dart';
@@ -31,7 +28,10 @@ import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dar
 import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_expandable_group.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -48,18 +48,33 @@ class CuidadosScreen extends ConsumerWidget {
     final vehicle = selected.valueOrNull;
 
     return AppScaffold(
-      titleWidget: const VehicleContextTitle(title: 'Manutenção'),
-      actions: const [ProfileButton()],
       onRefresh: vehicle == null ? null : () => _refresh(ref, vehicle.id),
-      body: selected.when(
-        loading: () => const _CuidadosSkeleton(),
-        error: (error, _) => AppErrorState.fromError(
-          error: error,
-          onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
-        ),
-        data: (current) => current == null
-            ? const SizedBox.shrink()
-            : CuidadosView(vehicleId: current.id),
+      body: Column(
+        children: [
+          VehicleTabHeader(
+            title: 'Manutenção',
+            actions: [
+              if (vehicle != null)
+                AppIconButton(
+                  label: 'Registrar manutenção',
+                  icon: Icons.add,
+                  onPressed: () => context.push(AppRoutes.maintenanceNew),
+                ),
+            ],
+          ),
+          Expanded(
+            child: selected.when(
+              loading: () => const _CuidadosSkeleton(),
+              error: (error, _) => AppErrorState.fromError(
+                error: error,
+                onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+              ),
+              data: (current) => current == null
+                  ? const SizedBox.shrink()
+                  : CuidadosView(vehicleId: current.id),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -244,7 +259,7 @@ class CuidadosContent extends StatelessWidget {
     final groups = groupCuidadosPlans(plans);
 
     return ListView(
-      padding: AppSpacing.screen,
+      padding: AppSpacing.tab,
       children: [
         if (openQuestion != null) ...[
           const AppSectionHeader(title: 'Uma pergunta sobre o seu carro'),
@@ -257,7 +272,7 @@ class CuidadosContent extends StatelessWidget {
           const SizedBox(height: appGroupGap),
         ],
         ..._openGroup(
-          title: 'Precisam de atenção',
+          title: 'Vencidos',
           plans: groups.needAttention,
           urgent: true,
         ),
@@ -276,9 +291,7 @@ class CuidadosContent extends StatelessWidget {
           ),
         ..._openGroup(
           title: 'Sem data da última vez',
-          subtitle:
-              'Sem saber quando foram feitos, o Meu Auto não consegue avisar. '
-              'Toque num item para informar.',
+          subtitle: 'Sem a data da última vez, não há como avisar.',
           plans: [...groups.needsBaseline, ...groups.historySettled],
           actionLabel:
               onNeedsBaselineGroupTap == null || groups.needsBaseline.isEmpty
@@ -287,30 +300,25 @@ class CuidadosContent extends StatelessWidget {
           onAction: onNeedsBaselineGroupTap,
         ),
         if (groups.onTrack.isNotEmpty) ...[
-          _CollapsedGroup(
+          AppExpandableGroup(
             title: 'Em dia',
-            plans: groups.onTrack,
-            onTap: _tapOf,
-            onMarkDone: onMarkDone,
-            justRecordedIds: justRecordedIds,
-            submittingIds: submittingIds,
+            count: groups.onTrack.length,
+            children: [for (final plan in groups.onTrack) _row(plan)],
           ),
-          const SizedBox(height: appGroupGap),
+          const SizedBox(height: AppSpacing.s12),
         ],
         if (groups.historyOnly.isNotEmpty) ...[
-          _CollapsedGroup(
+          AppExpandableGroup(
             title: 'Só histórico',
-            explanation:
-                'Esses itens agrupam o que já foi feito e nunca vencem.',
-            plans: groups.historyOnly,
-            onTap: _tapOf,
-            onMarkDone: onMarkDone,
-            justRecordedIds: justRecordedIds,
-            submittingIds: submittingIds,
+            count: groups.historyOnly.length,
+            explanation: 'Ficam no histórico e nunca vencem.',
+            children: [for (final plan in groups.historyOnly) _row(plan)],
           ),
-          const SizedBox(height: appGroupGap),
+          const SizedBox(height: AppSpacing.s12),
         ],
+        const SizedBox(height: AppSpacing.s16),
         AppGroup(
+          title: 'Seu plano',
           children: [
             if (onCreatePlan != null)
               AppListRow(
@@ -371,6 +379,17 @@ class CuidadosContent extends StatelessWidget {
     ];
   }
 
+  Widget _row(MaintenancePlan plan) {
+    return _PlanRow(
+      key: ValueKey(plan.id),
+      plan: plan,
+      onTap: _tapOf(plan),
+      onMarkDone: onMarkDone,
+      justRecorded: justRecordedIds.contains(plan.id),
+      submitting: submittingIds.contains(plan.id),
+    );
+  }
+
   VoidCallback? _tapOf(MaintenancePlan plan) {
     if (plan.status == MaintenanceStatus.semBaseline &&
         plan.itemKind != MaintenanceItemKind.care) {
@@ -400,7 +419,7 @@ class _EverydayCareEmpty extends StatelessWidget {
           icon: Icons.check_circle_outline,
           iconTone: AppIconWellTone.accent,
           title: 'Tudo em dia',
-          subtitle: 'Nenhum cuidado precisa da sua atenção agora.',
+          subtitle: 'Nenhum cuidado para agora',
         ),
       ],
     );
@@ -413,7 +432,7 @@ class _EverydayCareEmpty extends StatelessWidget {
 /// It is passed by the group rather than derived from the plan so that
 /// colour stays a property of "which list is this" — the thing a person
 /// reads first — instead of being sprinkled per row until it means nothing.
-class _PlanRow extends StatelessWidget {
+class _PlanRow extends StatelessWidget with GroupedRow {
   const _PlanRow({
     super.key,
     required this.plan,
@@ -447,9 +466,9 @@ class _PlanRow extends StatelessWidget {
       subtitle: subtitle,
       status: urgent && !justRecorded ? status : null,
       onTap: onTap,
-      // Outlined, not filled: a list of habits can carry three or four of these
-      // at once, and a column of solid buttons outshouted the overdue items
-      // above them. The row's own words say what is due.
+      // Tonal and short, not filled: a list of habits can carry three or four
+      // of these at once, and a column of accent buttons outshouted the
+      // overdue items above them. The row's own words say what is due.
       trailing: _showDone
           ? AppButton(
               label: 'Feito',
@@ -472,157 +491,6 @@ class _PlanRow extends StatelessWidget {
     final next = careNextCheckPhrase(plan.remainingDays);
     if (next == null) return careRecordedTodayPhrase;
     return '$careRecordedTodayPhrase · $next';
-  }
-}
-
-/// A group that needs nothing from anyone right now: present, countable,
-/// folded.
-///
-/// The header is the same quiet label every other group has, with a count
-/// and a chevron; opening it reveals the same bounded surface the open groups
-/// already sit in, so folding something away does not change what it looks
-/// like.
-class _CollapsedGroup extends StatefulWidget {
-  const _CollapsedGroup({
-    required this.title,
-    required this.plans,
-    required this.onTap,
-    this.explanation,
-    this.onMarkDone,
-    this.justRecordedIds = const {},
-    this.submittingIds = const {},
-  });
-
-  final String title;
-  final String? explanation;
-  final List<MaintenancePlan> plans;
-  final VoidCallback? Function(MaintenancePlan plan) onTap;
-  final Future<void> Function(MaintenancePlan plan)? onMarkDone;
-  final Set<String> justRecordedIds;
-  final Set<String> submittingIds;
-
-  @override
-  State<_CollapsedGroup> createState() => _CollapsedGroupState();
-}
-
-class _CollapsedGroupState extends State<_CollapsedGroup> {
-  bool _open = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final tones = AppTones.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Semantics(
-          button: true,
-          expanded: _open,
-          label: '${widget.title}, ${widget.plans.length} itens',
-          excludeSemantics: true,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() => _open = !_open),
-              borderRadius: AppRadius.borderS,
-              highlightColor: tones.overlayPressed,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  minHeight: AppSpacing.minTapTarget,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s4,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        // The count earns its place only when there is more
-                        // than one thing folded away: "Em dia 1" is noise
-                        // where "Em dia 12" is the reason not to open it.
-                        child: Text.rich(
-                          TextSpan(
-                            text: widget.title,
-                            children: [
-                              if (widget.plans.length > 1)
-                                TextSpan(
-                                  text: '  ${widget.plans.length}',
-                                  style: theme.textTheme.labelLarge?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ),
-                      AnimatedRotation(
-                        turns: _open ? 0.5 : 0,
-                        duration: AppMotion.of(context, AppMotion.short),
-                        curve: AppMotion.standard,
-                        child: Icon(
-                          Icons.expand_more,
-                          size: 20,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: AppMotion.of(context, AppMotion.medium),
-          curve: AppMotion.standard,
-          alignment: Alignment.topCenter,
-          child: !_open
-              ? const SizedBox(width: double.infinity)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (widget.explanation != null)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.s4,
-                          0,
-                          AppSpacing.s4,
-                          AppSpacing.s8,
-                        ),
-                        child: Text(
-                          widget.explanation!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    AppGroup(
-                      children: [
-                        for (final plan in widget.plans)
-                          _PlanRow(
-                            key: ValueKey(plan.id),
-                            plan: plan,
-                            onTap: widget.onTap(plan),
-                            onMarkDone: widget.onMarkDone,
-                            justRecorded: widget.justRecordedIds.contains(
-                              plan.id,
-                            ),
-                            submitting: widget.submittingIds.contains(plan.id),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-        ),
-      ],
-    );
   }
 }
 

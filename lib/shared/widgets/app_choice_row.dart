@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_motion.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
 /// One option of a single choice, as a row: the label, and a ring that fills
@@ -8,7 +9,7 @@ import 'package:meu_auto/shared/widgets/app_list_row.dart';
 ///
 /// The whole row is the tap target. Replaces `RadioListTile`, whose padding,
 /// type and ripple do not match the rows around it.
-class AppChoiceRow<T> extends StatelessWidget {
+class AppChoiceRow<T> extends StatelessWidget with GroupedRow {
   const AppChoiceRow({
     super.key,
     required this.value,
@@ -56,15 +57,14 @@ class AppChoiceRow<T> extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: AppSpacing.s16),
+            const SizedBox(width: AppSpacing.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     label,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
+                    style: theme.textTheme.titleSmall?.copyWith(
                       color: active
                           ? scheme.onSurface
                           : scheme.onSurface.withValues(alpha: 0.5),
@@ -72,12 +72,7 @@ class AppChoiceRow<T> extends StatelessWidget {
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
+                    Text(subtitle!, style: theme.textTheme.bodySmall),
                   ],
                 ],
               ),

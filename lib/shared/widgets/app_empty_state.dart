@@ -4,7 +4,10 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_centered_scroll.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 
-/// A screen with nothing on it yet: what this is, and the one thing to do.
+/// A screen with nothing on it yet.
+///
+/// A good empty state answers three things: what belongs here, why it is not
+/// here yet, and the one thing to do now. Without the third it is a dead end.
 ///
 /// Scrolls, and that is load-bearing: `RefreshIndicator` needs a scrollable
 /// child, so pull-to-refresh works here too.
@@ -37,13 +40,20 @@ class AppEmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              AppIconWell(icon: icon!, size: AppIconWellSize.xl),
+              AppIconWell(
+                icon: icon!,
+                size: AppIconWellSize.xl,
+                tone: AppIconWellTone.accent,
+              ),
               const SizedBox(height: AppSpacing.s20),
             ],
-            Text(
-              title,
-              style: theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
+            Semantics(
+              header: true,
+              child: Text(
+                title,
+                style: theme.textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
             ),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.s8),
@@ -51,12 +61,13 @@ class AppEmptyState extends StatelessWidget {
                 message!,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
-                  height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),
             ],
-            if (actionLabel != null) ...[
+            // Only with both: a label with nowhere to go, or a callback with
+            // no words, used to vanish silently and leave a dead end.
+            if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: AppSpacing.s24),
               AppButton(label: actionLabel!, onPressed: onAction),
             ],

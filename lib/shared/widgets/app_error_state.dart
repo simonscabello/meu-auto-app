@@ -45,6 +45,10 @@ class AppErrorState extends StatelessWidget {
 
   static const offlineTitle = 'Sem conexão';
 
+  /// The heading when the server answered with a failure. Short and plain:
+  /// the message under it says what happened.
+  static const failedTitle = 'Não foi possível carregar';
+
   final String message;
   final VoidCallback onRetry;
   final String? requestId;
@@ -61,26 +65,25 @@ class AppErrorState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             AppIconWell(
-              icon: offline ? Icons.wifi_off_outlined : Icons.error_outline,
+              icon: offline ? Icons.wifi_off_outlined : Icons.cloud_off_outlined,
               size: AppIconWellSize.xl,
               tone: offline ? AppIconWellTone.neutral : AppIconWellTone.status,
               status: AppStatus.vencido,
             ),
-            if (offline) ...[
-              const SizedBox(height: AppSpacing.s20),
-              Text(
-                offlineTitle,
-                style: theme.textTheme.titleLarge,
+            const SizedBox(height: AppSpacing.s20),
+            Semantics(
+              header: true,
+              child: Text(
+                offline ? offlineTitle : failedTitle,
+                style: theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
-            ],
-            const SizedBox(height: AppSpacing.s12),
+            ),
+            const SizedBox(height: AppSpacing.s8),
             Text(
               message,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: offline
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.onSurface,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -97,6 +100,7 @@ class AppErrorState extends StatelessWidget {
             const SizedBox(height: AppSpacing.s24),
             AppButton(
               label: 'Tentar de novo',
+              icon: Icons.refresh,
               variant: AppButtonVariant.secondary,
               onPressed: onRetry,
             ),

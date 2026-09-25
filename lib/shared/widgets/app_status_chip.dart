@@ -3,20 +3,28 @@ import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 
-/// A status, as a small pill: the glyph, the word, and a tint.
+/// A status, as a small badge: the word on its tint, and a glyph when there
+/// is room for one.
 ///
-/// The glyph and the word carry the meaning; the tint is the third signal,
-/// never the only one. It sits beside a title on a detail screen and nowhere
-/// in a list — in a list the group says the state and a pill per row is
+/// The word carries the meaning; the tint is the second signal. It sits
+/// beside a title on a detail screen and nowhere in a list — in a list the
+/// group says the state, the row says it in words, and a badge per row is
 /// noise.
 class AppStatusChip extends StatelessWidget {
-  const AppStatusChip({super.key, required this.status, this.label});
+  const AppStatusChip({
+    super.key,
+    required this.status,
+    this.label,
+    this.showIcon = true,
+  });
 
   final AppStatus status;
 
   /// Replaces the status word. For a plan whose strategy changes the wording
   /// — a tyre that has "run bastante" rather than "vencido".
   final String? label;
+
+  final bool showIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -29,19 +37,20 @@ class AppStatusChip extends StatelessWidget {
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s12,
-          vertical: 5,
+          horizontal: AppSpacing.s8,
+          vertical: AppSpacing.s4,
         ),
         decoration: BoxDecoration(
           color: visual.background,
-          borderRadius: AppRadius.borderPill,
-          border: Border.all(color: visual.foreground.withValues(alpha: 0.28)),
+          borderRadius: AppRadius.borderXs,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(visual.icon, size: 14, color: visual.foreground),
-            const SizedBox(width: 6),
+            if (showIcon) ...[
+              Icon(visual.icon, size: 15, color: visual.foreground),
+              const SizedBox(width: AppSpacing.s4),
+            ],
             Flexible(
               child: Text(
                 text,
@@ -49,6 +58,7 @@ class AppStatusChip extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: visual.foreground,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

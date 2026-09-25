@@ -36,11 +36,10 @@ class AppSegmented<T> extends StatelessWidget {
     final active = enabled && onChanged != null;
 
     return Container(
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(AppSpacing.s4),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: AppRadius.borderS,
-        border: Border.all(color: tones.stroke),
+        color: scheme.surfaceContainer,
+        borderRadius: AppRadius.borderControl,
       ),
       child: Row(
         children: [
@@ -57,21 +56,18 @@ class AppSegmented<T> extends StatelessWidget {
                   curve: AppMotion.standard,
                   decoration: BoxDecoration(
                     color: option.value == value
-                        ? tones.accentSoft
+                        ? scheme.primaryContainer
                         : Colors.transparent,
-                    borderRadius: const BorderRadius.all(Radius.circular(7)),
-                    border: Border.all(
-                      color: option.value == value
-                          ? scheme.primary.withValues(alpha: 0.35)
-                          : Colors.transparent,
-                    ),
+                    borderRadius: AppRadius.borderS,
                   ),
                   child: Material(
                     color: Colors.transparent,
-                    borderRadius: const BorderRadius.all(Radius.circular(7)),
+                    borderRadius: AppRadius.borderS,
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
                       onTap: active ? () => onChanged!(option.value) : null,
+                      highlightColor: tones.overlayPressed,
+                      splashColor: tones.overlayPressed,
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(minHeight: 40),
                         child: Padding(
@@ -85,8 +81,11 @@ class AppSegmented<T> extends StatelessWidget {
                               child: Text(
                                 option.label,
                                 style: theme.textTheme.labelLarge?.copyWith(
+                                  fontWeight: option.value == value
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
                                   color: option.value == value
-                                      ? scheme.primary
+                                      ? scheme.onPrimaryContainer
                                       : scheme.onSurfaceVariant,
                                 ),
                               ),

@@ -30,6 +30,14 @@ bool showsCareDoneAction(MaintenancePlan plan) {
   };
 }
 
+/// How late or how close a care habit is, from the days the server counted:
+/// "Venceu há 13 dias", "Vence hoje", "Vence em 3 dias". Without a figure it
+/// falls back to the plain nudge.
+String careDuePhrase(int? remainingDays) {
+  if (remainingDays == null) return 'Está na hora de verificar';
+  return dueInDaysPhrase(remainingDays);
+}
+
 /// Remaining days already computed by the server, turned into a sentence.
 String? careNextCheckPhrase(int? remainingDays) {
   if (remainingDays == null || remainingDays < 1) return null;
@@ -40,9 +48,12 @@ String? careNextCheckPhrase(int? remainingDays) {
 String planStatusPhrase(MaintenancePlan plan) {
   if (plan.itemKind == MaintenanceItemKind.care) {
     return switch (plan.status) {
+      // How late, in days, when the server said — the same words Início uses
+      // for the same item. "Está na hora de verificar" on one screen and
+      // "Venceu há 13 dias" on the other made two facts out of one.
       MaintenanceStatus.vencido ||
-      MaintenanceStatus.venceEmBreve ||
-      MaintenanceStatus.semBaseline => 'Está na hora de verificar.',
+      MaintenanceStatus.venceEmBreve => careDuePhrase(plan.remainingDays),
+      MaintenanceStatus.semBaseline => 'Está na hora de verificar',
       MaintenanceStatus.emDia => 'Tudo certo',
       _ => maintenanceStatusPhrase(
         plan.status.wire,

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 
 /// Confirms a write that worked.
 ///
@@ -17,11 +19,23 @@ void showAppSnackBar(
   // Nothing waits on it, and a device with no vibrator is not an error worth
   // surfacing to someone who just saved a service record.
   unawaited(HapticFeedback.lightImpact());
+  final theme = Theme.of(messenger.context);
+  // The check is in the "done" green of the *other* theme: the bar is the
+  // inverse surface, light on the dark theme and dark on the light one.
+  final done = theme.brightness == Brightness.dark
+      ? AppTones.light.success
+      : AppTones.dark.success;
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, size: 20, color: done),
+            const SizedBox(width: AppSpacing.s12),
+            Expanded(child: Text(message)),
+          ],
+        ),
         action: onUndo == null
             ? null
             : SnackBarAction(label: 'Desfazer', onPressed: onUndo),
@@ -55,11 +69,24 @@ void showAppErrorSnackBar(
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onErrorContainer,
-          ),
+        content: Row(
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 20,
+              color: theme.colorScheme.onErrorContainer,
+            ),
+            const SizedBox(width: AppSpacing.s12),
+            Expanded(
+              child: Text(
+                message,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onErrorContainer,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
         backgroundColor: theme.colorScheme.errorContainer,
         // Longer than a confirmation, and dismissible: a failure is something

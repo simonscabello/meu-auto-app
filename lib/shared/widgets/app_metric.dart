@@ -12,7 +12,7 @@ enum AppMetricSize {
   compact,
 }
 
-/// A number with its unit and its label, set in the instrument face.
+/// A number with its unit and its label, set as a reading.
 ///
 /// The unit is set in the label style and joined to the value in one
 /// [Text.rich], so "34,7 L" wraps and scales as one thing rather than as a
@@ -39,8 +39,8 @@ class AppMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final numberStyle = AppTypography.instrument(
-      size: size == AppMetricSize.hero ? 40 : 26,
+    final numberStyle = AppTypography.figure(
+      size: size == AppMetricSize.hero ? 34 : 22,
       color: color ?? scheme.onSurface,
     );
     final unitStyle =

@@ -19,7 +19,12 @@ class AppSheetHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.closable = true,
+    this.trailing,
   });
+
+  /// A link at the end of the title line — "Histórico" on the mileage sheet.
+  /// Takes the close button's place when there is one.
+  final Widget? trailing;
 
   final String title;
   final String? subtitle;
@@ -50,7 +55,7 @@ class AppSheetHeader extends StatelessWidget {
                     header: true,
                     child: Text(
                       title,
-                      style: theme.textTheme.titleLarge?.copyWith(fontSize: 20),
+                      style: theme.textTheme.titleLarge,
                     ),
                   ),
                 ),
@@ -66,7 +71,9 @@ class AppSheetHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (closable)
+          if (trailing != null)
+            trailing!
+          else if (closable)
             AppIconButton(
               label: 'Fechar',
               icon: Icons.close,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 
 /// A settings line: what it is on the left, what it is set to on the right.
@@ -9,7 +10,7 @@ import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 /// It shows the current value and opens somewhere to change it. A permanent
 /// text field with a "Salvar" button beside it is a form, and a form is what
 /// a settings screen stops being the moment it has more than one thing in it.
-class AppSettingRow extends StatelessWidget {
+class AppSettingRow extends StatelessWidget with GroupedRow {
   const AppSettingRow({
     super.key,
     required this.label,
@@ -47,20 +48,13 @@ class AppSettingRow extends StatelessWidget {
     final row = Row(
       children: [
         if (icon != null) ...[
-          AppIconWell(
-            icon: icon!,
-            size: AppIconWellSize.s,
-            color: destructive ? scheme.error : null,
-          ),
+          AppIconWell(icon: icon!, color: destructive ? scheme.error : null),
           const SizedBox(width: AppSpacing.s12),
         ],
         Expanded(
           child: Text(
             label,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: labelColor,
-              fontWeight: FontWeight.w500,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(color: labelColor),
           ),
         ),
         if (trailing != null)
@@ -79,14 +73,24 @@ class AppSettingRow extends StatelessWidget {
             ),
           if (onTap != null) ...[
             const SizedBox(width: AppSpacing.s4),
-            Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+            ),
           ],
         ],
       ],
     );
 
+    final inset = AppGroupScope.paddingOf(context);
     final padded = Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
+      padding: EdgeInsets.fromLTRB(
+        inset.left,
+        AppSpacing.s12,
+        inset.right,
+        AppSpacing.s12,
+      ),
       child: row,
     );
 
@@ -102,8 +106,11 @@ class AppSettingRow extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: AppRadius.borderS,
+          borderRadius: inset == EdgeInsets.zero
+              ? AppRadius.borderS
+              : BorderRadius.zero,
           highlightColor: tones.overlayPressed,
+          splashColor: tones.overlayPressed,
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               minHeight: AppSpacing.minTapTarget,

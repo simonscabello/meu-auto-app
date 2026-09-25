@@ -12,18 +12,18 @@ import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/features/dashboard/presentation/alert_row.dart';
 import 'package:meu_auto/features/dashboard/presentation/mileage_display.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
+import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
 import 'package:meu_auto/features/maintenance/domain/plan_progress.dart';
+import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
-import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_quick_action.dart';
-import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
-import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 export 'package:meu_auto/features/dashboard/presentation/alert_row.dart'
     show routeForAlert;
@@ -53,6 +53,12 @@ class DashboardView extends ConsumerWidget {
     final progress = plans == null
         ? const <String, double>{}
         : planProgressById(plans);
+    // The same list gives each maintenance alert its item's own glyph: an
+    // alert carries the plan's id but not its catalogue slug.
+    final icons = <String, IconData>{
+      for (final plan in plans ?? const <MaintenancePlan>[])
+        plan.id: maintenanceIconFor(plan.itemSlug),
+    };
 
     return dashboard.when(
       skipLoadingOnReload: true,
@@ -70,6 +76,7 @@ class DashboardView extends ConsumerWidget {
         today: CivilDate.todayLocal(),
         refuelingSupported: vehicle?.refueling.supported ?? false,
         progressByReference: progress,
+        iconByReference: icons,
         onOdometerTap: () => OdometerSheet.show(
           context,
           vehicleId: vehicleId,
@@ -130,25 +137,30 @@ class _WithHeader extends StatelessWidget {
   }
 }
 
-/// Início as pure presentation. Five questions, in order, and nothing else:
+/// Início as pure presentation. Five questions, in this order, and nothing
+/// else:
 ///
-///  1. **Which car?** The header.
-///  2. **How far has it gone?** The mileage, as the hero figure, with the
-///     pencil beside it — the one prominent way to update it.
-///  3. **Does anything need me?** A discreet strip between two hairlines:
-///     what is late or close, from every domain, red only on the glyph and
-///     the figure. When nothing is, one quiet line says so — and says
-///     honestly when the app does not know yet.
-///  4. **What do I want to record?** Two named actions of exactly equal
-///     weight.
-///  5. **What comes next?** At most three upcoming items, each with how far
-///     it is and — only when the figures allow it — how far along.
+///  1. **Which car?** The header — the name, make and year, the plate.
+///  2. **How far has it gone?** The mileage, the largest figure on the
+///     screen, with "Atualizar" on the same line.
+///  3. **Does anything need me?** The items themselves — "Calibrar os pneus ·
+///     Venceu há 13 dias" — at most two, red or amber only on the glyph and
+///     the line that says how late. With nothing late, one quiet line says so,
+///     and says honestly when the app does not know yet.
+///  4. **What can I record now?** Two named actions of exactly equal weight.
+///  5. **What comes next?** The next two things among what is on track, and
+///     the way to all of them.
 ///
-/// Costs and the last fill are not here. They live on Histórico, where the
-/// question "what did this car cost" is the reason to open the tab.
+/// A block that has nothing to say does not exist, but no block ever changes
+/// place with another: Início is read at a glance, and a screen whose parts
+/// move has to be read in full every time.
 ///
-/// Every number arrived computed by the server. Nothing in this file derives a
-/// due date, a status or a total; it turns figures into sentences.
+/// Costs, consumption and the last fill are not here. They are true and
+/// useful, and they answer "what did this car cost?", which is Histórico's
+/// question — here they would be metrics for the sake of having data.
+///
+/// Every number arrived computed by the server. Nothing in this file derives
+/// a due date, a status or a total; it turns figures into sentences.
 class DashboardContent extends StatelessWidget {
   const DashboardContent({
     super.key,
@@ -157,6 +169,7 @@ class DashboardContent extends StatelessWidget {
     this.today,
     this.refuelingSupported = false,
     this.progressByReference = const {},
+    this.iconByReference = const {},
     this.onOdometerTap,
     this.onProfileTap,
     this.onMaintenanceTap,
@@ -176,9 +189,13 @@ class DashboardContent extends StatelessWidget {
 
   final bool refuelingSupported;
 
-  /// How far along each upcoming plan is, by plan id. An item with no entry
-  /// gets no bar.
+  /// How far along each upcoming plan is, by plan id. Kept for the callers
+  /// that already compute it; Início no longer draws the bars — a gauge on
+  /// every row was a metric added because the data existed.
   final Map<String, double> progressByReference;
+
+  /// A glyph per referenced plan id, for the rows that point at a plan.
+  final Map<String, IconData> iconByReference;
 
   final VoidCallback? onOdometerTap;
   final VoidCallback? onProfileTap;
@@ -192,48 +209,16 @@ class DashboardContent extends StatelessWidget {
   final VoidCallback? onRegisterAbastecimento;
   final VoidCallback? onRegisterMaintenance;
 
+  /// How many late or close items Início shows before "Ver todos".
+  static const attentionLimit = 2;
+
+  /// How many upcoming items Início shows.
+  static const upcomingLimit = 2;
+
   @override
   Widget build(BuildContext context) {
-    final alerts = dashboard.alerts;
     final verdict = verdictOf(dashboard);
-    final profilePrompt = profilePromptOf(dashboard.profile);
-
-    final quietRows = <Widget>[
-      // The two gaps that stop the app working sit right under the verdict
-      // they undermine: without a fuel type the engine items are simply
-      // missing, and without a plan there is nothing to report on.
-      if (profilePrompt != null)
-        AppListRow(
-          icon: Icons.tune_outlined,
-          title: profilePrompt,
-          onTap: onProfileTap,
-          showChevron: onProfileTap != null,
-        ),
-      // The next step for a car the app knows nothing about. Not a nag: it
-      // shows only while there are questions nobody was asked, and goes away
-      // the moment they are answered — "não sei" included.
-      if (verdict.kind == VerdictKind.unknown &&
-          alerts.needsBaseline > 0 &&
-          onStartHistory != null)
-        AppListRow(
-          icon: Icons.fact_check_outlined,
-          title: 'Conte o que já foi feito no carro',
-          subtitle: 'Algumas perguntas rápidas. Depois, o aviso chega na hora',
-          onTap: onStartHistory,
-          showChevron: true,
-        ),
-      // With something late or close the verdict speaks about that, and the
-      // items nobody knows about would go unmentioned. One quiet row keeps
-      // them on the screen without competing with what is overdue.
-      if (verdict.kind != VerdictKind.unknown && alerts.itemsWithoutHistory > 0)
-        AppListRow(
-          icon: Icons.help_outline,
-          title: unknownHistoryPhrase(alerts.itemsWithoutHistory),
-          subtitle: 'Informe quando foram feitos para receber o aviso',
-          onTap: onMaintenanceTap,
-          showChevron: onMaintenanceTap != null,
-        ),
-    ];
+    final upcoming = dashboard.upcoming.take(upcomingLimit).toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -245,7 +230,7 @@ class DashboardContent extends StatelessWidget {
       children: [
         if (header != null) ...[
           header!,
-          const SizedBox(height: AppSpacing.block),
+          const SizedBox(height: AppSpacing.s24),
         ],
         MileageDisplay(
           currentKm: dashboard.odometer.currentKm,
@@ -254,10 +239,17 @@ class DashboardContent extends StatelessWidget {
           onTap: onOdometerTap,
         ),
         const SizedBox(height: AppSpacing.block),
-        AttentionStrip(
+        HomeAttention(
           verdict: verdict,
-          onHeaderTap: _verdictTap(verdict, alerts),
-          quietRows: quietRows,
+          alerts: dashboard.alerts,
+          profilePrompt: profilePromptOf(dashboard.profile),
+          onAlertTap: onAlertTap,
+          iconByReference: iconByReference,
+          onSeeAll: onSeeAllAlerts ?? onMaintenanceTap,
+          onUnknownTap: dashboard.alerts.needsBaseline > 0
+              ? (onStartHistory ?? onMaintenanceTap)
+              : onMaintenanceTap,
+          onProfileTap: onProfileTap,
         ),
         const SizedBox(height: AppSpacing.block),
         _QuickActions(
@@ -266,51 +258,252 @@ class DashboardContent extends StatelessWidget {
               : null,
           onRegisterMaintenance: onRegisterMaintenance,
         ),
-        if (dashboard.upcoming.isNotEmpty) ...[
+        if (upcoming.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.s32),
-          AppSectionHeader(
-            title: 'Próximos cuidados',
-            emphasis: AppSectionEmphasis.title,
-            actionLabel: onMaintenanceTap == null ? null : 'Ver todos',
-            onAction: onMaintenanceTap,
+          AppGroup(
+            title: upcoming.length == 1
+                ? 'Próximo cuidado'
+                : 'Próximos cuidados',
+            children: [
+              for (final alert in upcoming)
+                AppListRow(
+                  icon:
+                      iconByReference[alert.referenceId] ??
+                      alertIconOf(alert.kind),
+                  title: alert.title,
+                  subtitle: alertDetailLine(alert),
+                  onTap: onAlertTap == null ? null : () => onAlertTap!(alert),
+                  showChevron: onAlertTap != null,
+                ),
+              if (onMaintenanceTap != null)
+                AppListRow(
+                  title: 'Ver todas as manutenções',
+                  iconTone: AppIconWellTone.accent,
+                  onTap: onMaintenanceTap,
+                  showChevron: true,
+                ),
+            ],
           ),
-          for (var i = 0; i < dashboard.upcoming.length; i++) ...[
-            if (i > 0) const SizedBox(height: AppSpacing.s12),
-            UpcomingCareCard(
-              alert: dashboard.upcoming[i],
-              progress: progressByReference[dashboard.upcoming[i].referenceId],
-              onTap: onAlertTap == null
-                  ? null
-                  : () => onAlertTap!(dashboard.upcoming[i]),
-            ),
-          ],
         ],
       ],
     );
   }
+}
 
-  /// Late or close: the one item itself when there is exactly one — a list
-  /// of one thing is a page that only repeats the row — otherwise the full
-  /// list. Unknown or fine: the maintenance tab, where the items live.
-  /// Nothing tracked: the screen that adds a plan.
-  VoidCallback? _verdictTap(DashboardVerdict verdict, DashboardAlerts alerts) {
-    switch (verdict.kind) {
-      case VerdictKind.overdue:
-      case VerdictKind.dueSoon:
-        final single =
-            alerts.overdue + alerts.dueSoon == 1 && alerts.items.length == 1
-            ? alerts.items.single
-            : null;
-        if (single != null && onAlertTap != null) {
-          return () => onAlertTap!(single);
-        }
-        return onSeeAllAlerts ?? onMaintenanceTap;
-      case VerdictKind.unknown:
-      case VerdictKind.fine:
-        return onMaintenanceTap;
-      case VerdictKind.nothingTracked:
-        return onProfileTap;
+/// "Does anything need me?", answered with the items themselves.
+///
+/// **The item, not a count of items.** "1 item vencido" made the owner tap to
+/// learn *what* — and then read "Calibrar os pneus" again on the next page.
+/// The row now says what and how late in one line, and opens the item.
+/// Beyond [DashboardContent.attentionLimit] the rest are behind "Ver todos".
+///
+/// **No red box.** Red is on the glyph and on "Venceu há 13 dias", and
+/// nowhere else: the card is the same card as every other on the screen, so
+/// one late item does not turn the whole of Início into an error state.
+///
+/// With nothing late or close there is no list to show, and the block
+/// becomes one line — "Tudo em dia", or the honest "Nada vencido até agora"
+/// when the app does not know the history of some items yet.
+class HomeAttention extends StatelessWidget {
+  const HomeAttention({
+    super.key,
+    required this.verdict,
+    required this.alerts,
+    this.profilePrompt,
+    this.onAlertTap,
+    this.iconByReference = const {},
+    this.onSeeAll,
+    this.onUnknownTap,
+    this.onProfileTap,
+  });
+
+  final DashboardVerdict verdict;
+  final DashboardAlerts alerts;
+
+  /// One of the two gaps that stop the app working — no fuel, no plan.
+  final String? profilePrompt;
+
+  final ValueChanged<Alert>? onAlertTap;
+  final Map<String, IconData> iconByReference;
+  final VoidCallback? onSeeAll;
+  final VoidCallback? onUnknownTap;
+  final VoidCallback? onProfileTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final loudItems = [
+      for (final alert in alerts.items)
+        if (alert.severity == AlertSeverity.vencido ||
+            alert.severity == AlertSeverity.venceEmBreve)
+          alert,
+    ];
+    final shown = loudItems.take(DashboardContent.attentionLimit).toList();
+    final total = alerts.overdue + alerts.dueSoon;
+    final hidden =
+        (total > loudItems.length ? total : loudItems.length) - shown.length;
+    final unknown = alerts.itemsWithoutHistory;
+
+    final prompt = profilePrompt == null
+        ? null
+        : AppListRow(
+            icon: Icons.tune_outlined,
+            title: profilePrompt!,
+            onTap: onProfileTap,
+            showChevron: onProfileTap != null,
+          );
+
+    if (shown.isNotEmpty) {
+      return AppGroup(
+        title: 'Precisa de atenção',
+        children: [
+          for (final alert in shown)
+            AlertRow(
+              alert: alert,
+              icon: iconByReference[alert.referenceId],
+              onTap: onAlertTap == null ? null : () => onAlertTap!(alert),
+            ),
+          if (hidden > 0 && onSeeAll != null)
+            AppListRow(
+              title: hidden == 1
+                  ? 'Ver mais 1 item'
+                  : 'Ver mais $hidden itens',
+              iconTone: AppIconWellTone.accent,
+              onTap: onSeeAll,
+              showChevron: true,
+            ),
+          if (unknown > 0)
+            AppListRow(
+              icon: Icons.help_outline,
+              title: unknownHistoryPhrase(unknown),
+              onTap: onUnknownTap,
+              showChevron: onUnknownTap != null,
+            ),
+          ?prompt,
+        ],
+      );
     }
+
+    // Nothing late or close: one line, not a card. It still answers the
+    // question — and when some history is unknown it says so rather than
+    // "Tudo em dia", which the app has no grounds to claim.
+    final line = _VerdictLine(
+      verdict: verdict,
+      onTap: switch (verdict.kind) {
+        VerdictKind.unknown => onUnknownTap,
+        VerdictKind.nothingTracked => onProfileTap,
+        _ => null,
+      },
+    );
+    if (prompt == null) return line;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        line,
+        const SizedBox(height: AppSpacing.s12),
+        AppGroup(children: [prompt]),
+      ],
+    );
+  }
+}
+
+/// The verdict as one quiet line: a glyph and a sentence, no card.
+class _VerdictLine extends StatelessWidget {
+  const _VerdictLine({required this.verdict, this.onTap});
+
+  final DashboardVerdict verdict;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tones = AppTones.of(context);
+    final fine = verdict.kind == VerdictKind.fine;
+    final glyph = fine ? tones.success : scheme.onSurfaceVariant;
+
+    final line = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(
+          fine ? Icons.check_circle_outline : Icons.help_outline,
+          size: 22,
+          color: glyph,
+        ),
+        const SizedBox(width: AppSpacing.s12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(verdict.phrase, style: theme.textTheme.titleSmall),
+              if (verdict.detail != null) ...[
+                const SizedBox(height: 2),
+                Text(verdict.detail!, style: theme.textTheme.bodySmall),
+              ],
+            ],
+          ),
+        ),
+        if (onTap != null)
+          Icon(
+            Icons.chevron_right,
+            size: 20,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+          ),
+      ],
+    );
+
+    final spoken = verdict.detail == null
+        ? verdict.phrase
+        : '${verdict.phrase}. ${verdict.detail}';
+    if (onTap == null) {
+      return Semantics(label: spoken, excludeSemantics: true, child: line);
+    }
+    return AppListRowShell(onTap: onTap, semanticLabel: spoken, child: line);
+  }
+}
+
+/// The two things someone opens the app to do, side by side and identical.
+///
+/// Abastecer is absent — not disabled — on a vehicle that does not refuel,
+/// and Registrar manutenção then takes the whole width.
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    this.onRegisterAbastecimento,
+    this.onRegisterMaintenance,
+  });
+
+  final VoidCallback? onRegisterAbastecimento;
+  final VoidCallback? onRegisterMaintenance;
+
+  @override
+  Widget build(BuildContext context) {
+    final maintenance = AppQuickAction(
+      icon: Icons.build_outlined,
+      label: 'Registrar manutenção',
+      onTap: onRegisterMaintenance,
+      wide: onRegisterAbastecimento == null,
+    );
+    if (onRegisterAbastecimento == null) {
+      return maintenance;
+    }
+    // IntrinsicHeight so the two tiles are the same height whatever their
+    // labels wrap to; two children, so the second layout pass is nothing.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: AppQuickAction(
+              icon: Icons.local_gas_station_outlined,
+              label: 'Abastecer',
+              onTap: onRegisterAbastecimento,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(child: maintenance),
+        ],
+      ),
+    );
   }
 }
 
@@ -427,210 +620,12 @@ String? profilePromptOf(DashboardProfile profile) {
   return null;
 }
 
-// ---------------------------------------------------------------- pieces
+// ---------------------------------------------------------------- loading
 
-/// What needs attention, as a strip between two hairlines.
-///
-/// No card: the strip is part of the page. The head of it is the verdict —
-/// the glyph in a tinted well, the count, the quiet detail — and tapping it
-/// opens what it counts. The items themselves are not repeated under it: the
-/// owner saw "1 item vencido" over "Calibrar os pneus", tapped the count and
-/// got a page saying "Calibrar os pneus" again. Red appears on the glyph and
-/// on the count, and nowhere else. When nothing is late the strip is one
-/// line, and it stays honest: "we do not know yet" is one of its states.
-class AttentionStrip extends StatelessWidget {
-  const AttentionStrip({
-    super.key,
-    required this.verdict,
-    this.onHeaderTap,
-    this.quietRows = const [],
-  });
-
-  final DashboardVerdict verdict;
-  final VoidCallback? onHeaderTap;
-
-  /// Rows about what is missing rather than what is late, in the same strip
-  /// so the page does not grow a second list.
-  final List<Widget> quietRows;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final tones = AppTones.of(context);
-    final visual = statusColors(verdict.status, theme.brightness);
-    final loud = verdict.loud;
-
-    final (tone, icon) = switch (verdict.kind) {
-      VerdictKind.overdue ||
-      VerdictKind.dueSoon => (AppIconWellTone.status, visual.icon),
-      VerdictKind.fine => (AppIconWellTone.accent, Icons.check_circle_outline),
-      VerdictKind.unknown || VerdictKind.nothingTracked => (
-        AppIconWellTone.neutral,
-        Icons.help_outline,
-      ),
-    };
-
-    final head = AppListRow(
-      icon: icon,
-      iconTone: tone,
-      status: verdict.status,
-      title: verdict.phrase,
-      subtitle: verdict.detail,
-      accent: loud ? null : scheme.onSurfaceVariant,
-      onTap: onHeaderTap,
-      showChevron: onHeaderTap != null,
-      semanticLabel: verdict.detail == null
-          ? verdict.phrase
-          : '${verdict.phrase}. ${verdict.detail}',
-    );
-
-    final rows = <Widget>[head, ...quietRows];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Divider(height: 1, thickness: 1, color: tones.divider),
-        for (var i = 0; i < rows.length; i++) ...[
-          if (i > 0)
-            Divider(height: 1, thickness: 1, indent: 50, color: tones.divider),
-          rows[i],
-        ],
-        Divider(height: 1, thickness: 1, color: tones.divider),
-      ],
-    );
-  }
-}
-
-/// The two things someone opens the app to do, side by side and identical.
-///
-/// Abastecer is absent — not disabled — on a vehicle that does not refuel,
-/// and Registrar manutenção then takes the whole width.
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({
-    this.onRegisterAbastecimento,
-    this.onRegisterMaintenance,
-  });
-
-  final VoidCallback? onRegisterAbastecimento;
-  final VoidCallback? onRegisterMaintenance;
-
-  @override
-  Widget build(BuildContext context) {
-    final maintenance = AppQuickAction(
-      icon: Icons.build_outlined,
-      label: 'Registrar manutenção',
-      onTap: onRegisterMaintenance,
-      wide: onRegisterAbastecimento == null,
-    );
-    if (onRegisterAbastecimento == null) {
-      return maintenance;
-    }
-    // IntrinsicHeight so the two tiles are the same height whatever their
-    // labels wrap to; two children, so the second layout pass is nothing.
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: AppQuickAction(
-              icon: Icons.local_gas_station_outlined,
-              label: 'Abastecer',
-              onTap: onRegisterAbastecimento,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s12),
-          Expanded(child: maintenance),
-        ],
-      ),
-    );
-  }
-}
-
-/// One upcoming item: what it is, how far it is, and — when the figures
-/// allow it — how far along.
-class UpcomingCareCard extends StatelessWidget {
-  const UpcomingCareCard({
-    super.key,
-    required this.alert,
-    this.progress,
-    this.onTap,
-  });
-
-  final Alert alert;
-
-  /// 0 to 1, or null for no bar. Never estimated here.
-  final double? progress;
-
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final detail = alertDetailLine(alert);
-
-    return Semantics(
-      button: onTap != null,
-      label: detail == null ? alert.title : '${alert.title}. $detail',
-      excludeSemantics: true,
-      child: AppSurface(
-        variant: AppSurfaceVariant.grouped,
-        onTap: onTap,
-        padding: const EdgeInsets.all(AppSpacing.s16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                AppIconWell(
-                  icon: alertIconOf(alert.kind),
-                  size: AppIconWellSize.l,
-                ),
-                const SizedBox(width: AppSpacing.s16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        alert.title,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (detail != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          detail,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (onTap != null) ...[
-                  const SizedBox(width: AppSpacing.s8),
-                  Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-                ],
-              ],
-            ),
-            if (progress != null) ...[
-              const SizedBox(height: AppSpacing.s16),
-              AppProgressBar(value: progress!),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The skeleton mirrors the real layout — the reading, a strip, two tiles, a
-/// list — because the shape of this screen is known before the data arrives.
+/// The skeleton mirrors the real layout — the car, the reading, a group, two
+/// tiles, a group — because the shape of this screen is known before the
+/// data arrives, and content that lands where its placeholder was does not
+/// make the screen jump.
 class DashboardSkeleton extends StatelessWidget {
   const DashboardSkeleton({super.key, this.header});
 
@@ -638,47 +633,43 @@ class DashboardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.page,
-        AppSpacing.s8,
-        AppSpacing.page,
-        AppSpacing.s40,
-      ),
-      children: [
-        if (header != null) ...[
-          header!,
-          const SizedBox(height: AppSpacing.block),
-        ] else ...[
-          const AppSkeleton(width: 96, height: 18),
-          const SizedBox(height: AppSpacing.s20),
-          const AppSkeleton(width: 180, height: 36),
-          const SizedBox(height: AppSpacing.s8),
-          const AppSkeleton(width: 220, height: 16),
-          const SizedBox(height: AppSpacing.block),
-        ],
-        const AppSkeleton(width: 150, height: 14),
-        const SizedBox(height: AppSpacing.s12),
-        const AppSkeleton(width: 240, height: 56),
-        const SizedBox(height: AppSpacing.s12),
-        const AppSkeleton(width: 190, height: 14),
-        const SizedBox(height: AppSpacing.block),
-        const AppSkeleton(width: double.infinity, height: 64),
-        const SizedBox(height: AppSpacing.block),
-        const Row(
-          children: [
-            Expanded(child: AppSkeleton(height: 112)),
-            SizedBox(width: AppSpacing.s12),
-            Expanded(child: AppSkeleton(height: 112)),
-          ],
+    return ExcludeSemantics(
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.page,
+          AppSpacing.s8,
+          AppSpacing.page,
+          AppSpacing.s40,
         ),
-        const SizedBox(height: AppSpacing.s32),
-        const AppSkeleton(width: 170, height: 18),
-        const SizedBox(height: AppSpacing.s12),
-        const AppSkeleton(width: double.infinity, height: 92),
-        const SizedBox(height: AppSpacing.s12),
-        const AppSkeleton(width: double.infinity, height: 92),
-      ],
+        children: [
+          if (header != null) ...[
+            header!,
+            const SizedBox(height: AppSpacing.s24),
+          ] else ...[
+            const SizedBox(height: AppSpacing.s4),
+            const AppSkeleton(width: 140, height: 30),
+            const SizedBox(height: AppSpacing.s12),
+            const AppSkeleton(width: 200, height: 18),
+            const SizedBox(height: AppSpacing.s24),
+          ],
+          const AppSkeleton(width: 220, height: 44),
+          const SizedBox(height: AppSpacing.s8),
+          const AppSkeleton(width: 120, height: 14),
+          const SizedBox(height: AppSpacing.block),
+          const AppSkeleton(width: double.infinity, height: 132),
+          const SizedBox(height: AppSpacing.block),
+          const Row(
+            children: [
+              Expanded(child: AppSkeleton(height: 96)),
+              SizedBox(width: AppSpacing.s12),
+              Expanded(child: AppSkeleton(height: 96)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s32),
+          const AppSkeleton(width: double.infinity, height: 180),
+        ],
+      ),
     );
   }
 }

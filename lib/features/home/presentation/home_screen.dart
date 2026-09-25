@@ -43,7 +43,8 @@ class HomeScreen extends ConsumerWidget {
                 vehicleId: vehicle.id,
                 header: HomeHeader(
                   name: vehicle.headlineName,
-                  metaParts: vehicle.metaParts,
+                  metaParts: vehicle.brandAndYear,
+                  plate: vehicle.plate,
                   canSwitch: vehicles.length > 1,
                   onSwitch: () => VehicleSwitcherSheet.show(context),
                   onAccount: () => context.push(AppRoutes.profile),

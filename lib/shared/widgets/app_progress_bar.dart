@@ -33,7 +33,7 @@ class AppProgressBar extends StatelessWidget {
 
     return ExcludeSemantics(
       child: ClipRRect(
-        borderRadius: AppRadius.borderXs,
+        borderRadius: AppRadius.borderPill,
         child: SizedBox(
           height: height,
           child: DecoratedBox(
@@ -50,7 +50,7 @@ class AppProgressBar extends StatelessWidget {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: color ?? scheme.primary,
-                        borderRadius: AppRadius.borderXs,
+                        borderRadius: AppRadius.borderPill,
                       ),
                     ),
                   ),

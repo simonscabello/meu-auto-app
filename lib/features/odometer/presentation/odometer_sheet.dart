@@ -19,6 +19,7 @@ import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_discard_guard.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
+import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
 
@@ -184,9 +185,19 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
       busy: _submitting,
       child: AppSheetBody(
         children: [
-          const AppSheetHeader(
+          AppSheetHeader(
             title: 'Atualizar quilometragem',
             closable: false,
+            trailing: AppSectionAction(
+              label: 'Histórico',
+              onPressed: _submitting
+                  ? null
+                  : () {
+                      final router = GoRouter.of(context);
+                      Navigator.of(context).pop();
+                      router.push(AppRoutes.odometer);
+                    },
+            ),
           ),
           const SizedBox(height: AppSpacing.s16),
           if (_banner != null) AuthFormBanner(message: _banner!),
@@ -195,7 +206,7 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
             controller: _mileage,
             autofocus: true,
             enabled: !_submitting,
-            textStyle: AppTypography.instrument(
+            textStyle: AppTypography.figure(
               size: 32,
               color: scheme.onSurface,
             ),
@@ -238,26 +249,12 @@ class _OdometerSheetState extends ConsumerState<OdometerSheet> {
                     : () => setState(() => _showNotes = true),
               ),
             ),
-          const SizedBox(height: AppSpacing.s16),
+          const SizedBox(height: AppSpacing.s12),
           AppButton(
             label: _offline ? 'Tentar de novo' : 'Salvar',
             loading: _submitting,
             onPressed: _submit,
             expanded: true,
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: AppButton(
-              label: 'Ver histórico',
-              variant: AppButtonVariant.tertiary,
-              onPressed: _submitting
-                  ? null
-                  : () {
-                      final router = GoRouter.of(context);
-                      Navigator.of(context).pop();
-                      router.push(AppRoutes.odometer);
-                    },
-            ),
           ),
         ],
       ),

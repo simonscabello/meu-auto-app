@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_motion.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/core/theme/app_tones.dart';
+import 'package:meu_auto/shared/widgets/app_icon_well.dart';
+import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 /// A group of fields that starts closed.
 ///
@@ -17,7 +17,12 @@ class AppFoldedSection extends StatefulWidget {
     required this.children,
     this.subtitle,
     this.initiallyOpen = false,
+    this.icon,
   });
+
+  /// A glyph for what is inside — optional; most folded sections are named
+  /// well enough by their title.
+  final IconData? icon;
 
   final String title;
   final String? subtitle;
@@ -45,7 +50,6 @@ class _AppFoldedSectionState extends State<AppFoldedSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final tones = AppTones.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -53,60 +57,50 @@ class _AppFoldedSectionState extends State<AppFoldedSection> {
         Semantics(
           button: true,
           expanded: _open,
-          label: widget.title,
+          label: widget.subtitle == null
+              ? widget.title
+              : '${widget.title}. ${widget.subtitle}',
           excludeSemantics: true,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => setState(() => _open = !_open),
-              borderRadius: AppRadius.borderS,
-              highlightColor: tones.overlayPressed,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  minHeight: AppSpacing.minTapTarget,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s4,
-                    vertical: AppSpacing.s8,
-                  ),
-                  child: Row(
+          child: AppSurface(
+            variant: AppSurfaceVariant.grouped,
+            onTap: () => setState(() => _open = !_open),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.inset,
+              vertical: AppSpacing.s12,
+            ),
+            child: Row(
+              children: [
+                if (widget.icon != null) ...[
+                  AppIconWell(icon: widget.icon!),
+                  const SizedBox(width: AppSpacing.s12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.title,
-                              style: theme.textTheme.titleSmall,
-                            ),
-                            if (widget.subtitle != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                widget.subtitle!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ],
+                      Text(widget.title, style: theme.textTheme.titleSmall),
+                      if (widget.subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.subtitle!,
+                          style: theme.textTheme.bodySmall,
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.s8),
-                      AnimatedRotation(
-                        turns: _open ? 0.5 : 0,
-                        duration: AppMotion.of(context, AppMotion.short),
-                        curve: AppMotion.standard,
-                        child: Icon(
-                          Icons.expand_more,
-                          size: 22,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.s8),
+                AnimatedRotation(
+                  turns: _open ? 0.5 : 0,
+                  duration: AppMotion.of(context, AppMotion.short),
+                  curve: AppMotion.standard,
+                  child: Icon(
+                    Icons.expand_more,
+                    size: 22,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -117,7 +111,7 @@ class _AppFoldedSectionState extends State<AppFoldedSection> {
           child: !_open
               ? const SizedBox(width: double.infinity)
               : Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.s8),
+                  padding: const EdgeInsets.only(top: AppSpacing.s16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: widget.children,

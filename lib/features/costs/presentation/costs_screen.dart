@@ -125,7 +125,7 @@ class CostsContent extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   costs.totalCents.format(),
-                  style: AppTypography.instrument(
+                  style: AppTypography.figure(
                     size: 48,
                     color: scheme.onSurface,
                   ),

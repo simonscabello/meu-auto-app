@@ -3,97 +3,90 @@ import 'package:meu_auto/core/theme/app_colors.dart';
 
 /// The colours a `ColorScheme` has no slot for.
 ///
-/// Material's scheme names roles, not atmosphere. The background gradient,
-/// the glow behind the header, the hairline that gives a surface its edge and
-/// the fill of an icon well are all part of the identity and none of them is
-/// a scheme role — so they live here, as a theme extension, and every widget
-/// reads them through [AppTones.of] rather than picking a colour of its own.
+/// Material's scheme names roles; a few of the roles this app needs are not
+/// among them — the hairline between rows, the track of a gauge, the tint of
+/// a pressed row, and "done", which Material has no word for. They live here,
+/// as a theme extension, and every widget reads them through [AppTones.of]
+/// rather than picking a colour of its own.
+///
+/// There is no gradient and no glow in this list on purpose. The page is one
+/// flat tone; atmosphere comes from the type and the spacing, not from light
+/// painted behind the content.
 @immutable
 final class AppTones extends ThemeExtension<AppTones> {
   const AppTones({
-    required this.pageTop,
-    required this.pageBottom,
-    required this.glow,
     required this.stroke,
     required this.strokeStrong,
-    required this.highlight,
     required this.iconWell,
     required this.track,
     required this.accentSoft,
     required this.divider,
     required this.overlayPressed,
     required this.accent,
+    required this.success,
+    required this.successContainer,
+    required this.onSuccessContainer,
   });
 
-  /// The page, from the top down. A vertical gradient so the top of a screen
-  /// is one tone warmer than the bottom — the way a dashboard is lit from
-  /// above, not a flat sheet of colour.
-  final Color pageTop;
-  final Color pageBottom;
-
-  /// The radial light behind the top-right corner of every screen. Drawn at a
-  /// low alpha; it is atmosphere, never a shape.
-  final Color glow;
-
-  /// The hairline around a grouped surface. What separates a card from the
-  /// page in the dark, where fill alone is one step of luminance.
+  /// The hairline around a card or a group. Decorative: it helps the fill
+  /// separate a card from the page, it does not delimit a control.
   final Color stroke;
 
-  /// A stronger edge for a surface that is an action — a quick action tile,
-  /// the odometer button.
+  /// The edge of something that is touched and sits on the page with no fill
+  /// of its own — the plate outline, an outlined button.
   final Color strokeStrong;
 
-  /// A one-pixel lighter line along the top of a raised surface. The
-  /// "metallic" cue: light catching an edge.
-  final Color highlight;
-
-  /// The fill behind an icon in a row or a card.
+  /// The fill behind the one large glyph of an empty or error state.
   final Color iconWell;
 
-  /// The track a progress bar sits in.
+  /// The groove a gauge sits in.
   final Color track;
 
-  /// The accent at a tint strength — an icon well for an accent icon, the
-  /// selected segment of a control.
+  /// The accent at a tint strength — the selected segment, the tonal accent
+  /// button, the navigation indicator.
   final Color accentSoft;
 
-  /// The line between rows inside one surface.
+  /// The line between rows inside one group.
   final Color divider;
 
-  /// Ink on a dark surface: a pressed row or tile.
+  /// Ink on a surface: a pressed row or tile.
   final Color overlayPressed;
 
   /// The accent itself, for the rare place that reads it outside the scheme.
   final Color accent;
 
+  /// "Done". Only ever shown after something finished well — a confirmation,
+  /// a paid tax — and never as decoration.
+  final Color success;
+  final Color successContainer;
+  final Color onSuccessContainer;
+
   static const AppTones dark = AppTones(
-    pageTop: Color(0xFF0A1B30),
-    pageBottom: Color(0xFF050B14),
-    glow: Color(0xFF0C8BFF),
-    stroke: Color(0x4D3D5A7A),
-    strokeStrong: Color(0x8A2E5B8A),
-    highlight: Color(0x1FFFFFFF),
-    iconWell: Color(0xFF132840),
-    track: Color(0xFF17304A),
-    accentSoft: Color(0x2622B8FF),
-    divider: Color(0x4D1F3652),
-    overlayPressed: Color(0x1F22B8FF),
-    accent: AppColors.electric,
+    stroke: Color(0xFF262D37),
+    strokeStrong: Color(0xFF3A4350),
+    iconWell: Color(0xFF1C222A),
+    track: Color(0xFF2A313B),
+    accentSoft: Color(0xFF16283E),
+    divider: Color(0xFF232932),
+    overlayPressed: Color(0x14FFFFFF),
+    accent: AppColors.signal,
+    success: Color(0xFF57C38D),
+    successContainer: Color(0xFF12301F),
+    onSuccessContainer: Color(0xFFC6F0D8),
   );
 
   static const AppTones light = AppTones(
-    pageTop: Color(0xFFF4F8FC),
-    pageBottom: Color(0xFFE8EFF6),
-    glow: Color(0xFF22B8FF),
-    stroke: Color(0x80C3D0DD),
-    strokeStrong: Color(0xB3A9BCCF),
-    highlight: Color(0xB3FFFFFF),
-    iconWell: Color(0xFFDCE5EE),
-    track: Color(0xFFD8E2EC),
-    accentSoft: Color(0x1F0A66C2),
-    divider: Color(0x99C3D0DD),
-    overlayPressed: Color(0x140A66C2),
-    accent: AppColors.electricDeep,
+    stroke: Color(0xFFE1E5EB),
+    strokeStrong: Color(0xFFC5CCD6),
+    iconWell: Color(0xFFEBEEF2),
+    track: Color(0xFFE1E5EB),
+    accentSoft: Color(0xFFDCE8FD),
+    divider: Color(0xFFE8EBF0),
+    overlayPressed: Color(0x0F0F141A),
+    accent: AppColors.signalDeep,
+    success: Color(0xFF1D7A4A),
+    successContainer: Color(0xFFDDF3E6),
+    onSuccessContainer: Color(0xFF0E4A2B),
   );
 
   static AppTones of(BuildContext context) {
@@ -104,32 +97,30 @@ final class AppTones extends ThemeExtension<AppTones> {
 
   @override
   AppTones copyWith({
-    Color? pageTop,
-    Color? pageBottom,
-    Color? glow,
     Color? stroke,
     Color? strokeStrong,
-    Color? highlight,
     Color? iconWell,
     Color? track,
     Color? accentSoft,
     Color? divider,
     Color? overlayPressed,
     Color? accent,
+    Color? success,
+    Color? successContainer,
+    Color? onSuccessContainer,
   }) {
     return AppTones(
-      pageTop: pageTop ?? this.pageTop,
-      pageBottom: pageBottom ?? this.pageBottom,
-      glow: glow ?? this.glow,
       stroke: stroke ?? this.stroke,
       strokeStrong: strokeStrong ?? this.strokeStrong,
-      highlight: highlight ?? this.highlight,
       iconWell: iconWell ?? this.iconWell,
       track: track ?? this.track,
       accentSoft: accentSoft ?? this.accentSoft,
       divider: divider ?? this.divider,
       overlayPressed: overlayPressed ?? this.overlayPressed,
       accent: accent ?? this.accent,
+      success: success ?? this.success,
+      successContainer: successContainer ?? this.successContainer,
+      onSuccessContainer: onSuccessContainer ?? this.onSuccessContainer,
     );
   }
 
@@ -137,18 +128,25 @@ final class AppTones extends ThemeExtension<AppTones> {
   AppTones lerp(ThemeExtension<AppTones>? other, double t) {
     if (other is! AppTones) return this;
     return AppTones(
-      pageTop: Color.lerp(pageTop, other.pageTop, t)!,
-      pageBottom: Color.lerp(pageBottom, other.pageBottom, t)!,
-      glow: Color.lerp(glow, other.glow, t)!,
       stroke: Color.lerp(stroke, other.stroke, t)!,
       strokeStrong: Color.lerp(strokeStrong, other.strokeStrong, t)!,
-      highlight: Color.lerp(highlight, other.highlight, t)!,
       iconWell: Color.lerp(iconWell, other.iconWell, t)!,
       track: Color.lerp(track, other.track, t)!,
       accentSoft: Color.lerp(accentSoft, other.accentSoft, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
       overlayPressed: Color.lerp(overlayPressed, other.overlayPressed, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
+      success: Color.lerp(success, other.success, t)!,
+      successContainer: Color.lerp(
+        successContainer,
+        other.successContainer,
+        t,
+      )!,
+      onSuccessContainer: Color.lerp(
+        onSuccessContainer,
+        other.onSuccessContainer,
+        t,
+      )!,
     );
   }
 }

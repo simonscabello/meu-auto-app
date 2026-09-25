@@ -1,134 +1,153 @@
 # Design system
 
-Definido em 24/09/2026 no redesign completo do app. Este arquivo é a referência
-do que existe e de como usar; a identidade dos assets nativos (ícone, splash)
-continua em `IDENTIDADE-VISUAL.md`.
+Segunda versão, de 25/09/2026. Substitui a de 24/09 ("painel de instrumentos
+à noite": fundo navy com degradê e luz, ciano elétrico, poços de ícone em
+toda linha). Este arquivo é a referência do que existe e de como usar; a
+identidade dos assets nativos (ícone, splash) continua em
+`IDENTIDADE-VISUAL.md`.
+
+A régua de qualidade desta versão foi outro app do dono, o Pauta — não a
+aparência dele (outra marca, outro domínio), mas as decisões: uma superfície
+por grupo, ícone sem enfeite, um botão cheio por tela, ação rara no ⋮,
+cabeçalho de detalhe sem caixa, estados vazios que dizem o que fazer, textos
+curtos.
 
 ## A ideia
 
-Um painel de instrumentos visto à noite. Fundo azul-marinho profundo com uma
-luz suave no canto superior direito, superfícies um degrau acima do fundo com
-um fio de borda, um único acento elétrico para o que está selecionado, é link,
-ou está em dia. Vermelho só para o que está realmente atrasado; âmbar para o
-que está perto. Nada é fotografia; nada é textura.
+O carro do dono, não um painel de frota. Um app escuro, calmo e objetivo:
 
-O modo escuro é a identidade. O claro é a mesma identidade à luz do dia e
-continua disponível em Perfil > Aparência.
+- **Grafite, não navy.** Neutros carvão com um traço de azul frio; a página é
+  um tom liso, sem degradê e sem luz. Os cartões ficam um degrau acima pela
+  cor, com um fio de borda — sem sombra.
+- **Um azul de sinal** (`#5B9DFF` no escuro, `#1A66DA` no claro) para o que se
+  toca, o que está selecionado e o que é "seu" (o carro no cabeçalho). Nada
+  mais é azul.
+- **Vermelho é vencido, âmbar é perto, verde é feito.** Cada um só aparece
+  quando significa isso — no ícone e na frase da linha, nunca num cartão
+  inteiro.
+- **O elemento automotivo é tipográfico, não fotográfico.** A quilometragem
+  em número grande, tabular e apertado; a placa desenhada como placa
+  (moldura e a faixa azul do Mercosul). Nenhuma tela depende de foto do
+  carro.
+
+O escuro é a identidade e o padrão. O claro é a mesma identidade à luz do dia,
+em Perfil > Aparência.
 
 ## Tokens (`lib/core/theme`)
 
 | Arquivo | O que guarda |
 | --- | --- |
-| `app_colors.dart` | `AppColors.dark` e `AppColors.light` — os dois `ColorScheme`. `electric` (`#22B8FF`) é o acento do escuro; `electricDeep` (`#0A66C2`) o do claro. |
-| `app_tones.dart` | `AppTones`, um `ThemeExtension` com o que o scheme não nomeia: degradê da página (`pageTop`/`pageBottom`), `glow`, `stroke`/`strokeStrong` (fios de borda), `highlight`, `iconWell`, `track`, `accentSoft`, `divider`, `overlayPressed`. Leia com `AppTones.of(context)`. |
-| `app_typography.dart` | Inter para texto (`kAppFontFamily`), Rajdhani para figuras de instrumento (`AppTypography.instrument`). Todos os estilos têm figuras tabulares. |
-| `app_status_colors.dart` | `AppStatus` + `statusColors`: o único lugar que mapeia estado de domínio para cor, ícone e rótulo. `isLoud` diz quais estados podem pintar uma linha. |
-| `app_spacing.dart` | Escala de 4dp, `page` (20) como calha lateral, `block` (28) entre blocos, `screen`/`screenHeaded` como padding de tela. |
-| `app_radius.dart` | `xs` 4 (barras), `s` 10 (chips), `m` 16 (cards, grupos, campos), `l` 22 (folhas, diálogos). |
-| `app_motion.dart` | Durações, curvas e `pressScale`. `AppMotion.of` zera com "reduzir movimento". |
-| `app_theme.dart` | O `ThemeData`. Tudo que o Material desenha sozinho (date picker, switch, diálogo) é configurado aqui. |
+| `app_colors.dart` | `AppColors.dark` / `AppColors.light`. `surface` é a página; `surfaceContainerLow` é o cartão; `surfaceContainer` é campo, barra de navegação e bloco rebaixado; `outline` é borda de controle (3:1); `outlineVariant` é fio decorativo. |
+| `app_tones.dart` | `AppTones`: `stroke` (borda do cartão), `strokeStrong`, `divider` (fio entre linhas), `track`, `accentSoft`, `overlayPressed`, `iconWell` (fundo do ícone de estado vazio) e `success*` ("feito"). **Sem degradê, sem glow.** |
+| `app_typography.dart` | Inter, escala própria (tracking negativo que cresce com o tamanho). `AppTypography.figure(size:)` para números lidos como leitura (odômetro, totais, faixa de fatos). Algarismos tabulares **só** onde números se alinham — no texto corrido eles alargavam a pontuação ("E - mail"). |
+| `app_status_colors.dart` | `AppStatus` + `statusColors`: o único mapa de estado → cor, ícone e palavra. `isLoud` = vencido/vence em breve. |
+| `app_spacing.dart` | Escala de 4. `page` (20) é a calha de toda tela, **cabeçalho de aba incluído**; `block` (28) entre blocos; `inset` (16) dentro do cartão; `screen`, `screenHeaded`, `tab` como padding de tela; `buttonHeight` (52) e `compactButtonHeight` (36). |
+| `app_radius.dart` | O raio acompanha o tamanho: `xs` 6 (selo, placa), `s` 10 (chip), `control` 12 (botão, campo, segmentado), `m` 16 (cartão, grupo), `tile` 20 (ícone de estado vazio), `l` 24 (folha, diálogo). |
+| `app_motion.dart` | Durações e curvas; zera com "reduzir movimento". |
+| `app_theme.dart` | O `ThemeData`: tudo o que o Material desenha sozinho. |
 
-Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta. Um valor que
-não existe nos tokens é uma decisão nova e entra aqui primeiro.
+Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
 
-### Contraste
+`test/core/theme/app_theme_test.dart` mede o contraste (4,5:1 para texto,
+3:1 para borda de controle) nos dois temas. Mexeu numa cor, rode.
 
-`test/core/theme/app_theme_test.dart` verifica 4,5:1 em todos os pares que as
-telas pintam, nos dois temas, e em todos os chips de status. Mudar uma cor sem
-rodar esse teste é como mudar sem saber.
+## Estrutura de tela
+
+- **Aba** (Início, Manutenção, Documentos, Histórico): sem `AppBar`. O corpo
+  começa com `VehicleTabHeader` (título grande, a linha do carro em azul que
+  abre o seletor de veículo, ações da aba e o avatar do Perfil). Conteúdo com
+  `AppSpacing.tab`. Início usa `HomeHeader` (o próprio carro é o título).
+- **Tela empilhada** (detalhe, formulário): `AppScaffold(title:)` com título
+  curto do *tipo* ("Abastecimento", "IPVA 2026"), ações na barra — lápis para
+  editar, `AppOverflowMenu` (⋮) para o raro e o destrutivo.
+- **Detalhe**: `AppDetailHeader` (título grande, linha de apoio, selo de
+  estado + frase) → `AppFactsStrip` (2–4 fatos numa faixa) → grupos. **Sem
+  botões grandes no rodapé**: editar é o lápis, excluir é o ⋮ com
+  confirmação.
+- **Formulário longo**: `AppFormSection`s (rótulo quieto) → campos →
+  `AppFoldedSection` para o opcional → `AppFormFooter` fixo com o botão
+  principal. **Formulário curto**: folha (`showAppSheet(isForm: true)` +
+  `AppSheetHeader` + `AppSheetBody`).
+- **Diálogo só para confirmação** (`confirmAction`); o botão diz o verbo.
 
 ## Componentes (`lib/shared/widgets`)
 
-### Estrutura
+### Superfícies e listas
 
-- `AppBackground` — o degradê e a luz. Só `AppScaffold` o desenha.
-- `AppScaffold` — moldura de toda tela: fundo, app bar transparente, corpo
-  com largura máxima, pull-to-refresh.
-- `AppShell` (`core/router`) — a barra de quatro abas, com fio no topo.
-- `AppSurface` — o contêiner. `none` (sem preenchimento), `grouped` (um degrau
-  acima, fio), `raised` (dois degraus, fio forte, luz na borda superior: para
-  o que é ação).
-- `AppGroup` — rótulo quieto fora, linhas dentro de uma `AppSurface.grouped`
-  com fios entre elas. É a lista agrupada de qualquer app de configurações.
-- `AppSectionHeader` — `label` (quieto, para grupos) ou `title` (para uma
-  seção que é o assunto da tela, como "Próximos cuidados"). A ação à direita é
-  `AppSectionAction`: link no acento com chevron.
+- `AppSurface` — `none`, `grouped` (o cartão), `raised`, `sunken` (bloco
+  rebaixado sem borda: "nada registrado ainda").
+- `AppGroup` — título fora, linhas dentro de **um** cartão, fios começando
+  onde o texto começa. Lista curta = um grupo; histórico longo = um grupo
+  por mês. **Nunca um cartão por item.**
+- `AppExpandableGroup` — o grupo que começa fechado ("Em dia 12"): um cartão
+  com uma linha, que cresce as linhas dentro dele.
+- `GroupedRow` + `AppGroupScope` — uma linha que se declara `GroupedRow`
+  recebe o padding do grupo por dentro do alvo de toque, e o realce de toque
+  vai de borda a borda do cartão. Toda linha nova de lista deve misturar
+  `with GroupedRow` se ela mesma é uma linha (usa `AppListRow` ou
+  `AppListRowShell`).
+- `AppListRow` — ícone (sem círculo), nome, uma linha de estado, `value` à
+  direita (`strongValue` para valores monetários), chevron. `status` tinge
+  ícone e frase só quando é vencido/perto.
+- `AppListRowShell`, `AppFactRow` (`inline` para fatos curtos),
+  `AppSettingRow`, `AppChoiceRow`, `AppSwitchRow`.
+- `AppSectionHeader` — `title` (padrão: 16/600, texto) ou `label` (quieto,
+  para partes de formulário). Ação à direita em azul, sem botão.
+- `AppRowDivider`, `AppPagedFooter`, `groupByMonth`.
 
-### Linhas
+### Cabeçalhos e fatos
 
-- `AppIconWell` — ícone num círculo com fio. Tamanhos `s`/`m`/`l`/`xl`; tons
-  `neutral`, `accent`, `status`. É o único jeito de um ícone aparecer ao lado
-  de um nome.
-- `AppListRow` — poço, nome, uma linha de estado, chevron ou `trailing`.
-  `status` tinge poço e texto só para `vencido`/`vence_em_breve`.
-- `AppListRowShell` — o alvo de toque e o ritmo de uma linha, com interior
-  próprio.
-- `AppSettingRow`, `AppFactRow` (empilhada ou `inline`), `AppChoiceRow`
-  (escolha única), `AppSwitchRow` (sim/não), `AppTimelineTile` (nó no trilho).
+- `AppTabHeader` / `VehicleTabHeader` — cabeçalho de aba.
+- `AppDetailHeader` — sem ícone e sem caixa.
+- `AppFactsStrip` + `AppFact` — faixa de 2–4 fatos, colunas iguais.
+- `AppStatusChip` — selo com a palavra do estado; só em detalhe.
+- `AppPlateChip` — a placa.
+- `AppMetric` — número como leitura (use pouco; a faixa de fatos cobre a
+  maioria dos casos).
 
 ### Ações
 
-- `AppButton` — `primary` (acento preenchido), `secondary` (contorno sobre
-  superfície), `destructive` (vermelho tonal), `tertiary` (texto). `expanded`
-  estica; `compact` para dentro de uma linha; `icon` e `loading`.
-- `AppQuickAction` — tile elevado com poço, rótulo e chevron. Dois lado a lado
-  têm exatamente o mesmo peso.
-- `AppPressable` — encolhe 2,5% sob o dedo. Respeita reduzir movimento.
-- `AppIconButton` — ícone só, com rótulo falado.
-
-### Estado e figuras
-
-- `AppStatusChip` — pílula com glifo, palavra e tom.
-- `AppProgressBar` — barra fina, só quando o chamador tem uma fração real
-  (`planProgress` em `features/maintenance/domain/plan_progress.dart`).
-- `AppMetric` — número em Rajdhani com unidade e rótulo.
-- `AppPlateChip` — a placa, desenhada como placa.
-- `AppDetailHeader` — cabeça de tela de detalhe: poço grande, título, chip e
-  frase de estado.
-- `AppWordmark` — "Meu Auto" como marca tipográfica, três tamanhos.
+- `AppButton` — `primary` (azul cheio, **um por tela**), `secondary` (tonal
+  neutro), `tertiary` (texto), `destructive` (tonal vermelho). `compact`
+  (36) para dentro de linha.
+- `AppQuickAction` — os dois atalhos iguais do Início.
+- `AppIconButton`, `AppOverflowMenu` + `AppMenuAction`.
+- `ProfileButton` — o avatar com a inicial.
 
 ### Formulários e folhas
 
-- `AppFormSection` / `AppFormGap` / `AppFormFooter` — seções nomeadas com
-  espaçamento fixo e o botão principal fixado embaixo.
-- `AppFoldedSection` — grupo de campos que começa fechado; abre sozinho quando
-  um erro do servidor cai num campo dentro dele.
-- `AppMoneyField`, `AppKmField`, `AppLitersField`, `AppDateField` — campos
-  com máscara; nunca um número cru.
-- `showAppSheet` + `AppSheetBody` (folha que cabe no conteúdo) ou
-  `AppSheetFrame` (folha alta com lista). `isForm: true` tira o arrasto e o
-  fechamento passa por `AppSheetHeader`, que pergunta antes de descartar.
-- `AuthFormBanner` — a faixa de erro do formulário inteiro.
-- `confirmAction` — o diálogo de confirmação; o botão diz o verbo.
+- `AppFormSection`, `AppFormGap`, `AppFormFooter`, `AppFoldedSection`.
+- `AppMoneyField`, `AppKmField`, `AppLitersField`, `AppDateField` — campos com
+  máscara; nunca número cru.
+- `showAppSheet`, `AppSheetBody`, `AppSheetFrame`, `AppSheetHeader`
+  (`trailing` para um link no título).
+- `AppSegmented` — escolha entre 2–4 opções.
+- `confirmAction`, `AppDiscardGuard`.
 
 ### Estados
 
-- `AppEmptyState`, `AppErrorState` — poço grande, título, frase, uma ação.
-  Rolam sempre, para o pull-to-refresh funcionar.
-- `AppSkeleton` / `AppSkeletonList` — a forma do que vai chegar, respirando.
-- `showAppSnackBar` / `showAppErrorSnackBar` — confirmação (com "Desfazer"
-  que some sozinho) e falha, em cores diferentes.
+- `AppEmptyState` — o que devia estar aqui, por quê, e a ação.
+- `AppErrorState` — título curto, a mensagem, "Tentar de novo".
+- `AppSkeleton` / `AppSkeletonList` — o formato do que vai chegar.
+- `showAppSnackBar` (com ✓) / `showAppErrorSnackBar`.
+
+## Texto
+
+Frases curtas e concretas, com o fato: "Venceu há 13 dias", "Vence em 20
+dias", "Faltam 2.000 km", "Pago em 12 jan", "Vigente até 28/12/2026",
+"Registrado hoje". Nada de "seu veículo merece atenção". Um prazo em dias é
+sempre `dueInDaysPhrase` (`core/domain/phrases.dart`) — a mesma frase no
+Início e na aba do item.
 
 ## Iconografia
 
-Material Icons, sempre a variante `_outlined`. `maintenance_icons.dart` mapeia
-slug do catálogo para glifo; `alertIconOf` faz o mesmo para avisos.
-
-## Tipografia
-
-Inter (400/500/600/700) e Rajdhani (600/700), em `assets/fonts/`, sob a SIL
-Open Font License (os textos da licença estão ao lado). Rajdhani só aparece em
-`AppTypography.instrument`: odômetro, totais, quilometragem numa ficha. Nunca
-em texto corrido.
+Material Icons, variante `_outlined`, na cor do texto de apoio. Colorido só
+quando é o estado (vermelho/âmbar) ou uma ação (azul). `maintenanceIconFor`
+mapeia o item do catálogo para um ícone; o Início usa o mesmo ícone do item
+nos avisos.
 
 ## Galeria
 
-`test/support/design_gallery.dart` renderiza todos os tokens e componentes numa
-página, e `test/widget_test.dart` a bombeia nos dois temas. Componente novo
-entra na galeria no mesmo commit.
-
-## Fora do escopo desta versão
-
-- O ícone e a splash foram re-tingidos do teal para o azul elétrico com
-  `tool/recolor_icons.dart`; o desenho é o mesmo. Um redesenho do símbolo é
-  trabalho de arte, não de código.
+`test/support/design_gallery.dart` renderiza tokens e componentes numa página
+e `test/widget_test.dart` a bombeia nos dois temas. Componente novo entra na
+galeria no mesmo commit.

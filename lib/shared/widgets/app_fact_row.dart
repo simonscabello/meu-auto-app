@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
@@ -11,7 +12,7 @@ import 'package:meu_auto/shared/widgets/app_list_row.dart';
 ///
 /// Tappable only when there is somewhere to go: the interval opens its
 /// sheet, a phone number dials; "15 de julho" is not somewhere to go.
-class AppFactRow extends StatelessWidget {
+class AppFactRow extends StatelessWidget with GroupedRow {
   const AppFactRow({
     super.key,
     required this.label,
@@ -35,14 +36,12 @@ class AppFactRow extends StatelessWidget {
     final scheme = theme.colorScheme;
     final labelStyle = inline
         ? theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)
-        : theme.textTheme.labelMedium?.copyWith(
-            color: scheme.onSurfaceVariant,
-            letterSpacing: 0.3,
-          );
-    final valueStyle = theme.textTheme.bodyLarge?.copyWith(
-      color: valueColor ?? (onTap == null ? null : scheme.primary),
-      fontWeight: inline ? FontWeight.w500 : FontWeight.w400,
-    );
+        : theme.textTheme.labelMedium;
+    final valueStyle =
+        (inline ? theme.textTheme.titleSmall : theme.textTheme.bodyMedium)
+            ?.copyWith(
+              color: valueColor ?? (onTap == null ? null : scheme.primary),
+            );
 
     final Widget body = inline
         ? Row(
@@ -73,7 +72,11 @@ class AppFactRow extends StatelessWidget {
           Expanded(child: body),
           if (onTap != null) ...[
             const SizedBox(width: AppSpacing.s8),
-            Icon(Icons.chevron_right, size: 20, color: scheme.outline),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+            ),
           ],
         ],
       ),

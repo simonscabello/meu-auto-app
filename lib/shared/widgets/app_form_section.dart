@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
+import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 
 /// A named part of a form: a quiet label and the fields under it, evenly
@@ -29,7 +30,12 @@ class AppFormSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (title != null) AppSectionHeader(title: title!, subtitle: subtitle),
+        if (title != null)
+          AppSectionHeader(
+            title: title!,
+            subtitle: subtitle,
+            emphasis: AppSectionEmphasis.label,
+          ),
         for (var i = 0; i < children.length; i++) ...[
           if (i > 0) SizedBox(height: gap),
           children[i],
@@ -62,30 +68,38 @@ class AppFormFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.page,
-          AppSpacing.s8,
-          AppSpacing.page,
-          AppSpacing.s16,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (hint != null) ...[
-              Text(
-                hint!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+    final tones = AppTones.of(context);
+    return DecoratedBox(
+      // The bar the button rests on: the page's own tone, with a hairline
+      // along its top so the fields scrolling under it end somewhere.
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(top: BorderSide(color: tones.divider)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.page,
+            AppSpacing.s12,
+            AppSpacing.page,
+            AppSpacing.s12,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hint != null) ...[
+                Text(
+                  hint!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.s8),
+                const SizedBox(height: AppSpacing.s8),
+              ],
+              child,
             ],
-            child,
-          ],
+          ),
         ),
       ),
     );

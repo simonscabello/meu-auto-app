@@ -37,6 +37,34 @@ String? remainingDaysPhrase(int? remainingDays) {
   return 'venceu há cerca de $months $unit';
 }
 
+/// A deadline in days, as the sentence a row carries: "Venceu há 13 dias",
+/// "Venceu ontem", "Vence hoje", "Vence amanhã", "Vence em 21 dias",
+/// "Vence em cerca de 3 meses".
+///
+/// One wording for every deadline in the app — a care habit, an IPVA, a
+/// policy — so the same fact reads the same on Início and on its own tab.
+/// The count comes from the server.
+String dueInDaysPhrase(int remainingDays) {
+  if (remainingDays > 1 && remainingDays <= _phraseDaysLimit) {
+    return 'Vence em $remainingDays dias';
+  }
+  if (remainingDays > _phraseDaysLimit) {
+    final months = _approximateMonths(remainingDays);
+    if (months >= 24) return 'Vence em mais de ${months ~/ 12} anos';
+    return months == 1
+        ? 'Vence em cerca de 1 mês'
+        : 'Vence em cerca de $months meses';
+  }
+  return capitalizeFirst(remainingDaysPhrase(remainingDays)!);
+}
+
+/// The sentence with its first letter up: phrases here are written to be
+/// joined into a line, and some of them start one.
+String capitalizeFirst(String text) {
+  if (text.isEmpty) return text;
+  return '${text[0].toUpperCase()}${text.substring(1)}';
+}
+
 /// Joins the two remaining dimensions, leading with the closer one.
 ///
 /// "Closer" is the smaller remaining number (more negative first). That is

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/application/load_more_scroll.dart';
 import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
-import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
@@ -14,28 +13,77 @@ import 'package:meu_auto/features/abastecimento/domain/abastecimento_copy.dart';
 import 'package:meu_auto/features/abastecimento/domain/volume.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
-import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_paged_footer.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 
-class AbastecimentoListScreen extends ConsumerStatefulWidget {
+/// The fills of the selected car, on a screen of their own — the deep link
+/// `/abastecimentos`. Histórico shows the same list under its
+/// "Abastecimentos" filter.
+class AbastecimentoListScreen extends ConsumerWidget {
   const AbastecimentoListScreen({super.key, required this.vehicleId});
 
   final String vehicleId;
 
   @override
-  ConsumerState<AbastecimentoListScreen> createState() =>
-      _AbastecimentoListScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
+    final canRegister = vehicle?.refueling.supported ?? false;
+
+    return AppScaffold(
+      title: 'Abastecimentos',
+      actions: [
+        if (canRegister)
+          AppIconButton(
+            label: abastecimentoRegisterLabel,
+            icon: Icons.add,
+            onPressed: () => openAbastecimentoForm(context, ref),
+          ),
+      ],
+      body: AbastecimentosView(
+        vehicleId: vehicleId,
+        padding: AppSpacing.screen,
+      ),
+    );
+  }
 }
 
-class _AbastecimentoListScreenState
-    extends ConsumerState<AbastecimentoListScreen> {
+/// Opens the fill form for the selected car, if it refuels.
+void openAbastecimentoForm(BuildContext context, WidgetRef ref) {
+  final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
+  if (vehicle == null || !vehicle.refueling.supported) return;
+  AbastecimentoFormSheet.show(
+    context,
+    vehicleId: vehicle.id,
+    currentMileageKm: vehicle.currentMileageKm,
+    fuelTypes: vehicle.refueling.offeredFuels,
+  );
+}
+
+/// The paginated list of fills, wherever it is shown.
+class AbastecimentosView extends ConsumerStatefulWidget {
+  const AbastecimentosView({
+    super.key,
+    required this.vehicleId,
+    this.padding = AppSpacing.tab,
+  });
+
+  final String vehicleId;
+  final EdgeInsets padding;
+
+  @override
+  ConsumerState<AbastecimentosView> createState() =>
+      _AbastecimentosViewState();
+}
+
+class _AbastecimentosViewState extends ConsumerState<AbastecimentosView> {
   final _scroll = ScrollController();
 
   @override
@@ -60,62 +108,45 @@ class _AbastecimentoListScreenState
     }
   }
 
-  void _openForm() {
-    final vehicle = ref.read(selectedVehicleProvider).valueOrNull;
-    if (vehicle == null) return;
-    AbastecimentoFormSheet.show(
-      context,
-      vehicleId: vehicle.id,
-      currentMileageKm: vehicle.currentMileageKm,
-      fuelTypes: vehicle.refueling.offeredFuels,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(abastecimentoHistoryProvider(widget.vehicleId));
     final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
     final canRegister = vehicle?.refueling.supported ?? false;
 
-    return AppScaffold(
-      title: 'Abastecimentos',
-      actions: [
-        if (canRegister)
-          AppIconButton(
-            label: abastecimentoRegisterLabel,
-            icon: Icons.add,
-            onPressed: _openForm,
-          ),
-      ],
-      body: history.when(
-        loading: () => const Padding(
-          padding: AppSpacing.screen,
-          child: AppSkeletonList(count: 4, itemHeight: 72),
-        ),
-        error: (error, _) => AppErrorState.fromError(
-          error: error,
-          onRetry: () =>
-              ref.invalidate(abastecimentoHistoryProvider(widget.vehicleId)),
-        ),
-        data: (state) => AbastecimentoListContent(
-          state: state,
-          scroll: _scroll,
-          onOpen: (fill) => context.push(AppRoutes.abastecimento(fill.id)),
-          onRegister: canRegister ? _openForm : null,
-          onRetryPage: () => ref
-              .read(abastecimentoHistoryProvider(widget.vehicleId).notifier)
-              .loadMore(),
-        ),
+    return history.when(
+      loading: () => Padding(
+        padding: widget.padding,
+        child: const AppSkeletonList(count: 3, itemHeight: 132),
+      ),
+      error: (error, _) => AppErrorState.fromError(
+        error: error,
+        onRetry: () =>
+            ref.invalidate(abastecimentoHistoryProvider(widget.vehicleId)),
+      ),
+      data: (state) => AbastecimentoListContent(
+        state: state,
+        scroll: _scroll,
+        padding: widget.padding,
+        onOpen: (fill) => context.push(AppRoutes.abastecimento(fill.id)),
+        onRegister: canRegister
+            ? () => openAbastecimentoForm(context, ref)
+            : null,
+        onRetryPage: () => ref
+            .read(abastecimentoHistoryProvider(widget.vehicleId).notifier)
+            .loadMore(),
       ),
     );
   }
 }
 
+/// The fills as pure presentation: one card per month, newest first.
 class AbastecimentoListContent extends StatelessWidget {
   const AbastecimentoListContent({
     super.key,
     required this.state,
     this.scroll,
+    this.padding = AppSpacing.screen,
     this.onOpen,
     this.onRegister,
     this.onRetryPage,
@@ -123,6 +154,7 @@ class AbastecimentoListContent extends StatelessWidget {
 
   final PagedState<Abastecimento> state;
   final ScrollController? scroll;
+  final EdgeInsets padding;
   final ValueChanged<Abastecimento>? onOpen;
   final VoidCallback? onRegister;
   final VoidCallback? onRetryPage;
@@ -139,15 +171,20 @@ class AbastecimentoListContent extends StatelessWidget {
       );
     }
 
-    final months = _groupByMonth(state.items);
+    final months = groupByMonth<Abastecimento>(
+      state.items,
+      (fill) => (year: fill.occurredOn.year, month: fill.occurredOn.month),
+      (fill) => formatCivilMonthHeader(fill.occurredOn),
+    );
 
     return ListView.builder(
       controller: scroll,
-      padding: AppSpacing.screen,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: padding,
       itemCount: months.length + 1,
       itemBuilder: (context, index) {
         if (index == months.length) {
-          return _Footer(state: state, onRetry: onRetryPage);
+          return AppPagedFooter(state: state, onRetry: onRetryPage);
         }
         final month = months[index];
         return Padding(
@@ -155,8 +192,8 @@ class AbastecimentoListContent extends StatelessWidget {
           child: AppGroup(
             title: month.label,
             children: [
-              for (final fill in month.fills)
-                _FillTile(
+              for (final fill in month.items)
+                AbastecimentoRow(
                   key: ValueKey(fill.id),
                   fill: fill,
                   onTap: onOpen == null ? null : () => onOpen!(fill),
@@ -167,39 +204,12 @@ class AbastecimentoListContent extends StatelessWidget {
       },
     );
   }
-
-  /// The list already arrives newest first, so a group closes wherever the
-  /// month changes — no sorting, no second pass.
-  List<({String label, List<Abastecimento> fills})> _groupByMonth(
-    List<Abastecimento> fills,
-  ) {
-    final groups = <({String label, List<Abastecimento> fills})>[];
-    int? year;
-    int? month;
-    for (final fill in fills) {
-      if (fill.occurredOn.year != year || fill.occurredOn.month != month) {
-        year = fill.occurredOn.year;
-        month = fill.occurredOn.month;
-        groups.add((
-          label: formatCivilMonthHeader(fill.occurredOn),
-          fills: <Abastecimento>[],
-        ));
-      }
-      groups.last.fills.add(fill);
-    }
-    return groups;
-  }
 }
 
-/// One fill, as a row.
-///
-/// Built here rather than from `AppListRow` because this list has a genuine
-/// third line: when the server could not work out a consumption it says why,
-/// and that sentence is the content of the screen rather than metadata on it.
-/// A row that computed cleanly puts its km/L in the figures column instead,
-/// beside the amount, where the numbers line up down the page.
-class _FillTile extends StatelessWidget {
-  const _FillTile({super.key, required this.fill, this.onTap});
+/// One fill: the fuel and how much, when and how far it went, and what it
+/// cost — the three things someone scans a fuel log for.
+class AbastecimentoRow extends StatelessWidget with GroupedRow {
+  const AbastecimentoRow({super.key, required this.fill, this.onTap});
 
   final Abastecimento fill;
   final VoidCallback? onTap;
@@ -208,118 +218,50 @@ class _FillTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final kmPerLiter = consumptionValueText(fill.consumption);
-
-    final body = Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const AppIconWell(icon: Icons.local_gas_station_outlined),
-        const SizedBox(width: AppSpacing.s12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                formatCivilDate(fill.occurredOn),
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${abastecimentoFuelLabel(fill.fuel)} · '
-                '${litersTextFromVolumeMl(fill.volumeMl)} L',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              if (kmPerLiter == null) ...[
-                const SizedBox(height: AppSpacing.s4),
-                Text(
-                  consumptionPhrase(fill.consumption),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.s12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              fill.totalCostCents.format(),
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontFeatures: AppTypography.tabular,
-              ),
-            ),
-            if (kmPerLiter != null)
-              Text(
-                consumptionPhrase(fill.consumption),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontFeatures: AppTypography.tabular,
-                ),
-              ),
-          ],
-        ),
-        if (onTap != null) ...[
-          const SizedBox(width: AppSpacing.s8),
-          Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-        ],
-      ],
-    );
+    final title =
+        '${abastecimentoFuelLabel(fill.fuel)} · '
+        '${litersTextFromVolumeMl(fill.volumeMl)} L';
+    final consumption = consumptionShortPhrase(fill.consumption);
+    final detail = [
+      formatCivilDayMonthAbbrev(fill.occurredOn),
+      ?consumption,
+    ].join(' · ');
 
     return AppListRowShell(
       onTap: onTap,
-      semanticLabel:
-          '${formatCivilDate(fill.occurredOn)}. '
-          '${abastecimentoFuelLabel(fill.fuel)}. '
-          '${fill.totalCostCents.format()}',
-      child: body,
-    );
-  }
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer({required this.state, this.onRetry});
-
-  final PagedState<Abastecimento> state;
-  final VoidCallback? onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.lastPageError != null) {
-      final error = state.lastPageError;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
-        child: Column(
-          children: [
-            Text(
-              error is ApiFailure
-                  ? error.message
-                  : 'Não foi possível carregar mais.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
+      semanticLabel: '$title. $detail. ${fill.totalCostCents.format()}',
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const AppIconWell(icon: Icons.local_gas_station_outlined),
+          const SizedBox(width: AppSpacing.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(detail, style: theme.textTheme.bodySmall),
+              ],
             ),
-            AppButton(
-              label: 'Tentar de novo',
-              variant: AppButtonVariant.tertiary,
-              onPressed: onRetry,
+          ),
+          const SizedBox(width: AppSpacing.s12),
+          Text(
+            fill.totalCostCents.format(),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontFeatures: AppTypography.tabular,
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: AppSpacing.s4),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
             ),
           ],
-        ),
-      );
-    }
-    if (state.isLoadingMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.s24),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return const SizedBox(height: AppSpacing.s24);
+        ],
+      ),
+    );
   }
 }

@@ -10,17 +10,17 @@ import 'package:meu_auto/features/abastecimento/domain/abastecimento_copy.dart';
 import 'package:meu_auto/features/abastecimento/domain/volume.dart';
 import 'package:meu_auto/features/abastecimento/presentation/abastecimento_form_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
-import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_confirm.dart';
 import 'package:meu_auto/shared/widgets/app_detail_header.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_fact_row.dart';
+import 'package:meu_auto/shared/widgets/app_facts_strip.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
-import 'package:meu_auto/shared/widgets/app_metric.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_overflow_menu.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
 import 'package:meu_auto/shared/widgets/app_snackbar.dart';
-import 'package:meu_auto/shared/widgets/app_surface.dart';
 
 class AbastecimentoDetailScreen extends ConsumerWidget {
   const AbastecimentoDetailScreen({super.key, required this.abastecimentoId});
@@ -48,11 +48,23 @@ class AbastecimentoDetailScreen extends ConsumerWidget {
       ),
       data: (current) => AppScaffold(
         title: 'Abastecimento',
-        body: AbastecimentoDetailContent(
-          fill: current,
-          onEdit: () => _edit(context, ref, current),
-          onDelete: () => _delete(context, ref, current),
-        ),
+        actions: [
+          AppIconButton(
+            label: 'Editar abastecimento',
+            icon: Icons.edit_outlined,
+            onPressed: () => _edit(context, ref, current),
+          ),
+          AppOverflowMenu(
+            actions: [
+              AppMenuAction(
+                label: 'Excluir abastecimento',
+                destructive: true,
+                onSelected: () => _delete(context, ref, current),
+              ),
+            ],
+          ),
+        ],
+        body: AbastecimentoDetailContent(fill: current),
       ),
     );
   }
@@ -100,23 +112,19 @@ Future<void> _delete(
 }
 
 /// The fill as pure presentation: when, the three figures a person compares
-/// fill to fill, and the rest as facts.
+/// fill to fill, and the rest as details.
+///
+/// Editing and deleting are in the app bar — the pencil, and the ⋮ — rather
+/// than two full-width buttons under the facts: the most destructive action
+/// on the screen was also one of its two largest shapes.
 class AbastecimentoDetailContent extends StatelessWidget {
-  const AbastecimentoDetailContent({
-    super.key,
-    required this.fill,
-    this.onEdit,
-    this.onDelete,
-  });
+  const AbastecimentoDetailContent({super.key, required this.fill});
 
   final Abastecimento fill;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final station = fill.stationName?.trim();
     final notes = fill.notes?.trim();
     final kmPerLiter = consumptionValueText(fill.consumption);
@@ -125,64 +133,25 @@ class AbastecimentoDetailContent extends StatelessWidget {
       padding: AppSpacing.screenHeaded,
       children: [
         AppDetailHeader(
-          icon: Icons.local_gas_station_outlined,
           title: formatCivilDateLong(fill.occurredOn),
           subtitle:
               '${abastecimentoFuelLabel(fill.fuel)} · ${formatKm(fill.mileageKm)}',
         ),
-        const SizedBox(height: appGroupGap),
-        // The three figures, as readings.
-        AppSurface(
-          variant: AppSurfaceVariant.grouped,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: AppMetric(
-                    value: fill.totalCostCents.format(),
-                    label: 'Valor total',
-                    size: AppMetricSize.compact,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: AppMetric(
-                    value: litersTextFromVolumeMl(fill.volumeMl),
-                    unit: 'L',
-                    label: 'Litros',
-                    size: AppMetricSize.compact,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s12),
-              Expanded(
-                child: kmPerLiter == null
-                    ? Text(
-                        consumptionPhrase(fill.consumption),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      )
-                    : FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: AppMetric(
-                          value: kmPerLiter,
-                          unit: 'km/L',
-                          label: 'Consumo',
-                          size: AppMetricSize.compact,
-                        ),
-                      ),
-              ),
-            ],
-          ),
+        const SizedBox(height: AppSpacing.s24),
+        AppFactsStrip(
+          facts: [
+            AppFact(label: 'Total', value: fill.totalCostCents.format()),
+            AppFact(
+              label: 'Litros',
+              value: litersTextFromVolumeMl(fill.volumeMl),
+              unit: 'L',
+            ),
+            AppFact(
+              label: 'Consumo',
+              value: kmPerLiter ?? '—',
+              unit: kmPerLiter == null ? null : 'km/L',
+            ),
+          ],
         ),
         if (kmPerLiter == null) ...[
           const SizedBox(height: AppSpacing.s8),
@@ -190,29 +159,18 @@ class AbastecimentoDetailContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
             child: Text(
               consumptionPhrase(fill.consumption),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+              style: theme.textTheme.bodySmall,
             ),
           ),
         ],
         const SizedBox(height: appGroupGap),
         AppGroup(
-          dividerIndent: 0,
+          title: 'Detalhes',
+          dividerIndent: AppGroup.textIndent,
           children: [
-            AppFactRow(
-              label: 'Quilometragem',
-              value: formatKm(fill.mileageKm),
-              inline: true,
-            ),
             AppFactRow(
               label: 'Preço por litro',
               value: fill.pricePerLiterCents.format(),
-              inline: true,
-            ),
-            AppFactRow(
-              label: 'Combustível',
-              value: abastecimentoFuelLabel(fill.fuel),
               inline: true,
             ),
             AppFactRow(
@@ -226,24 +184,6 @@ class AbastecimentoDetailContent extends StatelessWidget {
               AppFactRow(label: 'Observação', value: notes),
           ],
         ),
-        const SizedBox(height: appGroupGap),
-        if (onEdit != null) ...[
-          AppButton(
-            label: 'Editar',
-            icon: Icons.edit_outlined,
-            variant: AppButtonVariant.secondary,
-            onPressed: onEdit,
-            expanded: true,
-          ),
-          const SizedBox(height: AppSpacing.s8),
-        ],
-        if (onDelete != null)
-          AppButton(
-            label: 'Excluir',
-            variant: AppButtonVariant.destructive,
-            onPressed: onDelete,
-            expanded: true,
-          ),
       ],
     );
   }

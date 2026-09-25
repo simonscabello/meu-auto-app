@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/domain/phrases.dart';
@@ -10,14 +11,18 @@ import 'package:meu_auto/shared/widgets/app_list_row.dart';
 /// One alert as a row.
 ///
 /// Shared by Início and the full list behind its "Ver todos", so the two say
-/// the same thing about the same item. The well is tinted only for a loud
+/// the same thing about the same item. The glyph is tinted only for a loud
 /// status — red for late, amber for close — and [alertDetailLine] says how
 /// late or how close in words, so the colour is never the only signal.
-class AlertRow extends StatelessWidget {
-  const AlertRow({super.key, required this.alert, this.onTap});
+class AlertRow extends StatelessWidget with GroupedRow {
+  const AlertRow({super.key, required this.alert, this.onTap, this.icon});
 
   final Alert alert;
   final VoidCallback? onTap;
+
+  /// The item's own glyph — a tyre, an oil can — when the caller knows it.
+  /// Falls back to the glyph of the alert's kind.
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +32,7 @@ class AlertRow extends StatelessWidget {
     final detail = alertDetailLine(alert);
 
     return AppListRow(
-      icon: alertIconOf(alert.kind),
+      icon: icon ?? alertIconOf(alert.kind),
       title: alert.title,
       subtitle: detail ?? visual.label,
       status: status,
@@ -35,16 +40,20 @@ class AlertRow extends StatelessWidget {
       showChevron: onTap != null,
       semanticLabel: detail == null
           ? '${alert.title}. ${visual.label}'
-          : '${alert.title}. ${visual.label}. $detail',
+          : '${alert.title}. $detail',
     );
   }
 }
 
-/// The server's own subtitle plus the figures it computed, in one line.
+/// The server's own subtitle plus how late or how far, in one line:
+/// "Venceu há 13 dias", "Porto Seguro · Vence em 12 dias",
+/// "Faltam 2.000 km ou 21/03/2027".
 ///
 /// Never invents a subtitle, and never writes "0 km" for a dimension that came
-/// back null — null means the dimension does not apply. An upcoming item that
-/// is still far away is said as how far, not as a status word.
+/// back null — null means the dimension does not apply. A late or close item
+/// says only its most urgent dimension: the row is read at a glance, and
+/// "venceu há 13 dias · passou 1.200 km" asks the owner to weigh two facts
+/// when one decides.
 String? alertDetailLine(Alert alert) {
   final parts = <String>[];
   final subtitle = alert.subtitle?.trim();
@@ -57,7 +66,7 @@ String? alertDetailLine(Alert alert) {
           remainingDays: alert.remainingDays,
           dueOn: alert.dueOn,
         )
-      : dueSummary(
+      : urgencyPhrase(
           remainingKm: alert.remainingKm,
           remainingDays: alert.remainingDays,
         );
@@ -65,6 +74,21 @@ String? alertDetailLine(Alert alert) {
     parts.add(due);
   }
   return parts.isEmpty ? null : parts.join(' · ');
+}
+
+/// How late or how close, in the one dimension that decides: "Venceu há 13
+/// dias", "Vence em 21 dias", "Passou 1.200 km", "Faltam 800 km".
+///
+/// The closer dimension leads, the way [dueSummary] orders them, and only it
+/// is said. Figures come from the server; nothing here is date arithmetic.
+@visibleForTesting
+String? urgencyPhrase({int? remainingKm, int? remainingDays}) {
+  final useDays =
+      remainingDays != null &&
+      (remainingKm == null || remainingDays <= remainingKm);
+  if (useDays) return dueInDaysPhrase(remainingDays);
+  final km = remainingKmPhrase(remainingKm);
+  return km == null ? null : capitalizeFirst(km);
 }
 
 IconData alertIconOf(AlertKind kind) {
@@ -103,7 +127,7 @@ String routeForAlert(Alert alert) {
 }
 
 /// Upcoming, as the distance to it: "Faltam 4.200 km ou 30 dias",
-/// "Faltam 4.200 km ou 12/02/2027", "Em 12/02/2027".
+/// "Faltam 4.200 km ou 12/02/2027", "Vence em 12/02/2027".
 ///
 /// Uses the figures the server computed. The date is written as a date once
 /// it is more than about a month and a half out, because "faltam 197 dias"
@@ -135,5 +159,5 @@ String? upcomingSummary({
   if (km == null && when == null) return null;
   if (km != null && when != null) return 'Faltam $km ou $when';
   if (km != null) return 'Faltam $km';
-  return whenIsDate ? 'Em $when' : 'Faltam $when';
+  return whenIsDate ? 'Vence em $when' : 'Faltam $when';
 }

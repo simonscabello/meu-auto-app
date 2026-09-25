@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
@@ -7,7 +8,7 @@ import 'package:meu_auto/shared/widgets/app_list_row.dart';
 ///
 /// Material's `SwitchListTile` brings its own padding and type; this one
 /// sits on the same rhythm as every other row in the app.
-class AppSwitchRow extends StatelessWidget {
+class AppSwitchRow extends StatelessWidget with GroupedRow {
   const AppSwitchRow({
     super.key,
     required this.title,
@@ -24,7 +25,6 @@ class AppSwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     return Semantics(
       toggled: value,
       enabled: onChanged != null,
@@ -38,20 +38,10 @@ class AppSwitchRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  Text(title, style: theme.textTheme.titleSmall),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
+                    Text(subtitle!, style: theme.textTheme.bodySmall),
                   ],
                 ],
               ),

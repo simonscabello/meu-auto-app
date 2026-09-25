@@ -484,7 +484,7 @@ class VehicleCatalogSummary extends StatelessWidget {
           if (price != null) ...[
             Text(
               price.price.format(),
-              style: AppTypography.instrument(
+              style: AppTypography.figure(
                 size: 26,
                 color: scheme.onSurface,
               ),

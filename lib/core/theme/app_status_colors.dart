@@ -34,8 +34,8 @@ enum AppStatus {
     };
   }
 
-  /// Late or nearly late. The only two states that are allowed to paint a
-  /// row, an icon or a line in a status colour.
+  /// Late or nearly late. The only two states that are allowed to paint an
+  /// icon or a line in a warm colour.
   bool get isLoud => this == vencido || this == venceEmBreve;
 }
 
@@ -55,76 +55,87 @@ final class StatusVisual {
   final String label;
 }
 
-/// One rule for the whole app: red is late, amber is close, the electric blue
-/// is fine, and everything else is a quiet blue-grey.
+/// One rule for the whole app: **red is late, amber is close, green is done,
+/// blue is on track, and everything else is quiet grey.**
 ///
-/// Red and amber are the only warm tones on a cold interface, which is what
-/// makes them register. A green would compete with the accent and give the
-/// colour-blind two states that look alike; blue for "fine" keeps late
-/// distinct from on track for everyone.
+/// Red and amber are the only warm tones on a cool interface, which is what
+/// makes them register at a glance — and why neither is ever used to
+/// decorate. Green is "done" (a paid tax), not "fine": on-track states stay in
+/// the accent blue, so a screen full of healthy items is calm rather than a
+/// field of green lights. Every status also carries its own glyph and word,
+/// so no two states are told apart by colour alone.
 StatusVisual statusColors(AppStatus status, Brightness brightness) {
   final dark = brightness == Brightness.dark;
+  const quietDark = Color(0xFFB7C0CC);
+  const quietDarkBg = Color(0xFF232A34);
+  const quietLight = Color(0xFF45505E);
+  const quietLightBg = Color(0xFFE8ECF1);
+  const onTrackDark = Color(0xFF5B9DFF);
+  const onTrackDarkBg = Color(0xFF16283E);
+  const onTrackLight = Color(0xFF1558C0);
+  const onTrackLightBg = Color(0xFFDCE8FD);
+
   return switch (status) {
     AppStatus.vencido => StatusVisual(
-      foreground: dark ? const Color(0xFFFF6B6B) : const Color(0xFFA32020),
-      background: dark ? const Color(0xFF3A1414) : const Color(0xFFFFE3E1),
+      foreground: dark ? const Color(0xFFF07070) : const Color(0xFFB42A28),
+      background: dark ? const Color(0xFF3A1719) : const Color(0xFFFCE4E3),
       icon: Icons.error_outline,
       label: 'Vencido',
     ),
     AppStatus.venceEmBreve => StatusVisual(
-      foreground: dark ? const Color(0xFFFFC857) : const Color(0xFF7A4B00),
-      background: dark ? const Color(0xFF3A2A0A) : const Color(0xFFFFF0C7),
+      foreground: dark ? const Color(0xFFEFB54A) : const Color(0xFF8A5207),
+      background: dark ? const Color(0xFF33270F) : const Color(0xFFFCEFD6),
       icon: Icons.schedule_outlined,
       label: 'Vence em breve',
     ),
     AppStatus.emDia => StatusVisual(
-      foreground: dark ? const Color(0xFF4CC2FF) : const Color(0xFF0A5AA8),
-      background: dark ? const Color(0xFF0C2E4E) : const Color(0xFFDCEEFF),
+      foreground: dark ? onTrackDark : onTrackLight,
+      background: dark ? onTrackDarkBg : onTrackLightBg,
       icon: Icons.check_circle_outline,
       label: 'Em dia',
     ),
     AppStatus.semBaseline => StatusVisual(
-      foreground: dark ? const Color(0xFFB9C8DA) : const Color(0xFF3B4F66),
-      background: dark ? const Color(0xFF1B2A3D) : const Color(0xFFE4EBF3),
-      icon: Icons.info_outline,
+      foreground: dark ? quietDark : quietLight,
+      background: dark ? quietDarkBg : quietLightBg,
+      icon: Icons.help_outline,
       label: 'Sem registro',
     ),
     AppStatus.semPeriodicidade => StatusVisual(
-      foreground: dark ? const Color(0xFFA9B8CB) : const Color(0xFF46596D),
-      background: dark ? const Color(0xFF16273A) : const Color(0xFFE6ECF2),
+      foreground: dark ? quietDark : quietLight,
+      background: dark ? quietDarkBg : quietLightBg,
       icon: Icons.history_outlined,
       label: 'Só histórico',
     ),
     // Only ever seen on the configuration screen: everywhere else an item the
-    // vehicle does not have is absent, not greyed out. Muted, and not an alarm
-    // colour — nothing is wrong.
+    // vehicle does not have is absent, not greyed out. Quiet — nothing is
+    // wrong.
     AppStatus.naoSeAplica => StatusVisual(
-      foreground: dark ? const Color(0xFFA9B8CB) : const Color(0xFF46596D),
-      background: dark ? const Color(0xFF16273A) : const Color(0xFFE6ECF2),
+      foreground: dark ? quietDark : quietLight,
+      background: dark ? quietDarkBg : quietLightBg,
       icon: Icons.remove_circle_outline,
       label: 'Não usa',
     ),
     AppStatus.pago => StatusVisual(
-      foreground: dark ? const Color(0xFF4CC2FF) : const Color(0xFF0A5AA8),
-      background: dark ? const Color(0xFF0C2E4E) : const Color(0xFFDCEEFF),
+      foreground: dark ? const Color(0xFF57C38D) : const Color(0xFF1D7A4A),
+      background: dark ? const Color(0xFF12301F) : const Color(0xFFDDF3E6),
       icon: Icons.check_circle_outline,
       label: 'Pago',
     ),
     AppStatus.pendente => StatusVisual(
-      foreground: dark ? const Color(0xFFA9B8CB) : const Color(0xFF46596D),
-      background: dark ? const Color(0xFF16273A) : const Color(0xFFE6ECF2),
+      foreground: dark ? quietDark : quietLight,
+      background: dark ? quietDarkBg : quietLightBg,
       icon: Icons.event_note_outlined,
       label: 'Pendente',
     ),
     AppStatus.futuro => StatusVisual(
-      foreground: dark ? const Color(0xFFB9C6FF) : const Color(0xFF2E3F86),
-      background: dark ? const Color(0xFF1E2550) : const Color(0xFFE3E7FF),
+      foreground: dark ? quietDark : quietLight,
+      background: dark ? quietDarkBg : quietLightBg,
       icon: Icons.event_outlined,
       label: 'Futuro',
     ),
     AppStatus.vigente => StatusVisual(
-      foreground: dark ? const Color(0xFF4CC2FF) : const Color(0xFF0A5AA8),
-      background: dark ? const Color(0xFF0C2E4E) : const Color(0xFFDCEEFF),
+      foreground: dark ? onTrackDark : onTrackLight,
+      background: dark ? onTrackDarkBg : onTrackLightBg,
       icon: Icons.verified_outlined,
       label: 'Vigente',
     ),

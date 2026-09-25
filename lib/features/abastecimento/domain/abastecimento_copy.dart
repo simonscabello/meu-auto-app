@@ -23,6 +23,24 @@ String consumptionPhrase(Consumption consumption) {
   }
 }
 
+/// The consumption as a row can carry it, beside the date: "17,2 km/L",
+/// "Tanque parcial", "Sem consumo ainda". Null when there is nothing worth a
+/// clause — the full sentence is on the fill's own screen.
+String? consumptionShortPhrase(Consumption consumption) {
+  switch (consumption.status) {
+    case ConsumptionStatus.ok:
+      final value = consumption.value;
+      return value == null ? null : '${_oneDecimal.format(value)} km/L';
+    case ConsumptionStatus.partialFill:
+      return 'Tanque parcial';
+    case ConsumptionStatus.insufficientData:
+      return 'Sem consumo ainda';
+    case ConsumptionStatus.unavailable:
+    case ConsumptionStatus.desconhecido:
+      return null;
+  }
+}
+
 /// The figure [AppMetric] shows when [Consumption.status] is ok. Null means
 /// the third slot should be the status phrase instead.
 String? consumptionValueText(Consumption consumption) {

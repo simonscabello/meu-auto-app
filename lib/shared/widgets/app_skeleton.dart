@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_motion.dart';
 import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/core/theme/app_tones.dart';
 
 /// A placeholder for something still loading: the shape of what will arrive,
 /// breathing slowly.
 ///
-/// It uses the same fill and edge as a grouped surface, so a screen mid-load
-/// looks like the screen it is about to become, dimmed — not like a
-/// different screen.
+/// Shaped like what will arrive — a header, a row, a card — so the content
+/// lands without the layout jumping, and a screen mid-load already looks
+/// like the screen it is about to become.
 class AppSkeleton extends StatefulWidget {
   const AppSkeleton({
     super.key,
@@ -65,14 +64,12 @@ class _AppSkeletonState extends State<AppSkeleton>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final tones = AppTones.of(context);
     final box = Container(
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
+        color: scheme.surfaceContainer,
         borderRadius: widget.borderRadius ?? AppRadius.borderM,
-        border: Border.all(color: tones.stroke),
       ),
     );
 

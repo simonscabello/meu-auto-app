@@ -6,24 +6,31 @@ import 'package:meu_auto/core/theme/app_tones.dart';
 /// How a surface separates itself from the page.
 enum AppSurfaceVariant {
   /// No fill at all. For content that is already separated by spacing and a
-  /// label — which is most content.
+  /// title — which is most content.
   none,
 
-  /// One step off the page, with a hairline. The grouped list, the card on a
-  /// detail screen, the block a section sits in.
+  /// **The card.** One step off the page, with a hairline. A group of rows,
+  /// the facts of a record, a quick action.
   grouped,
 
-  /// Two steps off the page, a stronger edge, and light along the top. For a
-  /// surface that is an action — a quick action tile, the odometer button.
+  /// A step further off the page: something that sits on top of a card or a
+  /// sheet and must still read as its own object.
   raised,
+
+  /// A step *into* the page, with no edge: the placeholder where a section
+  /// has nothing yet ("Nenhum item registrado"), a block of supporting text
+  /// inside a screen that already has cards. Another outline there would be
+  /// noise.
+  sunken,
 }
 
 /// A container that groups, and only when grouping is what is wanted.
 ///
-/// In the dark, a fill alone is one step of luminance and disappears at
-/// arm's length; the hairline is what gives a surface an edge, and the top
-/// highlight on a raised one is what makes it read as a control rather than
-/// a panel. Both come from [AppTones], never from a colour picked here.
+/// No shadow on any variant: a card on a list does not float, it *is* the
+/// list. What separates it from the page is its fill, with a hairline to help
+/// in the dark where one step of luminance is subtle. The only things in the
+/// app with a shadow are the ones that really float over the content — a
+/// sheet, a menu, a snack bar.
 class AppSurface extends StatelessWidget {
   const AppSurface({
     super.key,
@@ -34,6 +41,7 @@ class AppSurface extends StatelessWidget {
     this.onLongPress,
     this.color,
     this.outlined = false,
+    this.borderColor,
     this.borderRadius,
     this.clipBehavior = Clip.antiAlias,
   });
@@ -49,8 +57,12 @@ class AppSurface extends StatelessWidget {
   final Color? color;
 
   /// Draws the hairline on a [AppSurfaceVariant.none] surface — a plate, a
-  /// dashed drop zone — where there is nothing else to separate it.
+  /// drop zone — where there is nothing else to separate it.
   final bool outlined;
+
+  /// Overrides the edge. A surface that carries a state (a late item) may
+  /// take the status colour here, at low strength.
+  final Color? borderColor;
 
   final BorderRadius? borderRadius;
   final Clip clipBehavior;
@@ -65,16 +77,20 @@ class AppSurface extends StatelessWidget {
         switch (variant) {
           AppSurfaceVariant.none => null,
           AppSurfaceVariant.grouped => scheme.surfaceContainerLow,
-          AppSurfaceVariant.raised => scheme.surfaceContainerHigh,
+          AppSurfaceVariant.raised => scheme.surfaceContainer,
+          AppSurfaceVariant.sunken => scheme.surfaceContainer,
         };
-    final side = switch (variant) {
-      AppSurfaceVariant.none => outlined ? tones.stroke : null,
-      AppSurfaceVariant.grouped => tones.stroke,
-      AppSurfaceVariant.raised => tones.strokeStrong,
-    };
+    final side =
+        borderColor ??
+        switch (variant) {
+          AppSurfaceVariant.none => outlined ? tones.stroke : null,
+          AppSurfaceVariant.grouped => tones.stroke,
+          AppSurfaceVariant.raised => tones.stroke,
+          AppSurfaceVariant.sunken => null,
+        };
 
     Widget content = Padding(
-      padding: padding ?? const EdgeInsets.all(AppSpacing.s16),
+      padding: padding ?? const EdgeInsets.all(AppSpacing.inset),
       child: child,
     );
 
@@ -82,25 +98,6 @@ class AppSurface extends StatelessWidget {
       content = ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AppSpacing.minTapTarget),
         child: content,
-      );
-    }
-
-    if (variant == AppSurfaceVariant.raised) {
-      // Light catches the top edge. A gradient from the highlight to nothing
-      // over the first few pixels, drawn behind the content.
-      content = Stack(
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 1.5,
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: tones.highlight),
-            ),
-          ),
-          content,
-        ],
       );
     }
 
@@ -136,6 +133,7 @@ class AppSurface extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLongPress,
           highlightColor: tones.overlayPressed,
+          splashColor: tones.overlayPressed,
           child: content,
         ),
       ),

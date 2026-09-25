@@ -11,8 +11,12 @@ import 'package:meu_auto/features/obligation/domain/seguro.dart';
 import 'package:meu_auto/features/obligation/presentation/obligation_form_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
+import 'package:meu_auto/shared/widgets/app_bottom_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
+import 'package:meu_auto/shared/widgets/app_icon_button.dart';
+import 'package:meu_auto/shared/widgets/app_sheet_header.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -27,24 +31,98 @@ class DocumentosScreen extends ConsumerWidget {
     final vehicle = selected.valueOrNull;
 
     return AppScaffold(
-      titleWidget: const VehicleContextTitle(title: 'Documentos'),
-      actions: const [ProfileButton()],
       onRefresh: vehicle == null ? null : () => _refresh(ref, vehicle.id),
-      body: selected.when(
-        loading: () => const _DocumentosSkeleton(),
-        error: (error, _) => AppErrorState.fromError(
-          error: error,
-          onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
-        ),
-        data: (current) => current == null
-            ? const SizedBox.shrink()
-            : ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: AppSpacing.screen,
-                children: [
-                  DocumentosSection(vehicleId: current.id, showHeading: false),
-                ],
+      body: Column(
+        children: [
+          VehicleTabHeader(
+            title: 'Documentos',
+            actions: [
+              if (vehicle != null)
+                AppIconButton(
+                  label: 'Registrar documento',
+                  icon: Icons.add,
+                  onPressed: () => _chooseKind(context, vehicle.id),
+                ),
+            ],
+          ),
+          Expanded(
+            child: selected.when(
+              loading: () => const _DocumentosSkeleton(),
+              error: (error, _) => AppErrorState.fromError(
+                error: error,
+                onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
               ),
+              data: (current) => current == null
+                  ? const SizedBox.shrink()
+                  : ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: AppSpacing.tab,
+                      children: [
+                        DocumentosSection(
+                          vehicleId: current.id,
+                          showHeading: false,
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// IPVA, licenciamento or seguro. The rare moment someone adds a
+  /// document — a new year's IPVA — so it is one tap behind "+", instead of
+  /// three "Registrar" rows standing permanently under the documents.
+  Future<void> _chooseKind(BuildContext context, String vehicleId) {
+    return showAppSheet<void>(
+      context,
+      builder: (sheetContext) => SafeArea(
+        child: AppSheetBody(
+          children: [
+            const AppSheetHeader(title: 'Registrar', closable: false),
+            const SizedBox(height: AppSpacing.s8),
+            AppGroup(
+              children: [
+                AppListRow(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'IPVA',
+                  showChevron: true,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ObligationFormSheet.show(
+                      context,
+                      vehicleId: vehicleId,
+                      kind: ObligationKind.ipva,
+                    );
+                  },
+                ),
+                AppListRow(
+                  icon: Icons.description_outlined,
+                  title: 'Licenciamento',
+                  showChevron: true,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    ObligationFormSheet.show(
+                      context,
+                      vehicleId: vehicleId,
+                      kind: ObligationKind.licenciamento,
+                    );
+                  },
+                ),
+                AppListRow(
+                  icon: Icons.shield_outlined,
+                  title: 'Seguro',
+                  showChevron: true,
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    context.push(AppRoutes.seguroNew);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -182,14 +260,10 @@ class DocumentosContent extends StatelessWidget {
               ),
             ),
           ),
-        _KindGroup(
-          title: 'IPVA',
-          emptyTitle: 'Nenhum IPVA registrado',
-          emptyMessage: 'Registre o IPVA deste ano para acompanhar o prazo.',
-          actionLabel: 'Registrar IPVA',
-          onRegister: onRegisterIpva,
-          rows: [
-            for (final obligation in ipva)
+        AppGroup(
+          title: 'IPVA e licenciamento',
+          children: [
+            for (final obligation in [...ipva, ...licenciamento])
               _ObligationRow(
                 key: ValueKey(obligation.id),
                 obligation: obligation,
@@ -197,40 +271,40 @@ class DocumentosContent extends StatelessWidget {
                     ? null
                     : () => onObligationTap!(obligation),
               ),
-          ],
-        ),
-        const SizedBox(height: appGroupGap),
-        _KindGroup(
-          title: 'Licenciamento',
-          emptyTitle: 'Nenhum licenciamento registrado',
-          emptyMessage:
-              'Registre o licenciamento deste ano para acompanhar o prazo.',
-          actionLabel: 'Registrar licenciamento',
-          onRegister: onRegisterLicenciamento,
-          rows: [
-            for (final obligation in licenciamento)
-              _ObligationRow(
-                key: ValueKey(obligation.id),
-                obligation: obligation,
-                onTap: onObligationTap == null
-                    ? null
-                    : () => onObligationTap!(obligation),
+            // A kind with nothing registered keeps a way in right where it
+            // would be. Once there is one, the next year's is added from "+".
+            if (ipva.isEmpty && onRegisterIpva != null)
+              AppListRow(
+                icon: Icons.add,
+                iconTone: AppIconWellTone.accent,
+                title: 'Registrar IPVA',
+                onTap: onRegisterIpva,
+              ),
+            if (licenciamento.isEmpty && onRegisterLicenciamento != null)
+              AppListRow(
+                icon: Icons.add,
+                iconTone: AppIconWellTone.accent,
+                title: 'Registrar licenciamento',
+                onTap: onRegisterLicenciamento,
               ),
           ],
         ),
         const SizedBox(height: appGroupGap),
-        _KindGroup(
+        AppGroup(
           title: 'Seguro',
-          emptyTitle: 'Nenhum seguro registrado',
-          emptyMessage: 'Registre a apólice para acompanhar a vigência.',
-          actionLabel: 'Registrar seguro',
-          onRegister: onRegisterSeguro,
-          rows: [
+          children: [
             for (final seguro in seguros)
               _SeguroRow(
                 key: ValueKey(seguro.id),
                 seguro: seguro,
                 onTap: onSeguroTap == null ? null : () => onSeguroTap!(seguro),
+              ),
+            if (seguros.isEmpty && onRegisterSeguro != null)
+              AppListRow(
+                icon: Icons.add,
+                iconTone: AppIconWellTone.accent,
+                title: 'Registrar seguro',
+                onTap: onRegisterSeguro,
               ),
           ],
         ),
@@ -245,86 +319,21 @@ class _DocumentosSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: AppSpacing.screen,
+      padding: AppSpacing.tab,
       children: const [
-        AppSkeleton(width: 80, height: 14),
+        AppSkeleton(width: 170, height: 18),
         SizedBox(height: AppSpacing.s12),
-        AppSkeleton(width: double.infinity, height: 124),
+        AppSkeleton(width: double.infinity, height: 132),
         SizedBox(height: AppSpacing.block),
-        AppSkeleton(width: 130, height: 14),
+        AppSkeleton(width: 80, height: 18),
         SizedBox(height: AppSpacing.s12),
-        AppSkeleton(width: double.infinity, height: 124),
-        SizedBox(height: AppSpacing.block),
-        AppSkeleton(width: 90, height: 14),
-        SizedBox(height: AppSpacing.s12),
-        AppSkeleton(width: double.infinity, height: 124),
+        AppSkeleton(width: double.infinity, height: 66),
       ],
     );
   }
 }
 
-/// One document kind: its label, and either its rows or the sentence saying
-/// there are none — always ending with the row that adds one.
-class _KindGroup extends StatelessWidget {
-  const _KindGroup({
-    required this.title,
-    required this.emptyTitle,
-    required this.emptyMessage,
-    required this.actionLabel,
-    required this.rows,
-    this.onRegister,
-  });
-
-  final String title;
-  final String emptyTitle;
-  final String emptyMessage;
-  final String actionLabel;
-  final List<Widget> rows;
-  final VoidCallback? onRegister;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return AppGroup(
-      title: title,
-      children: [
-        if (rows.isEmpty)
-          AppListRowShell(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  emptyTitle,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  emptyMessage,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          ...rows,
-        if (onRegister != null)
-          AppListRow(
-            icon: Icons.add,
-            iconTone: AppIconWellTone.accent,
-            title: actionLabel,
-            onTap: onRegister,
-          ),
-      ],
-    );
-  }
-}
-
-class _ObligationRow extends StatelessWidget {
+class _ObligationRow extends StatelessWidget with GroupedRow {
   const _ObligationRow({super.key, required this.obligation, this.onTap});
 
   final Obligation obligation;
@@ -345,7 +354,7 @@ class _ObligationRow extends StatelessWidget {
   }
 }
 
-class _SeguroRow extends StatelessWidget {
+class _SeguroRow extends StatelessWidget with GroupedRow {
   const _SeguroRow({super.key, required this.seguro, this.onTap});
 
   final Seguro seguro;

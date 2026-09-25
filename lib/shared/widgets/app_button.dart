@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 
 enum AppButtonVariant {
-  /// The one thing to do on the screen. Filled in the accent.
+  /// The one thing to do on the screen. Filled in the accent. One per screen.
   primary,
 
-  /// An alternative of equal weight. Outlined, on a quiet surface.
+  /// An alternative of equal standing that is not the screen's main action.
+  /// A neutral tonal fill — present, never competing with the accent.
   secondary,
 
-  /// Removes something. Tonal red, so it is found without shouting.
+  /// Removes something. Tonal red, so it is found without shouting, and only
+  /// where the removal is confirmed.
   destructive,
 
   /// A way out or a rarer choice. Text in the accent.
@@ -52,7 +55,8 @@ class AppButton extends StatelessWidget {
 
   /// A shorter button for the inside of a row — "Feito" beside a care item,
   /// "Tem sim" beside an item ruled out. The tap target stays 48dp through
-  /// the padded hit area; only the drawn height shrinks.
+  /// the padded hit area; only the drawn height shrinks, so the row's action
+  /// never weighs as much as the screen's.
   final bool compact;
 
   @override
@@ -63,9 +67,14 @@ class AppButton extends StatelessWidget {
     const tapTarget = Size(AppSpacing.minTapTarget, AppSpacing.minTapTarget);
     final compactStyle = compact
         ? const ButtonStyle(
-            minimumSize: WidgetStatePropertyAll(Size(56, 40)),
+            minimumSize: WidgetStatePropertyAll(
+              Size(56, AppSpacing.compactButtonHeight),
+            ),
             padding: WidgetStatePropertyAll(
               EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+            ),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(borderRadius: AppRadius.borderS),
             ),
             visualDensity: VisualDensity.compact,
           )
@@ -77,9 +86,15 @@ class AppButton extends StatelessWidget {
         style: compactStyle,
         child: child,
       ),
-      AppButtonVariant.secondary => OutlinedButton(
+      AppButtonVariant.secondary => FilledButton(
         onPressed: handlePress,
-        style: compactStyle,
+        style: FilledButton.styleFrom(
+          backgroundColor: scheme.secondaryContainer,
+          foregroundColor: foregroundColor ?? scheme.onSecondaryContainer,
+          disabledBackgroundColor: scheme.onSurface.withValues(alpha: 0.06),
+          disabledForegroundColor: scheme.onSurface.withValues(alpha: 0.38),
+          overlayColor: scheme.onSecondaryContainer.withValues(alpha: 0.08),
+        ).merge(compactStyle),
         child: child,
       ),
       AppButtonVariant.destructive => FilledButton(
@@ -123,7 +138,7 @@ class _ButtonLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = DefaultTextStyle.of(context).style.color;
     final content = icon == null
-        ? Text(label)
+        ? Text(label, textAlign: TextAlign.center)
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [

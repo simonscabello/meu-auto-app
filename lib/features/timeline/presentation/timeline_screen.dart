@@ -2,78 +2,149 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/application/load_more_scroll.dart';
-import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/cursor_page.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
-import 'package:meu_auto/core/network/api_failure.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
-import 'package:meu_auto/core/theme/app_typography.dart';
+import 'package:meu_auto/features/abastecimento/application/abastecimento_provider.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento.dart';
 import 'package:meu_auto/features/abastecimento/domain/abastecimento_copy.dart';
-import 'package:meu_auto/features/abastecimento/presentation/last_abastecimento_card.dart';
+import 'package:meu_auto/features/abastecimento/presentation/abastecimento_list_screen.dart';
 import 'package:meu_auto/features/costs/domain/costs_copy.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
+import 'package:meu_auto/features/maintenance/application/maintenance_record_provider.dart';
+import 'package:meu_auto/features/maintenance/presentation/maintenance_list_screen.dart';
 import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 import 'package:meu_auto/features/timeline/domain/timeline_entry.dart';
 import 'package:meu_auto/features/timeline/presentation/add_record_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_context_title.dart';
-import 'package:meu_auto/shared/widgets/app_button.dart';
 import 'package:meu_auto/shared/widgets/app_empty_state.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
+import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_icon_button.dart';
-import 'package:meu_auto/shared/widgets/app_metric.dart';
+import 'package:meu_auto/shared/widgets/app_list_row.dart';
+import 'package:meu_auto/shared/widgets/app_paged_footer.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
+import 'package:meu_auto/shared/widgets/app_segmented.dart';
 import 'package:meu_auto/shared/widgets/app_skeleton.dart';
-import 'package:meu_auto/shared/widgets/app_surface.dart';
-import 'package:meu_auto/shared/widgets/app_timeline_tile.dart';
 
-/// Histórico tab: what was done to the selected vehicle and what it cost.
+/// What the history shows: everything, or one kind of record.
+enum HistoryFilter { all, maintenance, fuel }
+
+/// Histórico tab: what was done to the selected car and what it cost.
 ///
-/// The cost summary and the last fill sit at the top of the list, one tap
-/// from their own screens; the timeline runs under them.
-class TimelineScreen extends ConsumerWidget {
+/// One tab, three readings of the same past. "Tudo" is the timeline —
+/// services, fills, mileage and taxes in one column — headed by what the car
+/// cost; "Manutenções" and "Abastecimentos" are the two lists people most
+/// often go looking for on their own. They used to be two screens reachable
+/// only through a card at the top of this one.
+class TimelineScreen extends ConsumerStatefulWidget {
   const TimelineScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TimelineScreen> createState() => _TimelineScreenState();
+}
+
+class _TimelineScreenState extends ConsumerState<TimelineScreen> {
+  HistoryFilter _filter = HistoryFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
     final selected = ref.watch(selectedVehicleProvider);
     final vehicle = selected.valueOrNull;
+    final refuels = vehicle?.refueling.supported ?? false;
+    // A car that does not refuel has no fuel list to filter to.
+    final filter = !refuels && _filter == HistoryFilter.fuel
+        ? HistoryFilter.all
+        : _filter;
 
     return AppScaffold(
-      titleWidget: const VehicleContextTitle(title: 'Histórico'),
-      actions: [
-        if (vehicle != null)
-          AppIconButton(
-            label: 'Adicionar registro',
-            icon: Icons.add,
-            onPressed: () => AddRecordSheet.show(context),
+      onRefresh: vehicle == null ? null : () => _refresh(vehicle.id, filter),
+      body: Column(
+        children: [
+          VehicleTabHeader(
+            title: 'Histórico',
+            actions: [
+              if (vehicle != null)
+                AppIconButton(
+                  label: 'Adicionar registro',
+                  icon: Icons.add,
+                  onPressed: () => AddRecordSheet.show(context),
+                ),
+            ],
           ),
-        const ProfileButton(),
-      ],
-      onRefresh: vehicle == null ? null : () => _refresh(ref, vehicle.id),
-      body: selected.when(
-        loading: () => const _TimelineSkeleton(),
-        error: (error, _) => AppErrorState.fromError(
-          error: error,
-          onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
-        ),
-        data: (current) => current == null
-            ? const SizedBox.shrink()
-            : TimelineView(vehicleId: current.id),
+          if (vehicle != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.page,
+                0,
+                AppSpacing.page,
+                AppSpacing.s16,
+              ),
+              child: AppSegmented<HistoryFilter>(
+                value: filter,
+                onChanged: (value) => setState(() => _filter = value),
+                options: [
+                  const AppSegmentedOption(
+                    value: HistoryFilter.all,
+                    label: 'Tudo',
+                  ),
+                  const AppSegmentedOption(
+                    value: HistoryFilter.maintenance,
+                    label: 'Manutenções',
+                  ),
+                  if (refuels)
+                    const AppSegmentedOption(
+                      value: HistoryFilter.fuel,
+                      label: 'Abastecimentos',
+                    ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: selected.when(
+              loading: () => const _TimelineSkeleton(),
+              error: (error, _) => AppErrorState.fromError(
+                error: error,
+                onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+              ),
+              data: (current) => current == null
+                  ? const SizedBox.shrink()
+                  : switch (filter) {
+                      HistoryFilter.all => TimelineView(vehicleId: current.id),
+                      HistoryFilter.maintenance => MaintenanceRecordsView(
+                        vehicleId: current.id,
+                      ),
+                      HistoryFilter.fuel => AbastecimentosView(
+                        vehicleId: current.id,
+                      ),
+                    },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _refresh(WidgetRef ref, String vehicleId) async {
-    ref.invalidate(timelineProvider(vehicleId));
+  Future<void> _refresh(String vehicleId, HistoryFilter filter) async {
     ref.invalidate(dashboardProvider(vehicleId));
     try {
-      await ref.read(timelineProvider(vehicleId).future);
+      switch (filter) {
+        case HistoryFilter.all:
+          ref.invalidate(timelineProvider(vehicleId));
+          await ref.read(timelineProvider(vehicleId).future);
+        case HistoryFilter.maintenance:
+          ref.invalidate(maintenanceRecordsProvider(vehicleId));
+          await ref.read(maintenanceRecordsProvider(vehicleId).future);
+        case HistoryFilter.fuel:
+          ref.invalidate(abastecimentoHistoryProvider(vehicleId));
+          await ref.read(abastecimentoHistoryProvider(vehicleId).future);
+      }
     } on Object {
-      // The provider already holds the failure; TimelineView renders it.
+      // The provider already holds the failure; the view renders it.
     }
   }
 }
@@ -117,7 +188,6 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
         .watch(dashboardProvider(widget.vehicleId))
         .valueOrNull;
     final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
-    final costs = dashboard?.costs;
     final refuels = vehicle?.refueling.supported ?? false;
 
     return history.when(
@@ -129,63 +199,34 @@ class _TimelineViewState extends ConsumerState<TimelineView> {
       data: (state) => TimelineContent(
         state: state,
         scroll: _scroll,
-        header: _header(costs, dashboard?.lastAbastecimento, refuels, vehicle),
-        onOpen: (entry) => _open(entry),
+        header: TimelineSummary.orNull(
+          costs: dashboard?.costs,
+          lastFill: refuels ? dashboard?.lastAbastecimento : null,
+          onCostsTap: () => context.push(AppRoutes.costs),
+          onFuelTap: () => context.push(AppRoutes.abastecimentos),
+        ),
+        onOpen: (entry) {
+          final route = routeForTimelineEntry(entry);
+          if (route != null) context.push(route);
+        },
         onAddRecord: () => AddRecordSheet.show(context),
         onRetryPage: () =>
             ref.read(timelineProvider(widget.vehicleId).notifier).loadMore(),
       ),
     );
   }
-
-  Widget? _header(
-    DashboardCosts? costs,
-    LastAbastecimento? last,
-    bool refuels,
-    vehicle,
-  ) {
-    final showCosts = costs != null && costs.totalCents.cents > 0;
-    final showFill = refuels && last != null;
-    if (!showCosts && !showFill) return null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (showCosts)
-          TimelineCostsSummary(
-            costs: costs,
-            onTap: () => context.push(AppRoutes.costs),
-          ),
-        if (showCosts && showFill) const SizedBox(height: AppSpacing.s12),
-        if (showFill)
-          LastAbastecimentoCard(
-            supported: true,
-            last: last,
-            onTap: () => context.push(AppRoutes.abastecimentos),
-          ),
-      ],
-    );
-  }
-
-  void _open(TimelineEntry entry) {
-    final route = routeForTimelineEntry(entry);
-    if (route == null) return;
-    context.push(route);
-  }
 }
 
-/// The timeline as pure presentation.
+/// The timeline as pure presentation: what the car cost at the top, then its
+/// history, one card per month.
 ///
-/// History is a sequence, so it is drawn as one: a rail down the left with a
-/// node per event, grouped under the day it happened, one surface per day.
+/// **A card per month, not per day.** Each day used to be its own card with
+/// a rail and a glowing node per event, so a month of fills was a column of
+/// boxes and the history read as clutter rather than as a sequence. A month
+/// is the unit people remember ("foi em agosto"); the day sits in each row.
 ///
-/// Three things the shape has to deliver, and each is a layout decision:
-///
-///  * **Dates found at a glance** — each day and its events share one
-///    surface, so a date never becomes a detached band while scrolling.
-///  * **Mileage and money legible as a column** — both are set in tabular
-///    figures, right-aligned, so the numbers line up down the page.
-///  * **Kinds told apart** — a small icon per event, and the type as the
-///    subtitle when the server did not send one.
+/// Mileage and money line up as a column: the amount on the right of every
+/// row, the mileage in the line under the name.
 class TimelineContent extends StatelessWidget {
   const TimelineContent({
     super.key,
@@ -200,7 +241,7 @@ class TimelineContent extends StatelessWidget {
   final PagedState<TimelineEntry> state;
   final ScrollController? scroll;
 
-  /// Shown above the first day — the cost summary and the last fill.
+  /// Shown above the first month — what the car cost, and its fuel.
   final Widget? header;
   final ValueChanged<TimelineEntry>? onOpen;
   final VoidCallback? onAddRecord;
@@ -211,203 +252,173 @@ class TimelineContent extends StatelessWidget {
     if (state.items.isEmpty) {
       return AppEmptyState(
         icon: Icons.history_outlined,
-        title: 'O histórico do seu carro começa aqui',
+        title: 'Nenhum registro ainda',
         message:
-            'Cada manutenção, quilometragem e pagamento registrado vira o '
-            'histórico que o carro leva na revenda.',
-        actionLabel: 'Adicionar registro',
+            'Cada manutenção, abastecimento e pagamento registrado entra '
+            'aqui, e vira o histórico que o carro leva na revenda.',
+        actionLabel: onAddRecord == null ? null : 'Adicionar registro',
         onAction: onAddRecord,
       );
     }
 
-    final days = groupTimelineByDate(state.items);
+    final months = groupTimelineByMonth(state.items);
 
-    return CustomScrollView(
+    return ListView.builder(
       controller: scroll,
-      slivers: [
-        if (header != null)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.page,
-                AppSpacing.s8,
-                AppSpacing.page,
-                AppSpacing.s8,
-              ),
-              child: header,
-            ),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: AppSpacing.tab,
+      itemCount: months.length + 2,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          if (header == null) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: appGroupGap),
+            child: header,
+          );
+        }
+        if (index == months.length + 1) {
+          return AppPagedFooter(state: state, onRetry: onRetryPage);
+        }
+        final month = months[index - 1];
+        return Padding(
+          padding: EdgeInsets.only(top: index == 1 ? 0 : appGroupGap),
+          child: AppGroup(
+            title: month.label,
+            children: [
+              for (final entry in month.items)
+                TimelineRow(
+                  entry: entry,
+                  onTap:
+                      onOpen != null && routeForTimelineEntry(entry) != null
+                      ? () => onOpen!(entry)
+                      : null,
+                ),
+            ],
           ),
-        for (final day in days) ...[
-          // A box adapter, not a SliverList: a day holds a handful of events,
-          // and the laziness that a sliver list would keep is not worth a
-          // decoration that cannot wrap one.
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.page,
-                AppSpacing.s16,
-                AppSpacing.page,
-                AppSpacing.s8,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _DayHeader(
-                    label: day.label,
-                    year: day.year,
-                    weekday: day.weekday,
-                  ),
-                  const SizedBox(height: AppSpacing.s8),
-                  AppSurface(
-                    variant: AppSurfaceVariant.grouped,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.s8,
-                      vertical: AppSpacing.s4,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (var i = 0; i < day.entries.length; i++)
-                          _EntryTile(
-                            entry: day.entries[i],
-                            isLast: i == day.entries.length - 1,
-                            onTap:
-                                onOpen != null &&
-                                    routeForTimelineEntry(day.entries[i]) !=
-                                        null
-                                ? () => onOpen!(day.entries[i])
-                                : null,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        );
+      },
+    );
+  }
+}
+
+/// What the car cost, and how its fuel is going — the two numbers the
+/// history is opened for, as two lines that each lead to their own screen.
+///
+/// It was two cards: a large total with a paragraph under it, and a "último
+/// abastecimento" card with three figures side by side. Five numbers before
+/// the first line of history. Now it is one card, one figure per line, and
+/// the detail is a tap away.
+class TimelineSummary extends StatelessWidget {
+  const TimelineSummary({
+    super.key,
+    this.costs,
+    this.lastFill,
+    this.onCostsTap,
+    this.onFuelTap,
+  });
+
+  /// Null when there is nothing to say: no cost registered and no fill.
+  static TimelineSummary? orNull({
+    DashboardCosts? costs,
+    LastAbastecimento? lastFill,
+    VoidCallback? onCostsTap,
+    VoidCallback? onFuelTap,
+  }) {
+    final showCosts = costs != null && costs.totalCents.cents > 0;
+    if (!showCosts && lastFill == null) return null;
+    return TimelineSummary(
+      costs: showCosts ? costs : null,
+      lastFill: lastFill,
+      onCostsTap: onCostsTap,
+      onFuelTap: onFuelTap,
+    );
+  }
+
+  final DashboardCosts? costs;
+  final LastAbastecimento? lastFill;
+  final VoidCallback? onCostsTap;
+  final VoidCallback? onFuelTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final costs = this.costs;
+    final fill = lastFill;
+    return AppGroup(
+      children: [
+        if (costs != null)
+          AppListRow(
+            icon: Icons.payments_outlined,
+            title: costs.periodMonths == 12
+                ? 'Gastos em 12 meses'
+                : 'Gastos nos ${costWindowLabel(costs.periodMonths)}',
+            value: costs.totalCents.format(),
+            strongValue: true,
+            onTap: onCostsTap,
+            showChevron: onCostsTap != null,
           ),
-        ],
-        SliverToBoxAdapter(
-          child: _Footer(state: state, onRetry: onRetryPage),
-        ),
+        if (fill != null)
+          AppListRow(
+            icon: Icons.local_gas_station_outlined,
+            title: 'Consumo',
+            subtitle:
+                'Abastecido em ${formatCivilDayMonthAbbrev(fill.occurredOn)}',
+            value: consumptionShortPhrase(fill.consumption) ?? '—',
+            strongValue: true,
+            onTap: onFuelTap,
+            showChevron: onFuelTap != null,
+          ),
       ],
     );
   }
 }
 
-/// What the car cost in the window, as the head of its history.
-///
-/// The same `/dashboard` figure, set as an instrument reading; the breakdown
-/// by category and period is one tap away.
-class TimelineCostsSummary extends StatelessWidget {
-  const TimelineCostsSummary({super.key, required this.costs, this.onTap});
+/// One entry of the history: what, when and how far, and what it cost.
+class TimelineRow extends StatelessWidget with GroupedRow {
+  const TimelineRow({super.key, required this.entry, this.onTap});
 
-  final DashboardCosts costs;
+  final TimelineEntry entry;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final label = costPeriodLabel(costs.periodMonths);
-    final included = includedCategoriesLine(costs.noteCategoryKeys);
+    final amount = entry.amountCents;
+    final showAmount = amount != null && amount.cents > 0;
+    final mileage = entry.mileageKm;
+    // One line: when, and where on the odometer. The workshop, the fuel
+    // and the rest are on the entry's own screen; here they wrapped every
+    // row onto a third line.
+    final detail = [
+      formatCivilDayMonthAbbrev(entry.occurredOn),
+      if (mileage != null)
+        formatKm(mileage)
+      else
+        ?timelineSubtitleOf(entry),
+    ].join(' · ');
 
-    return Semantics(
-      button: onTap != null,
-      label: '$label: ${costs.totalCents.format()}. Ver detalhes',
-      excludeSemantics: true,
-      child: AppSurface(
-        variant: AppSurfaceVariant.grouped,
-        onTap: onTap,
-        padding: const EdgeInsets.all(AppSpacing.s16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s8),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: AppMetric(
-                      value: costs.totalCents.format(),
-                      size: AppMetricSize.hero,
-                    ),
-                  ),
-                  if (included != null) ...[
-                    const SizedBox(height: AppSpacing.s4),
-                    Text(
-                      included,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (onTap != null) ...[
-              const SizedBox(width: AppSpacing.s8),
-              Icon(Icons.chevron_right, size: 20, color: scheme.outline),
-            ],
-          ],
-        ),
-      ),
+    return AppListRow(
+      icon: timelineIconOf(entry),
+      title: titleOf(entry),
+      titleMaxLines: 2,
+      subtitle: detail,
+      value: showAmount ? amount.format() : null,
+      strongValue: true,
+      onTap: onTap,
+      showChevron: onTap != null,
     );
   }
 }
 
-final class TimelineDateGroup {
-  const TimelineDateGroup({
-    required this.label,
-    required this.year,
-    required this.weekday,
-    required this.entries,
-  });
-
-  final String label;
-
-  /// Short and lower case. A day of the month is a lookup; a weekday is a
-  /// memory.
-  final String weekday;
-
-  /// Shown beside the day, quietly. A history that goes back three years is
-  /// unreadable without it, and it is the wrong thing to make anyone scroll
-  /// to work out.
-  final int year;
-
-  final List<TimelineEntry> entries;
-}
-
 /// The list already arrives newest first, so a group closes wherever the
-/// civil day changes — no sorting, no second pass.
+/// month changes — no sorting, no second pass.
 @visibleForTesting
-List<TimelineDateGroup> groupTimelineByDate(List<TimelineEntry> entries) {
-  final groups = <TimelineDateGroup>[];
-  CivilDate? day;
-  for (final entry in entries) {
-    if (entry.occurredOn != day) {
-      day = entry.occurredOn;
-      groups.add(
-        TimelineDateGroup(
-          label: formatCivilDayMonthShort(entry.occurredOn),
-          year: entry.occurredOn.year,
-          weekday: formatCivilWeekdayShort(entry.occurredOn),
-          entries: <TimelineEntry>[],
-        ),
-      );
-    }
-    groups.last.entries.add(entry);
-  }
-  return groups;
+List<({String label, List<TimelineEntry> items})> groupTimelineByMonth(
+  List<TimelineEntry> entries,
+) {
+  return groupByMonth<TimelineEntry>(
+    entries,
+    (entry) => (year: entry.occurredOn.year, month: entry.occurredOn.month),
+    (entry) => formatCivilMonthHeader(entry.occurredOn),
+  );
 }
 
 /// Where a tap should go. `null` means the row is not tappable — an unknown
@@ -424,94 +435,7 @@ String? routeForTimelineEntry(TimelineEntry entry) {
   };
 }
 
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({
-    required this.label,
-    required this.year,
-    required this.weekday,
-  });
-
-  final String label;
-  final int year;
-  final String weekday;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-      child: Text.rich(
-        TextSpan(
-          text: label,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.colorScheme.onSurface,
-            letterSpacing: 0.6,
-            fontFeatures: AppTypography.tabular,
-          ),
-          children: [
-            TextSpan(
-              text: ' $year · $weekday',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry, required this.isLast, this.onTap});
-
-  final TimelineEntry entry;
-  final bool isLast;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final amount = entry.amountCents;
-    final showAmount = amount != null && amount.cents > 0;
-    final mileage = entry.mileageKm;
-
-    return AppTimelineTile(
-      title: titleOf(entry),
-      subtitle: _subtitleOf(entry),
-      icon: _iconFor(entry),
-      isLast: isLast,
-      onTap: onTap,
-      trailing: (showAmount || mileage != null)
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (showAmount)
-                  Text(
-                    amount.format(),
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: AppTypography.tabular,
-                    ),
-                  ),
-                if (mileage != null)
-                  Text(
-                    formatKm(mileage),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontFeatures: AppTypography.tabular,
-                    ),
-                  ),
-              ],
-            )
-          : null,
-    );
-  }
-}
-
-IconData _iconFor(TimelineEntry entry) {
+IconData timelineIconOf(TimelineEntry entry) {
   if (entry.care == true) return Icons.checklist_rtl_outlined;
   return switch (entry.kind) {
     TimelineEntryKind.manutencao => Icons.build_outlined,
@@ -523,7 +447,8 @@ IconData _iconFor(TimelineEntry entry) {
   };
 }
 
-String? _subtitleOf(TimelineEntry entry) {
+/// The server's second line for an entry, in the app's words.
+String? timelineSubtitleOf(TimelineEntry entry) {
   final raw = entry.subtitle?.trim();
   if (raw == null || raw.isEmpty) return null;
   // A server from before the fix sent the reading's source column as it is:
@@ -541,64 +466,21 @@ String? _subtitleOf(TimelineEntry entry) {
   return abastecimentoFuelLabel(fuel);
 }
 
-class _Footer extends StatelessWidget {
-  const _Footer({required this.state, this.onRetry});
-
-  final PagedState<TimelineEntry> state;
-  final VoidCallback? onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    if (state.lastPageError != null) {
-      final error = state.lastPageError;
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
-        child: Column(
-          children: [
-            Text(
-              error is ApiFailure
-                  ? error.message
-                  : 'Não foi possível carregar mais.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            AppButton(
-              label: 'Tentar de novo',
-              variant: AppButtonVariant.tertiary,
-              onPressed: onRetry,
-            ),
-          ],
-        ),
-      );
-    }
-    if (state.isLoadingMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.s24),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return const SizedBox(height: AppSpacing.s40);
-  }
-}
-
-/// Mirrors the timeline: the summary, a day header, then a few nodes.
+/// Mirrors the timeline: the summary card, a month title, a month card.
 class _TimelineSkeleton extends StatelessWidget {
   const _TimelineSkeleton();
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: AppSpacing.screen,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: AppSpacing.tab,
       children: const [
-        AppSkeleton(width: double.infinity, height: 104),
-        SizedBox(height: AppSpacing.s24),
-        AppSkeleton(width: 96, height: 14),
+        AppSkeleton(width: double.infinity, height: 124),
+        SizedBox(height: AppSpacing.block),
+        AppSkeleton(width: 150, height: 18),
         SizedBox(height: AppSpacing.s12),
-        AppSkeleton(width: double.infinity, height: 140),
-        SizedBox(height: AppSpacing.s24),
-        AppSkeleton(width: 96, height: 14),
-        SizedBox(height: AppSpacing.s12),
-        AppSkeleton(width: double.infinity, height: 96),
+        AppSkeleton(width: double.infinity, height: 196),
       ],
     );
   }

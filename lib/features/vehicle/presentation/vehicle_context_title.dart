@@ -2,96 +2,88 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meu_auto/core/router/app_routes.dart';
-import 'package:meu_auto/core/theme/app_radius.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
+import 'package:meu_auto/features/auth/application/auth_controller.dart';
+import 'package:meu_auto/features/auth/domain/auth_status.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
+import 'package:meu_auto/features/vehicle/domain/vehicle.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
+import 'package:meu_auto/shared/widgets/app_tab_header.dart';
 
-/// The title of a main tab, and which car it is about.
+/// The header of a main tab other than Início: the tab's name, the car it is
+/// about, the tab's own actions and the account.
 ///
 /// Início is titled with the car itself. The other three tabs are titled with
-/// what they are — Manutenção, Documentos, Histórico — and, as soon as the
-/// account has a second car, the car's name goes under the title as the way to
-/// switch. Someone who switched on Início and went to Documentos must see
-/// whose IPVA this is.
-class VehicleContextTitle extends ConsumerWidget {
-  const VehicleContextTitle({super.key, required this.title});
+/// what they are — Manutenção, Documentos, Histórico — and carry the car on
+/// the line under it, always: someone who switched on Início and went to
+/// Documentos must see whose IPVA this is, and with one car the line is still
+/// the way to add a second.
+class VehicleTabHeader extends ConsumerWidget {
+  const VehicleTabHeader({
+    super.key,
+    required this.title,
+    this.actions = const [],
+  });
 
   final String title;
 
+  /// The tab's own icon buttons, before the account button.
+  final List<Widget> actions;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final tones = AppTones.of(context);
-    final vehicles = ref.watch(vehiclesProvider).valueOrNull?.vehicles ?? [];
     final selected = ref.watch(selectedVehicleProvider).valueOrNull;
-    if (selected == null || vehicles.length < 2) {
-      return Text(title);
-    }
-
-    return Semantics(
-      button: true,
-      label: '$title. ${selected.shortName}. Trocar veículo',
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: () => VehicleSwitcherSheet.show(context),
-        borderRadius: AppRadius.borderS,
-        highlightColor: tones.overlayPressed,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSpacing.minTapTarget),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      selected.shortName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.expand_more,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    return AppTabHeader(
+      title: title,
+      contextLabel: selected == null ? null : vehicleContextLabel(selected),
+      onContextTap: selected == null
+          ? null
+          : () => VehicleSwitcherSheet.show(context),
+      contextSemanticLabel: selected == null
+          ? null
+          : 'Veículo: ${selected.shortName}. Trocar veículo',
+      actions: [...actions, const ProfileButton()],
     );
   }
 }
 
-/// The way into the account from any main tab: a small outlined disc with
-/// the person glyph, at the end of the bar where the owner's other apps keep
-/// it.
+/// "Prius · QAF5G33" — the name and, when there is one, the plate: the two
+/// things that tell the owner's cars apart at a glance.
+String vehicleContextLabel(Vehicle vehicle) {
+  final plate = vehicle.plate?.trim();
+  if (plate == null || plate.isEmpty) return vehicle.headlineName;
+  return '${vehicle.headlineName} · $plate';
+}
+
+/// The way into the account from any main tab: the owner's initial in a
+/// small disc, at the end of the header where their other apps keep it.
 ///
 /// Perfil is not a tab. It is visited a few times a year — a name, a
 /// password, the theme, the list of cars — while what happened to the car
 /// and what it cost is one of the three things the product exists for.
-class ProfileButton extends StatelessWidget {
+class ProfileButton extends ConsumerWidget {
   const ProfileButton({super.key, this.onPressed});
 
   /// Defaults to opening Perfil.
   final VoidCallback? onPressed;
 
+  static const double _disc = 36;
+
+  /// How far the 48dp target reaches past the drawn disc on each side. A
+  /// header shifts the button by this much so the disc, not the target,
+  /// lines up with the gutter.
+  static const double overhang = (AppSpacing.minTapTarget - _disc) / 2;
+
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final tones = AppTones.of(context);
+    final auth = ref.watch(authControllerProvider).valueOrNull;
+    final name = auth is AuthLoggedIn ? auth.user.name.trim() : '';
+    final initial = name.isEmpty ? null : name.characters.first.toUpperCase();
+
     return Semantics(
       button: true,
       label: 'Perfil e conta',
@@ -110,18 +102,26 @@ class ProfileButton extends StatelessWidget {
               height: AppSpacing.minTapTarget,
               child: Center(
                 child: Container(
-                  width: 38,
-                  height: 38,
+                  width: _disc,
+                  height: _disc,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: tones.strokeStrong),
-                    color: scheme.surfaceContainerLow,
+                    color: scheme.secondaryContainer,
                   ),
-                  child: Icon(
-                    Icons.person_outline,
-                    size: 20,
-                    color: scheme.onSurface,
-                  ),
+                  child: initial == null
+                      ? Icon(
+                          Icons.person_outline,
+                          size: 20,
+                          color: scheme.onSecondaryContainer,
+                        )
+                      : Text(
+                          initial,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: scheme.onSecondaryContainer,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ),

@@ -278,7 +278,7 @@ class MaintenanceDetailContent extends StatelessWidget {
                     ),
                     Text(
                       record.totalCostCents.format(),
-                      style: AppTypography.instrument(
+                      style: AppTypography.figure(
                         size: 22,
                         color: scheme.onSurface,
                       ),

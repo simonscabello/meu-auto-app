@@ -15,6 +15,10 @@ Future<T?> showAppSheet<T>(
 }) {
   return showModalBottomSheet<T>(
     context: context,
+    // Over the whole app, tab bar included: a sheet opened from a tab used to
+    // slide up between the page and the bar, which stayed lit and tappable
+    // beside the scrim.
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: !isForm,

@@ -208,6 +208,13 @@ final class Vehicle {
     ];
   }
 
+  /// The make and the year, whichever are known — the line under the name on
+  /// Início, where the plate is drawn on its own.
+  List<String> get brandAndYear {
+    final year = modelYear ?? manufactureYear;
+    return [brand, if (year != null) '$year'];
+  }
+
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
       id: json['id'] as String,

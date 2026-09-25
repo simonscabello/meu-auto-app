@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_section_header.dart';
 import 'package:meu_auto/shared/widgets/app_surface.dart';
 
-/// A label, and the rows it names, inside one surface.
+/// A title, and the rows it names, inside one surface.
 ///
-/// The grouped list every phone already uses for settings: **the label stays
-/// outside and quiet, the rows go inside one filled surface with a hairline
-/// edge and hairlines between them.** It says three things a bare stack
-/// cannot — these rows are one thing, this thing ends here, the label above
-/// is a name and not a row.
+/// **Several rows, one card.** A list drawn as one card per item says "twelve
+/// separate things" when there is one thing with twelve lines, and it stacks
+/// twelve borders on the screen. Here the group is the object and the row is
+/// its content: one edge around all of them, hairlines between them.
 ///
-/// [AppSurface] is the primitive for a *block* that is not a list. This is
-/// for the list.
+/// **The hairline starts where the text starts**, not at the card's edge.
+/// Aligned with the names it organises the reading; run edge to edge it cuts
+/// the card in pieces.
+///
+/// For a long list that scrolls and filters — the history — the rows go
+/// straight on the page instead (see `AppRowDivider`); a card that is taller
+/// than the screen is not grouping anything.
 class AppGroup extends StatelessWidget {
   const AppGroup({
     super.key,
@@ -24,8 +29,8 @@ class AppGroup extends StatelessWidget {
     this.onAction,
     this.count,
     this.footnote,
-    this.dividerIndent = 48,
-    this.emphasis = AppSectionEmphasis.label,
+    this.dividerIndent = iconIndent,
+    this.emphasis = AppSectionEmphasis.title,
   });
 
   /// The rows. Each is padded horizontally by the group; a row keeps its own
@@ -45,13 +50,18 @@ class AppGroup extends StatelessWidget {
   final String? footnote;
 
   /// Where the hairline between rows starts, measured from the group's inner
-  /// edge. Defaults to the icon column, so rows read as one list. Pass `0`
-  /// for a group whose rows carry no icon.
+  /// edge. Defaults to the text column of a row with an icon; pass
+  /// [textIndent] for a group whose rows carry none.
   final double dividerIndent;
 
-  /// How loud the label is. A quiet label for a grouped list; a title for a
-  /// section that is the point of the screen.
   final AppSectionEmphasis emphasis;
+
+  /// A row's icon slot (24) plus the gap after it (12): where a row's text
+  /// starts. `AppListRow` lays itself out on the same two numbers.
+  static const double iconIndent = 36;
+
+  /// Rows with no icon: the hairline starts with the text.
+  static const double textIndent = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +93,7 @@ class AppGroup extends StatelessWidget {
                 for (var i = 0; i < children.length; i++) ...[
                   if (i > 0)
                     Padding(
-                      padding: const EdgeInsets.only(left: AppSpacing.s16),
+                      padding: const EdgeInsets.only(left: AppSpacing.inset),
                       child: Divider(
                         height: 1,
                         thickness: 1,
@@ -91,12 +101,7 @@ class AppGroup extends StatelessWidget {
                         color: tones.divider,
                       ),
                     ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.s16,
-                    ),
-                    child: children[i],
-                  ),
+                  frameGroupRow(children[i]),
                 ],
               ],
             ),
@@ -105,17 +110,24 @@ class AppGroup extends StatelessWidget {
           const SizedBox(height: AppSpacing.s8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-            child: Text(
-              footnote!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+            child: Text(footnote!, style: theme.textTheme.bodySmall),
           ),
         ],
       ],
     );
   }
+}
+
+/// A row that pads itself gets the padding handed down, so its ink reaches
+/// the card's edges; anything else is padded from the outside.
+Widget frameGroupRow(Widget child) {
+  if (child is GroupedRow) {
+    return AppGroupScope(horizontalPadding: AppSpacing.inset, child: child);
+  }
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.inset),
+    child: child,
+  );
 }
 
 /// The fill a grouped surface sits on. Shared so a screen that has to build

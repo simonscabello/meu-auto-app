@@ -125,20 +125,22 @@ String seguroVigenciaPhrase(Seguro seguro) {
 /// "Pago · Em dia" would be saying it twice, so a policy paid on time is just
 /// "Pago"; only a late payment adds its clause.
 String obligationListSubtitle(Obligation obligation) {
-  if (obligation.status == ObligationStatus.pago) {
-    final late = paidLatePhrase(daysPaidLate(obligation) ?? 0);
-    return late == null ? 'Pago' : 'Pago · $late';
+  switch (obligation.status) {
+    case ObligationStatus.pago:
+      final late = paidLatePhrase(daysPaidLate(obligation) ?? 0);
+      if (late != null) return capitalizeFirst(late);
+      final paidOn = obligation.paidOn;
+      return paidOn == null
+          ? 'Pago'
+          : 'Pago em ${formatCivilDayMonthAbbrev(paidOn)}';
+    case ObligationStatus.vencido:
+    case ObligationStatus.venceEmBreve:
+      return dueInDaysPhrase(obligation.remainingDays);
+    case ObligationStatus.pendente:
+      return 'A pagar até ${formatCivilDate(obligation.dueOn)}';
+    case ObligationStatus.desconhecido:
+      return '';
   }
-  final label = switch (obligation.status) {
-    ObligationStatus.vencido => 'Vencido',
-    ObligationStatus.venceEmBreve => 'Vence em breve',
-    ObligationStatus.pendente => 'A pagar',
-    ObligationStatus.pago || ObligationStatus.desconhecido => '',
-  };
-  final phrase = obligationStatusPhrase(obligation);
-  if (label.isEmpty) return phrase;
-  if (phrase.isEmpty) return label;
-  return '$label · $phrase';
 }
 
 /// The same, for a policy.
@@ -152,17 +154,13 @@ String seguroListSubtitle(Seguro seguro) {
           seguro.status == SeguroStatus.venceEmBreve)) {
     return 'Renovado';
   }
-  final label = switch (seguro.status) {
-    SeguroStatus.futuro => 'Ainda não começou',
-    SeguroStatus.vigente => 'Vigente',
-    SeguroStatus.venceEmBreve => 'Vence em breve',
-    SeguroStatus.vencido => 'Vencido',
+  return switch (seguro.status) {
+    SeguroStatus.futuro => seguroStartsPhrase(seguro.remainingDays),
+    SeguroStatus.vigente => 'Vigente até ${formatCivilDate(seguro.endsOn)}',
+    SeguroStatus.venceEmBreve => dueInDaysPhrase(seguro.remainingDays),
+    SeguroStatus.vencido => 'Vencido · carro sem cobertura',
     SeguroStatus.desconhecido => '',
   };
-  final phrase = seguroStatusPhrase(seguro);
-  if (label.isEmpty) return phrase;
-  if (phrase.isEmpty) return label;
-  return '$label · $phrase';
 }
 
 List<Obligation> obligationsOfKind(

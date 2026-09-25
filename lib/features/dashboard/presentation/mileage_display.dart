@@ -3,16 +3,15 @@ import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
-import 'package:meu_auto/shared/widgets/app_pressable.dart';
-import 'package:meu_auto/shared/widgets/app_surface.dart';
 
-/// The mileage, set as the reading on an instrument, with the one way to
-/// change it beside it.
+/// The mileage, set as a reading, with the way to update it on the same line.
 ///
 /// This is the app's most frequent write and the number every distance-based
-/// due date is measured from, so it is the largest figure on the screen and
-/// the pencil next to it is the main — the only prominent — way in. The
-/// quick actions below deliberately do not repeat it.
+/// due date is measured from, so it is the largest figure on the screen. The
+/// way to change it is a text action beside it — "Atualizar" — rather than a
+/// big button: it is always there and always obvious, and it never outweighs
+/// the reading it changes. The whole block is also a way in, for the thumb
+/// that lands on the number.
 class MileageDisplay extends StatelessWidget {
   const MileageDisplay({
     super.key,
@@ -24,7 +23,7 @@ class MileageDisplay extends StatelessWidget {
 
   final int currentKm;
 
-  /// "Atualizada em 5 de setembro", or how old the reading is.
+  /// "Atualizada hoje", or how old the reading is.
   final String caption;
 
   /// Whether the caption is asking for a new reading.
@@ -41,27 +40,16 @@ class MileageDisplay extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Quilometragem atual',
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: scheme.onSurfaceVariant,
-            letterSpacing: 0.2,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s8),
-        // FittedBox rather than a smaller type ramp: seven digits at a 1.6
-        // text scale on a 360dp phone is wider than the column, and shrinking
-        // the one number that matters beats wrapping it onto two lines.
+        // FittedBox rather than a smaller size: seven digits at a 1.6 text
+        // scale on a 360dp phone is wider than the column, and shrinking the
+        // one number that matters beats wrapping it onto two lines.
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Text.rich(
             TextSpan(
               text: formatKmNumber(currentKm),
-              style: AppTypography.instrument(
-                size: 60,
-                color: scheme.onSurface,
-              ),
+              style: AppTypography.figure(size: 44, color: scheme.onSurface),
               children: [
                 TextSpan(
                   text: ' km',
@@ -85,14 +73,7 @@ class MileageDisplay extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.s4),
             ],
-            Flexible(
-              child: Text(
-                caption,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ),
+            Flexible(child: Text(caption, style: theme.textTheme.bodySmall)),
           ],
         ),
       ],
@@ -101,7 +82,7 @@ class MileageDisplay extends StatelessWidget {
     return Semantics(
       button: onTap != null,
       label:
-          '$caption. ${formatKm(currentKm)}.'
+          '${formatKm(currentKm)}. $caption.'
           '${onTap == null ? '' : ' Atualizar quilometragem'}',
       excludeSemantics: true,
       child: Row(
@@ -115,36 +96,19 @@ class MileageDisplay extends StatelessWidget {
             ),
           ),
           if (onTap != null) ...[
-            const SizedBox(width: AppSpacing.s16),
-            _EditButton(onTap: onTap!),
+            const SizedBox(width: AppSpacing.s12),
+            Transform.translate(
+              // The text button's padding overhangs the gutter so its label,
+              // not its ink, lines up with the edge of the cards below.
+              offset: const Offset(AppSpacing.s12, 0),
+              child: TextButton.icon(
+                onPressed: onTap,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                label: const Text('Atualizar'),
+              ),
+            ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// The pencil: a raised disc, the accent glyph, and nothing else.
-class _EditButton extends StatelessWidget {
-  const _EditButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return AppPressable(
-      onTap: onTap,
-      child: AppSurface(
-        variant: AppSurfaceVariant.raised,
-        onTap: onTap,
-        borderRadius: const BorderRadius.all(Radius.circular(28)),
-        padding: EdgeInsets.zero,
-        child: SizedBox(
-          width: 56,
-          height: 56,
-          child: Icon(Icons.edit_outlined, size: 22, color: scheme.primary),
-        ),
       ),
     );
   }
