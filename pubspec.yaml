@@ -124,15 +124,15 @@ flutter_launcher_icons:
   android: true
   ios: true
   remove_alpha_ios: true
-  adaptive_icon_background: "#060E18"
+  adaptive_icon_background: "#090C10"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
   # Default is 16. The PNG already sits at 58.2% of the canvas (Android
   # adaptive safe zone is 61%); another inset would shrink the mark.
   adaptive_icon_foreground_inset: 0
 
 flutter_native_splash:
-  color: "#EEF3F8"
-  color_dark: "#060E18"
+  color: "#F2F4F7"
+  color_dark: "#090C10"
   image: "assets/icon/splash_light.png"
   image_dark: "assets/icon/splash_dark.png"
   web: false
@@ -141,7 +141,7 @@ flutter_native_splash:
     # ~66,7% centrais. splash_dark.png ocupa 70% e seria cortado; a camada
     # adaptativa ja respeita esse limite (58,2%), entao e' ela que vai aqui.
     image: "assets/icon/icon_foreground.png"
-    color: "#EEF3F8"
-    color_dark: "#060E18"
-    icon_background_color: "#EEF3F8"
-    icon_background_color_dark: "#060E18"
+    color: "#F2F4F7"
+    color_dark: "#090C10"
+    icon_background_color: "#F2F4F7"
+    icon_background_color_dark: "#090C10"

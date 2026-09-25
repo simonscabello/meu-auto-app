@@ -1,32 +1,42 @@
 # Identidade visual
 
 Definida, gerada e processada em 27/08/2026; re-tingida em 24/09/2026 quando o
-app trocou o teal pelo azul elétrico. A arte existe. Este arquivo registra o
-que foi decidido — não é um briefing para arte futura. O design system das
-telas está em `DESIGN-SYSTEM.md`.
+app trocou o teal pelo azul elétrico, e de novo em 25/09/2026 quando o segundo
+redesign trocou o navy com brilho pelo grafite e o azul de sinal. A arte
+existe. Este arquivo registra o que foi decidido — não é um briefing para arte
+futura. O design system das telas está em `DESIGN-SYSTEM.md`.
 
 Nada disto é cor nova. Tudo sai da paleta que o app tem em `AppColors`.
 
 ## Conceito
 
-Um mostrador de instrumento visto à noite, cujo ponteiro se resolve num check.
+Um mostrador de instrumento, cujo ponteiro se resolve num check.
 
 Painel de instrumentos é a linguagem visual inequivocamente automotiva. O fundo
-escuro é o que faz o mostrador parecer cluster, não selo de checkout.
+escuro é o que faz o mostrador parecer cluster, não selo de checkout. Desde o
+grafite ele é o mesmo quase-preto da página do app, sem azul no fundo: o azul
+fica só no que está aceso, como nas telas.
 
 ## Paleta
 
 | Uso | Hex | Token |
 | --- | --- | --- |
-| Fundo do ícone e da splash escura | `#060E18` | `AppColors.dark.surface` |
-| Graduações acesas e ponteiro (ícone, splash escura, camada adaptativa) | `#22B8FF` | `AppColors.dark.primary` |
-| Graduações apagadas (ícone, camada adaptativa) | `#3D5A7A` | `AppColors.dark.outline` |
-| Ponta do ponteiro | `#FFC857` | `AppColors.dark.tertiary` |
-| Símbolo da splash clara | `#0A66C2` | `AppColors.light.primary` |
-| Ponta do ponteiro na splash clara | `#8A5A00` | `AppColors.light.tertiary` |
-| Fundo da splash clara | `#EEF3F8` | `AppColors.light.surface` |
+| Fundo do ícone e da splash escura | `#090C10` | `AppColors.dark.surface` |
+| Graduações acesas e ponteiro (ícone, splash escura, camada adaptativa) | `#5B9DFF` | `AppColors.signal` |
+| Graduações apagadas (ícone, camada adaptativa) | `#3A4350` | `AppTones.dark.strokeStrong` |
+| Ponta do ponteiro | `#EFB54A` | `AppColors.dark.tertiary` |
+| Símbolo da splash clara | `#1A66DA` | `AppColors.signalDeep` |
+| Ponta do ponteiro na splash clara | `#93580A` | `AppColors.light.tertiary` |
+| Fundo da splash clara | `#F2F4F7` | `AppColors.light.surface` |
 
-O azul elétrico `#22B8FF` sobre `#EEF3F8` não passa de 2:1. Por isso existem
+As graduações apagadas deixaram de ser `outline`. No grafite o `outline`
+(`#6C7888`) é a borda de 3:1 dos campos, e com ele o arco apagado ficava quase
+tão claro quanto o aceso — o mostrador perdia o "aceso até aqui". Com
+`strokeStrong` o aceso fica cerca de seis vezes mais luminoso que o apagado,
+perto dos quatro que a arte original tinha. As duas versões foram geradas e
+comparadas antes da escolha (`TICK` no `tool/recolor_icons.dart`).
+
+O azul de sinal `#5B9DFF` sobre `#F2F4F7` não passa de 3:1. Por isso existem
 dois arquivos de splash, e não se troca um pelo outro.
 
 ## Os quatro assets
@@ -36,19 +46,21 @@ recentralizar, não "otimizar" o alfa (`-fuzz`, threshold, remoção de fundo). 
 alfa foi desmultiplicado contra o fundo conhecido; reprocessar devolve franja
 cinza nas bordas.
 
-A re-tintagem de 24/09/2026 foi feita por `tool/recolor_icons.dart`, que mapeia
-cada pixel como a mesma mistura das âncoras novas que ele era das antigas e
-preserva o alfa byte a byte. Rodar com
+As re-tintagens de 24 e 25/09/2026 foram feitas por `tool/recolor_icons.dart`,
+que mapeia cada pixel como a mesma mistura das âncoras novas que ele era das
+antigas e preserva o alfa byte a byte. Rodar com
 `flutter test tool/recolor_icons.dart --dart-define=APPLY=true`; sem `APPLY`
-ele só imprime a paleta. Uma nova mudança de paleta passa por ele, não por um
-editor.
+ele só imprime a paleta, e com `--dart-define=OUT=<pasta>` grava o resultado
+lá em vez de em `assets/icon/`, para olhar antes de decidir. Uma nova mudança
+de paleta passa por ele, não por um editor: a coluna "antiga" do mapeamento é
+sempre o que os arquivos têm hoje.
 
 | Arquivo | Uso | O que não pode mudar |
 | --- | --- | --- |
-| `icon.png` | iOS e Android legado | RGB opaco, fundo `#060E18`. A App Store rejeita canal alfa; `remove_alpha_ios: true` no gerador é a rede de segurança. |
+| `icon.png` | iOS e Android legado | RGB opaco, fundo `#090C10`. A App Store rejeita canal alfa; `remove_alpha_ios: true` no gerador é a rede de segurança. |
 | `icon_foreground.png` | Camada adaptativa do Android, e splash do Android 12+ | RGBA. A marca ocupa **58,2%** do lado. A zona segura do ícone adaptativo é **61%**; a arte original ocupava 77,5% e as graduações externas seriam cortadas pela máscara circular. |
-| `splash_light.png` | Símbolo da splash no tema claro | RGBA, azul `#0A66C2`. Só no claro. |
-| `splash_dark.png` | Símbolo da splash no tema escuro | RGBA, azul `#22B8FF`. Só no escuro. |
+| `splash_light.png` | Símbolo da splash no tema claro | RGBA, azul `#1A66DA`. Só no claro. |
+| `splash_dark.png` | Símbolo da splash no tema escuro | RGBA, azul `#5B9DFF`. Só no escuro. |
 
 ### Medidas travadas
 
@@ -91,7 +103,14 @@ O app abre no tema escuro por padrão (`ThemeModeStore`); a splash nativa segue
 o tema do sistema. Num aparelho em modo claro a emenda mostra a splash clara e
 depois o app escuro — é o tema persistido, não a arte.
 
-## Ponto aberto
+## Pontos abertos
+
+`icon_foreground.png` tem um halo preto em volta das marcas — era o brilho da
+arte original, e some sobre o fundo escuro do ícone adaptativo. Mas o bloco
+`android_12` usa esse mesmo arquivo na splash clara (`#F2F4F7`), onde o halo
+aparece como sombra suja. Já era assim antes do grafite. Resolver pede um
+quinto arquivo — a camada adaptativa sem halo, só para a splash clara do
+Android 12+ — e não uma edição deste.
 
 A **29 px** as graduações se dissolvem e sobra o check. Continua identificável
 e não bloqueia publicar. Se um dia incomodar, o caminho é vetorizar a marca e

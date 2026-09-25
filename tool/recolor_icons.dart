@@ -1,11 +1,17 @@
-// Re-tints the four launcher/splash PNGs from the teal identity to the
-// electric-blue one, keeping every alpha value and every edge exactly as it
-// is. Run with:
+// Re-tints the four launcher/splash PNGs from one palette to the next,
+// keeping every alpha value and every edge exactly as it is. Run with:
 //
 //   flutter test tool/recolor_icons.dart --dart-define=APPLY=true
 //
-// Without APPLY it only prints the palette of each file. Lives under tool/
-// so the ordinary `flutter test` run never touches it.
+// Without APPLY it only prints the palette of each file. With
+// --dart-define=OUT=<dir> it writes the re-tinted files there instead of over
+// assets/icon/, to look at them before committing to a palette. Lives under
+// tool/ so the ordinary `flutter test` run never touches it.
+//
+// History: teal → electric blue on 24/09/2026; electric blue → graphite and
+// signal blue on 25/09/2026. The "old" side of [_mapping] is always what the
+// files hold now, so a new palette means moving today's "new" column to the
+// left and writing the next one.
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -13,18 +19,34 @@ import 'dart:ui' as ui;
 import 'package:flutter_test/flutter_test.dart';
 
 const apply = bool.fromEnvironment('APPLY');
+const outDir = String.fromEnvironment('OUT');
+
+/// The unlit graduations. `strokeStrong` keeps the lit arc about as far above
+/// them as it was; `outline` is the brighter alternative. Overridable here to
+/// compare the two without editing the file.
+const _tickNew = int.fromEnvironment('TICK', defaultValue: 0xFF3A4350);
 
 /// Old → new, per role. Every pixel is expressed as a blend of the old
 /// anchors it sits between, and re-expressed as the same blend of the new.
+///
+/// The new column is `AppColors`, token for token: the page, the signal blue,
+/// amber, and on the light splash their daylight counterparts.
 const _mapping = <String, (int, int)>{
-  'bg': (0xFF121717, 0xFF060E18),
+  // AppColors.dark.surface
+  'bg': (0xFF060E18, 0xFF090C10),
   'shadow': (0xFF000000, 0xFF000000),
-  'tick': (0xFF4C565A, 0xFF3D5A7A),
-  'teal': (0xFF7ED4CE, 0xFF22B8FF),
-  'tip': (0xFFF0B27A, 0xFFFFC857),
-  'tickLight': (0xFF4C565A, 0xFF6E8299),
-  'tealLight': (0xFF0F6E6A, 0xFF0A66C2),
-  'tipLight': (0xFFB45309, 0xFF8A5A00),
+  // AppTones.dark.strokeStrong (or TICK)
+  'tick': (0xFF3D5A7A, _tickNew),
+  // AppColors.signal
+  'teal': (0xFF22B8FF, 0xFF5B9DFF),
+  // AppColors.dark.tertiary
+  'tip': (0xFFFFC857, 0xFFEFB54A),
+  // AppColors.light.outline
+  'tickLight': (0xFF6E8299, 0xFF808A98),
+  // AppColors.signalDeep
+  'tealLight': (0xFF0A66C2, 0xFF1A66DA),
+  // AppColors.light.tertiary
+  'tipLight': (0xFF8A5A00, 0xFF93580A),
 };
 
 const _files = <String, List<String>>{
@@ -66,8 +88,11 @@ void main() {
         out[i + 3] = a;
       }
       final encoded = await _encode(out, image.width, image.height);
-      await file.writeAsBytes(encoded, flush: true);
-      stdout.writeln('wrote ${entry.key}');
+      final target = outDir.isEmpty
+          ? file
+          : File('$outDir/${file.uri.pathSegments.last}');
+      await target.writeAsBytes(encoded, flush: true);
+      stdout.writeln('wrote ${target.path}');
     }
   });
 }
