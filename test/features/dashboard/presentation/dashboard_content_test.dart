@@ -215,7 +215,7 @@ void main() {
 
     // A gauge on every row was a metric added because the data existed. The
     // fraction lives on the plan's own screen.
-    testWidgets('Início draws no progress bars, even with a fraction', (
+    testWidgets('Início draws no progress bars', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -229,9 +229,6 @@ void main() {
                   _upcoming(title: 'Pastilhas de freio', remainingKm: 18000),
                 ],
               ),
-              progressByReference: const {
-                '33333333-3333-7333-8333-333333333333': 0.58,
-              },
             ),
           ),
         ),

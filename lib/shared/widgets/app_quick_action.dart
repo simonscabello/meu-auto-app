@@ -71,6 +71,7 @@ class AppQuickAction extends StatelessWidget {
       enabled: onTap != null,
       label: label,
       excludeSemantics: true,
+      onTap: onTap,
       child: AppPressable(
         onTap: onTap,
         child: AppSurface(

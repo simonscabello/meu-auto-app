@@ -66,23 +66,29 @@ class AppTabHeader extends StatelessWidget {
             ),
           ),
           if (tappable) ...[
-            const SizedBox(width: 2),
+            const SizedBox(width: AppSpacing.s4),
             Icon(Icons.unfold_more, size: 18, color: contextColor),
           ],
         ],
       );
       if (tappable) {
         contextLine = Semantics(
+          // Its own node: next to a heading it would otherwise merge into
+          // one announcement with it.
+          container: true,
           button: true,
           label: contextSemanticLabel ?? '$contextLabel. Trocar veículo',
           excludeSemantics: true,
+          onTap: onContextTap,
           child: InkWell(
             onTap: onContextTap,
             borderRadius: AppRadius.borderS,
             highlightColor: tones.overlayPressed,
             splashColor: tones.overlayPressed,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 36),
+              constraints: const BoxConstraints(
+                minHeight: AppSpacing.minTapTarget,
+              ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 widthFactor: 1,
@@ -98,7 +104,7 @@ class AppTabHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.page,
         AppSpacing.s16,
-        AppSpacing.page - 6,
+        AppSpacing.page - AppSpacing.targetOverhang,
         AppSpacing.s16,
       ),
       child: Row(

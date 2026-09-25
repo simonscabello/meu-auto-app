@@ -227,10 +227,8 @@ class SeguroDetailContent extends StatelessWidget {
         const SizedBox(height: AppSpacing.s24),
         AppFactsStrip(
           facts: [
-            AppFact(
-              label: 'Vigência até',
-              value: formatCivilDate(seguro.endsOn),
-            ),
+            AppFact(label: 'Início', value: formatCivilDate(seguro.startsOn)),
+            AppFact(label: 'Fim', value: formatCivilDate(seguro.endsOn)),
             if (premium != null)
               AppFact(label: 'Prêmio', value: premium.format()),
           ],

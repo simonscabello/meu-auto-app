@@ -76,7 +76,6 @@ class AppButton extends StatelessWidget {
             shape: WidgetStatePropertyAll(
               RoundedRectangleBorder(borderRadius: AppRadius.borderS),
             ),
-            visualDensity: VisualDensity.compact,
           )
         : null;
 

@@ -61,6 +61,7 @@ class _AppFoldedSectionState extends State<AppFoldedSection> {
               ? widget.title
               : '${widget.title}. ${widget.subtitle}',
           excludeSemantics: true,
+          onTap: () => setState(() => _open = !_open),
           child: AppSurface(
             variant: AppSurfaceVariant.grouped,
             onTap: () => setState(() => _open = !_open),

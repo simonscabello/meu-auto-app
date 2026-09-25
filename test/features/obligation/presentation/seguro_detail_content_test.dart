@@ -54,7 +54,7 @@ void main() {
     await _pump(tester, _seguro());
 
     expect(find.text('Porto Seguro'), findsOneWidget);
-    expect(find.text('Vigência até'), findsOneWidget);
+    expect(find.text('Fim'), findsOneWidget);
     expect(find.text('10/01/2027'), findsOneWidget);
     expect(find.text('R\$ 2.500,00'), findsOneWidget);
     expect(find.text('12345'), findsOneWidget);

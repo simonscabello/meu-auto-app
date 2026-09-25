@@ -25,6 +25,7 @@ class AppIconButton extends StatelessWidget {
       enabled: onPressed != null,
       label: label,
       excludeSemantics: true,
+      onTap: onPressed,
       child: IconButton(
         tooltip: label,
         onPressed: onPressed,

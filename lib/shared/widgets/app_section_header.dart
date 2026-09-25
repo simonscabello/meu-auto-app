@@ -130,10 +130,14 @@ class AppSectionAction extends StatelessWidget {
         ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
         : scheme.primary;
     return Semantics(
+      // Its own node: next to a heading it would otherwise merge into
+      // one announcement with it.
+      container: true,
       button: true,
       enabled: onPressed != null,
       label: label,
       excludeSemantics: true,
+      onTap: onPressed,
       child: Transform.translate(
         // Pulls the ink back to the gutter so the text lines up with the
         // edge of the card below, and the padding still counts as target.
@@ -145,7 +149,9 @@ class AppSectionAction extends StatelessWidget {
             borderRadius: AppRadius.borderS,
             highlightColor: tones.overlayPressed,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 40),
+              constraints: const BoxConstraints(
+                minHeight: AppSpacing.minTapTarget,
+              ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.s8,

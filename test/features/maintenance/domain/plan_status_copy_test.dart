@@ -33,7 +33,7 @@ void main() {
             remainingKm: -2000,
           ),
         ),
-        'passou 2.000 km',
+        'Passou 2.000 km',
       );
     });
 
@@ -106,7 +106,7 @@ void main() {
             remainingKm: -80000,
           ),
         ),
-        'Nunca feito · passou 80.000 km',
+        'Nunca feito · Passou 80.000 km',
       );
     });
   });

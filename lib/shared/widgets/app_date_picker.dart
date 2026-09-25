@@ -112,6 +112,7 @@ class AppDateField extends StatelessWidget {
       enabled: enabled,
       label: '$label. $text',
       excludeSemantics: true,
+      onTap: enabled ? onPick : null,
       child: InkWell(
         onTap: enabled ? onPick : null,
         borderRadius: AppRadius.borderM,

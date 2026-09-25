@@ -102,6 +102,7 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
       button: true,
       label: value == null ? label : '$label. $value',
       excludeSemantics: true,
+      onTap: onTap,
       child: Material(
         color: Colors.transparent,
         child: InkWell(

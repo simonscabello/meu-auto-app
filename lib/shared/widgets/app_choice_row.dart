@@ -40,6 +40,7 @@ class AppChoiceRow<T> extends StatelessWidget with GroupedRow {
       enabled: active,
       label: subtitle == null ? label : '$label. $subtitle',
       excludeSemantics: true,
+      onTap: active ? () => onChanged!(value) : null,
       child: AppListRowShell(
         onTap: active ? () => onChanged!(value) : null,
         child: Row(

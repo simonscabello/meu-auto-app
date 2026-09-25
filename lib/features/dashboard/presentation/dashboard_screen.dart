@@ -14,7 +14,6 @@ import 'package:meu_auto/features/dashboard/presentation/mileage_display.dart';
 import 'package:meu_auto/features/maintenance/application/maintenance_plan_provider.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_plan.dart';
 import 'package:meu_auto/features/maintenance/domain/maintenance_profile.dart';
-import 'package:meu_auto/features/maintenance/domain/plan_progress.dart';
 import 'package:meu_auto/features/maintenance/presentation/maintenance_icons.dart';
 import 'package:meu_auto/features/odometer/presentation/odometer_sheet.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
@@ -45,14 +44,11 @@ class DashboardView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider(vehicleId));
     final vehicle = ref.watch(selectedVehicleProvider).valueOrNull;
-    // The plans carry the interval an alert does not, which is what turns
+    // The plans carry what an alert does not — the item's catalogue slug,
     // "faltam 4.112 km" into a bar. The tab keeps them alive; reading them
     // here costs no request, and a list that has not arrived just means no
     // bars yet.
     final plans = ref.watch(maintenancePlansProvider(vehicleId)).valueOrNull;
-    final progress = plans == null
-        ? const <String, double>{}
-        : planProgressById(plans);
     // The same list gives each maintenance alert its item's own glyph: an
     // alert carries the plan's id but not its catalogue slug.
     final icons = <String, IconData>{
@@ -75,7 +71,6 @@ class DashboardView extends ConsumerWidget {
         header: header,
         today: CivilDate.todayLocal(),
         refuelingSupported: vehicle?.refueling.supported ?? false,
-        progressByReference: progress,
         iconByReference: icons,
         onOdometerTap: () => OdometerSheet.show(
           context,
@@ -168,7 +163,6 @@ class DashboardContent extends StatelessWidget {
     this.header,
     this.today,
     this.refuelingSupported = false,
-    this.progressByReference = const {},
     this.iconByReference = const {},
     this.onOdometerTap,
     this.onProfileTap,
@@ -188,11 +182,6 @@ class DashboardContent extends StatelessWidget {
   final CivilDate? today;
 
   final bool refuelingSupported;
-
-  /// How far along each upcoming plan is, by plan id. Kept for the callers
-  /// that already compute it; Início no longer draws the bars — a gauge on
-  /// every row was a metric added because the data existed.
-  final Map<String, double> progressByReference;
 
   /// A glyph per referenced plan id, for the rows that point at a plan.
   final Map<String, IconData> iconByReference;

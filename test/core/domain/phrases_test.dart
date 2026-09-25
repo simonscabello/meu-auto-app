@@ -71,7 +71,7 @@ void main() {
           remainingKm: -1200,
           remainingDays: -20,
         ),
-        'passou 1.200 km · venceu há 20 dias',
+        'Venceu há 20 dias · passou 1.200 km',
       );
       expect(
         maintenanceStatusPhrase(
@@ -79,7 +79,7 @@ void main() {
           remainingKm: 1550,
           remainingDays: 12,
         ),
-        'faltam 12 dias · faltam 1.550 km',
+        'Faltam 1.550 km ou 12 dias',
       );
       expect(maintenanceStatusPhrase('vence_em_breve'), '');
       expect(maintenanceStatusPhrase('em_dia'), 'Em dia');

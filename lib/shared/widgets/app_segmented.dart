@@ -36,7 +36,9 @@ class AppSegmented<T> extends StatelessWidget {
     final active = enabled && onChanged != null;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.s4),
+      // 2dp of track around 44dp segments: the control is 48dp tall, and
+      // every segment is a target that size with the track counted in.
+      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         // A step below the page in daylight: the field tone sat within one
         // percent of the page there and the track vanished.
@@ -55,6 +57,7 @@ class AppSegmented<T> extends StatelessWidget {
                 enabled: active,
                 label: option.label,
                 excludeSemantics: true,
+                onTap: active ? () => onChanged!(option.value) : null,
                 child: AnimatedContainer(
                   duration: AppMotion.of(context, AppMotion.short),
                   curve: AppMotion.standard,
@@ -73,7 +76,7 @@ class AppSegmented<T> extends StatelessWidget {
                       highlightColor: tones.overlayPressed,
                       splashColor: tones.overlayPressed,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 40),
+                        constraints: const BoxConstraints(minHeight: 44),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: AppSpacing.s4,

@@ -208,6 +208,7 @@ class _ChoiceItemRow extends StatelessWidget with GroupedRow {
       selected: selected,
       label: item.name,
       excludeSemantics: true,
+      onTap: onSelect == null ? null : () => onSelect!(item),
       child: AppListRowShell(
         onTap: onSelect == null ? null : () => onSelect!(item),
         child: Row(

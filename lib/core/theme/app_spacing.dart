@@ -45,6 +45,15 @@ abstract final class AppSpacing {
 
   static const double minTapTarget = 48;
 
+  /// Where a row's text starts when the row has a glyph: the 24dp glyph slot
+  /// plus the 12dp gap after it. Hairlines between rows start here.
+  static const double rowTextIndent = 36;
+
+  /// How far a 48dp target reaches past a 36dp drawn control on each side.
+  /// A header pulls such a control out by this much so the drawn edge — the
+  /// avatar, the icon — meets the gutter instead of the invisible target.
+  static const double targetOverhang = (minTapTarget - 36) / 2;
+
   /// The primary button of a form, and anything that must weigh as much.
   static const double buttonHeight = 52;
 

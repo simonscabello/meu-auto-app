@@ -73,7 +73,7 @@ class ProfileButton extends ConsumerWidget {
   /// How far the 48dp target reaches past the drawn disc on each side. A
   /// header shifts the button by this much so the disc, not the target,
   /// lines up with the gutter.
-  static const double overhang = (AppSpacing.minTapTarget - _disc) / 2;
+  static const double overhang = AppSpacing.targetOverhang;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

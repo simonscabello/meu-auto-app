@@ -363,7 +363,7 @@ class TimelineSummary extends StatelessWidget {
             subtitle:
                 'Abastecido em ${formatCivilDayMonthAbbrev(fill.occurredOn)}',
             value: consumptionShortPhrase(fill.consumption) ?? '—',
-            strongValue: true,
+            strongValue: consumptionValueText(fill.consumption) != null,
             onTap: onFuelTap,
             showChevron: onFuelTap != null,
           ),

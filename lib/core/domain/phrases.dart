@@ -51,7 +51,7 @@ String dueInDaysPhrase(int remainingDays) {
   }
   if (remainingDays > _phraseDaysLimit) {
     final months = _approximateMonths(remainingDays);
-    if (months >= 24) return 'Vence em mais de ${months ~/ 12} anos';
+    if (months >= 24) return 'Vence em cerca de ${months ~/ 12} anos';
     return months == 1
         ? 'Vence em cerca de 1 mês'
         : 'Vence em cerca de $months meses';
@@ -74,12 +74,22 @@ String capitalizeFirst(String text) {
 /// km" asks the owner to weigh two facts when one decides. Figures come from
 /// the server; nothing here is date arithmetic.
 String? urgencyPhrase({int? remainingKm, int? remainingDays}) {
-  final useDays =
-      remainingDays != null &&
-      (remainingKm == null || remainingDays <= remainingKm);
-  if (useDays) return dueInDaysPhrase(remainingDays);
-  final km = remainingKmPhrase(remainingKm);
-  return km == null ? null : capitalizeFirst(km);
+  final days = remainingDays;
+  final km = remainingKm;
+  if (days == null && km == null) return null;
+  if (km == null) return dueInDaysPhrase(days!);
+  if (days == null) return capitalizeFirst(remainingKmPhrase(km)!);
+  // Both dimensions arrived. A day and a kilometre cannot be compared, so the
+  // one that is actually late — or, if neither is, the one that is close —
+  // leads, and the other follows only when it is late too.
+  final daysLate = days < 0;
+  final kmLate = km < 0;
+  if (daysLate && kmLate) {
+    return '${dueInDaysPhrase(days)} · ${remainingKmPhrase(km)}';
+  }
+  if (kmLate) return capitalizeFirst(remainingKmPhrase(km)!);
+  if (daysLate) return dueInDaysPhrase(days);
+  return 'Faltam ${formatKm(km)} ou ${days == 1 ? '1 dia' : '$days dias'}';
 }
 
 /// Upcoming, as the distance to it: "Faltam 4.200 km ou 30 dias",
@@ -112,7 +122,9 @@ String? upcomingSummary({
   }
 
   if (km == null && when == null) return null;
-  if (km != null && when != null) return 'Faltam $km ou $when';
+  if (km != null && when != null) {
+    return whenIsDate ? 'Faltam $km ou até $when' : 'Faltam $km ou $when';
+  }
   if (km != null) return 'Faltam $km';
   return whenIsDate ? 'Vence em $when' : 'Faltam $when';
 }
@@ -139,13 +151,13 @@ String maintenanceStatusPhrase(
     case 'vencido':
       // By how much, when the server said. "Está vencida" was feminine for
       // "Filtro de óleo" too, and said nothing the row's colour had not.
-      return dueSummary(
+      return urgencyPhrase(
             remainingKm: remainingKm,
             remainingDays: remainingDays,
           ) ??
           'Vencido';
     case 'vence_em_breve':
-      return dueSummary(
+      return urgencyPhrase(
             remainingKm: remainingKm,
             remainingDays: remainingDays,
           ) ??

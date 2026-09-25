@@ -305,6 +305,7 @@ class _PickRow extends StatelessWidget with GroupedRow {
       enabled: enabled,
       label: locked ? '${item.name}. Já está neste registro' : item.name,
       excludeSemantics: true,
+      onTap: enabled ? () => onToggle(item) : null,
       child: AppListRowShell(
         onTap: enabled ? () => onToggle(item) : null,
         child: Row(

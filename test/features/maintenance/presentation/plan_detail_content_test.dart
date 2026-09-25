@@ -48,7 +48,7 @@ void main() {
 
     expect(find.text('Troca de óleo do motor'), findsOneWidget);
     expect(find.text('Em dia'), findsOneWidget);
-    expect(find.text('Faltam 2.000 km ou 21/03/2027'), findsOneWidget);
+    expect(find.text('Faltam 2.000 km ou até 21/03/2027'), findsOneWidget);
     expect(find.text('Última vez'), findsOneWidget);
     expect(find.text('21/03/2026'), findsOneWidget);
     expect(find.text('Próxima'), findsOneWidget);

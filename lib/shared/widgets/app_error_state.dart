@@ -65,7 +65,9 @@ class AppErrorState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             AppIconWell(
-              icon: offline ? Icons.wifi_off_outlined : Icons.cloud_off_outlined,
+              icon: offline
+                  ? Icons.wifi_off_outlined
+                  : Icons.cloud_off_outlined,
               size: AppIconWellSize.xl,
               tone: offline ? AppIconWellTone.neutral : AppIconWellTone.status,
               status: AppStatus.vencido,

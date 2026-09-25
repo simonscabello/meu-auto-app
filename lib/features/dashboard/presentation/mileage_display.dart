@@ -85,6 +85,7 @@ class MileageDisplay extends StatelessWidget {
           '${formatKm(currentKm)}. $caption.'
           '${onTap == null ? '' : ' Atualizar quilometragem'}',
       excludeSemantics: true,
+      onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

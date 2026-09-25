@@ -56,9 +56,9 @@ class AppGroup extends StatelessWidget {
 
   final AppSectionEmphasis emphasis;
 
-  /// A row's icon slot (24) plus the gap after it (12): where a row's text
-  /// starts. `AppListRow` lays itself out on the same two numbers.
-  static const double iconIndent = 36;
+  /// Where a row's text starts: `AppListRow` lays itself out on the same
+  /// numbers.
+  static const double iconIndent = AppSpacing.rowTextIndent;
 
   /// Rows with no icon: the hairline starts with the text.
   static const double textIndent = 0;

@@ -69,11 +69,7 @@ class HomeHeader extends StatelessWidget {
             ),
             if (onSwitch != null) ...[
               const SizedBox(width: AppSpacing.s4),
-              Icon(
-                Icons.unfold_more,
-                size: 22,
-                color: scheme.onSurfaceVariant,
-              ),
+              Icon(Icons.unfold_more, size: 22, color: scheme.onSurfaceVariant),
             ],
           ],
         ),
@@ -109,6 +105,7 @@ class HomeHeader extends StatelessWidget {
         button: true,
         label: canSwitch ? '$spoken. Trocar veículo' : '$spoken. Veículos',
         excludeSemantics: true,
+        onTap: onSwitch,
         child: Material(
           color: Colors.transparent,
           child: InkWell(

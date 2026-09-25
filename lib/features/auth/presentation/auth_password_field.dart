@@ -64,6 +64,9 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
           enabled: widget.enabled,
           label: _visible ? 'Ocultar senha' : 'Mostrar senha',
           excludeSemantics: true,
+          onTap: widget.enabled
+              ? () => setState(() => _visible = !_visible)
+              : null,
           child: IconButton(
             tooltip: _visible ? 'Ocultar senha' : 'Mostrar senha',
             onPressed: widget.enabled

@@ -29,15 +29,68 @@ class AppFact {
 /// range side by side.
 ///
 /// **Nothing is cut with an ellipsis.** "139.0…" does not say the mileage. A
-/// value that does not fit its column shrinks a little instead.
+/// value that does not fit its column shrinks a little instead — and with the
+/// system text enlarged past [stackAbove], the columns give way to one fact
+/// per line, so the size the person asked for is the size they get.
 class AppFactsStrip extends StatelessWidget {
   const AppFactsStrip({super.key, required this.facts});
 
   final List<AppFact> facts;
 
+  /// The text scale from which the facts are read down instead of across.
+  static const double stackAbove = 1.3;
+
   @override
   Widget build(BuildContext context) {
     final tones = AppTones.of(context);
+    final theme = Theme.of(context);
+    if (MediaQuery.textScalerOf(context).scale(1) > stackAbove) {
+      return AppSurface(
+        variant: AppSurfaceVariant.grouped,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.inset),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < facts.length; i++) ...[
+              if (i > 0) Divider(height: 1, color: tones.divider),
+              Semantics(
+                label: _spoken(facts[i]),
+                excludeSemantics: true,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.s12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          facts[i].label,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.s12),
+                      Flexible(
+                        child: Text(
+                          facts[i].unit == null
+                              ? facts[i].value
+                              : '${facts[i].value} ${facts[i].unit}',
+                          textAlign: TextAlign.end,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: AppTypography.tabular,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
     return AppSurface(
       variant: AppSurfaceVariant.grouped,
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.s16),
@@ -65,13 +118,18 @@ class _FactCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final valueStyle = AppTypography.figure(size: 19, color: scheme.onSurface);
+    // A figure for a number; a word ("Gasolina", "Híbrido") keeps the text
+    // face — tabular digits and tight tracking are for readings.
+    final numeric = RegExp(r'\d').hasMatch(fact.value);
+    final valueStyle = numeric
+        ? AppTypography.figure(size: 19, color: scheme.onSurface)
+        : theme.textTheme.titleMedium;
     final unitStyle = theme.textTheme.bodySmall?.copyWith(
       fontWeight: FontWeight.w500,
     );
 
     return Semantics(
-      label: '${fact.label}: ${fact.value}${fact.unit == null ? '' : ' ${fact.unit}'}',
+      label: _spoken(fact),
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
@@ -109,3 +167,6 @@ class _FactCell extends StatelessWidget {
     );
   }
 }
+
+String _spoken(AppFact fact) =>
+    '${fact.label}: ${fact.value}${fact.unit == null ? '' : ' ${fact.unit}'}';

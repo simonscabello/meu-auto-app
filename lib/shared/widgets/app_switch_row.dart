@@ -30,6 +30,7 @@ class AppSwitchRow extends StatelessWidget with GroupedRow {
       enabled: onChanged != null,
       label: subtitle == null ? title : '$title. $subtitle',
       excludeSemantics: true,
+      onTap: onChanged == null ? null : () => onChanged!(!value),
       child: AppListRowShell(
         onTap: onChanged == null ? null : () => onChanged!(!value),
         child: Row(

@@ -8,6 +8,7 @@ import 'package:meu_auto/features/costs/domain/costs_copy.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
+import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 import 'package:meu_auto/shared/widgets/app_progress_bar.dart';
 import 'package:meu_auto/shared/widgets/app_scaffold.dart';
@@ -216,7 +217,7 @@ class _Total extends StatelessWidget {
 
 /// One category: its name and amount on one line, and under them a thin bar
 /// of its share of the total with the share in figures at its end.
-class _CategoryBar extends StatelessWidget {
+class _CategoryBar extends StatelessWidget with GroupedRow {
   const _CategoryBar({
     required this.label,
     required this.amount,

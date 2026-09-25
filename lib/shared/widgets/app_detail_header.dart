@@ -17,7 +17,6 @@ class AppDetailHeader extends StatelessWidget {
   const AppDetailHeader({
     super.key,
     required this.title,
-    this.icon,
     this.subtitle,
     this.status,
     this.statusLabel,
@@ -25,10 +24,6 @@ class AppDetailHeader extends StatelessWidget {
   });
 
   final String title;
-
-  /// Kept for callers that still pass the object's glyph. Not drawn: the
-  /// header is type, not iconography.
-  final IconData? icon;
 
   /// One quiet line under the title, when the title alone is not enough — the
   /// insurer under "Seguro", the workshop under a service.

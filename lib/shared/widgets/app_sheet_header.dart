@@ -53,10 +53,7 @@ class AppSheetHeader extends StatelessWidget {
                   padding: EdgeInsets.only(top: closable ? AppSpacing.s8 : 0),
                   child: Semantics(
                     header: true,
-                    child: Text(
-                      title,
-                      style: theme.textTheme.titleLarge,
-                    ),
+                    child: Text(title, style: theme.textTheme.titleLarge),
                   ),
                 ),
                 if (subtitle != null) ...[

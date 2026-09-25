@@ -54,10 +54,9 @@ class _AppExpandableGroupState extends State<AppExpandableGroup> {
     final header = Semantics(
       button: true,
       expanded: _open,
-      label: count == null
-          ? widget.title
-          : '${widget.title}, $count itens',
+      label: count == null ? widget.title : '${widget.title}, $count itens',
       excludeSemantics: true,
+      onTap: () => setState(() => _open = !_open),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

@@ -137,16 +137,25 @@ class AppListRow extends StatelessWidget with GroupedRow {
         ),
         if (value != null) ...[
           const SizedBox(width: AppSpacing.s12),
-          Text(
-            value!,
-            style: strongValue
-                ? theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: AppTypography.tabular,
-                  )
-                : theme.textTheme.bodyMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+          // At most a little under half the line: a long amount or a phrase
+          // like "Sem consumo ainda" wraps inside its column instead of
+          // pushing the name off the row at a large text size.
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+            ),
+            child: Text(
+              value!,
+              textAlign: TextAlign.end,
+              style: strongValue
+                  ? theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: AppTypography.tabular,
+                    )
+                  : theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+            ),
           ),
         ],
         if (showChevron) ...[
@@ -177,6 +186,7 @@ class AppListRow extends StatelessWidget with GroupedRow {
         button: true,
         label: semanticLabel ?? _spoken(),
         excludeSemantics: true,
+        onTap: onTap,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -281,6 +291,7 @@ class AppListRowShell extends StatelessWidget with GroupedRow {
       button: true,
       label: semanticLabel,
       excludeSemantics: semanticLabel != null,
+      onTap: onTap,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -308,7 +319,7 @@ class AppListRowShell extends StatelessWidget with GroupedRow {
 /// Indented to the text column so the rows read as one list rather than as
 /// separate blocks.
 class AppRowDivider extends StatelessWidget {
-  const AppRowDivider({super.key, this.indent = 36});
+  const AppRowDivider({super.key, this.indent = AppSpacing.rowTextIndent});
 
   final double indent;
 

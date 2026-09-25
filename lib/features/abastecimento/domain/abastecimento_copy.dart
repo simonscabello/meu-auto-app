@@ -41,7 +41,7 @@ String? consumptionShortPhrase(Consumption consumption) {
   }
 }
 
-/// The figure [AppMetric] shows when [Consumption.status] is ok. Null means
+/// The figure a fill's facts show when [Consumption.status] is ok. Null means
 /// the third slot should be the status phrase instead.
 String? consumptionValueText(Consumption consumption) {
   if (consumption.status != ConsumptionStatus.ok) return null;

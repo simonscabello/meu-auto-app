@@ -9,7 +9,6 @@ import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/core/theme/app_tones.dart';
 import 'package:meu_auto/core/theme/app_typography.dart';
 import 'package:meu_auto/shared/widgets/app_button.dart';
-import 'package:meu_auto/shared/widgets/app_card.dart';
 import 'package:meu_auto/shared/widgets/app_choice_row.dart';
 import 'package:meu_auto/shared/widgets/app_date_picker.dart';
 import 'package:meu_auto/shared/widgets/app_detail_header.dart';
@@ -22,7 +21,6 @@ import 'package:meu_auto/shared/widgets/app_folded_section.dart';
 import 'package:meu_auto/shared/widgets/app_group.dart';
 import 'package:meu_auto/shared/widgets/app_icon_well.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
-import 'package:meu_auto/shared/widgets/app_metric.dart';
 import 'package:meu_auto/shared/widgets/app_number_field.dart';
 import 'package:meu_auto/shared/widgets/app_overflow_menu.dart';
 import 'package:meu_auto/shared/widgets/app_plate_chip.dart';
@@ -298,29 +296,7 @@ class _DesignGalleryState extends State<DesignGallery> {
                 AppFact(label: 'Consumo', value: '17,2', unit: 'km/L'),
               ],
             ),
-            const _SectionTitle('Card e métrica'),
-            const AppCard(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: AppMetric(
-                      value: '48.320',
-                      unit: 'km',
-                      label: 'Quilometragem atual',
-                    ),
-                  ),
-                  SizedBox(width: AppSpacing.s16),
-                  Expanded(
-                    child: AppMetric(
-                      value: 'R\$ 1.280,00',
-                      label: 'Custo registrado',
-                      size: AppMetricSize.compact,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.s12),
+            const _SectionTitle('Placa'),
             const Align(
               alignment: Alignment.centerLeft,
               child: AppPlateChip(plate: 'QAF5G33'),
@@ -575,7 +551,8 @@ class _DesignGalleryState extends State<DesignGallery> {
             const _SectionTitle('Esqueleto'),
             const AppSkeletonList(count: 3),
             const SizedBox(height: AppSpacing.s24),
-            const AppCard(
+            const AppSurface(
+              variant: AppSurfaceVariant.grouped,
               child: AppEmptyState(
                 icon: Icons.directions_car_outlined,
                 title: 'Cadastre seu primeiro veículo',
@@ -586,7 +563,8 @@ class _DesignGalleryState extends State<DesignGallery> {
               ),
             ),
             const SizedBox(height: AppSpacing.s16),
-            const AppCard(
+            const AppSurface(
+              variant: AppSurfaceVariant.grouped,
               child: AppErrorState(
                 message: 'Ocorreu um erro inesperado. Tente novamente.',
                 onRetry: _noop,

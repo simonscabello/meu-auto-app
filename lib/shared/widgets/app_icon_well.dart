@@ -102,7 +102,9 @@ class AppIconWell extends StatelessWidget {
       return SizedBox(
         width: slot,
         height: slot,
-        child: Center(child: Icon(icon, size: _glyph, color: glyph)),
+        child: Center(
+          child: Icon(icon, size: _glyph, color: glyph),
+        ),
       );
     }
 
