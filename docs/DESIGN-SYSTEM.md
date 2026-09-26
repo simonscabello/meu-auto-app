@@ -134,7 +134,11 @@ Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
   (Android com target SDK 35+), e `useSafeArea` só protege topo e laterais:
   a barra de 3 botões cobria o "Salvar" da folha. **O recuo de baixo é de
   `showAppSheet`**, dentro da superfície da folha; nenhuma folha se embrulha
-  em `SafeArea` (`test/shared/widgets/sheet_insets_test.dart`). As barras do
+  em `SafeArea` (`test/shared/widgets/sheet_insets_test.dart`). Esse
+  embrulho tem **uma forma só**, com recuo ou sem: o recuo chega a zero no
+  meio da subida do teclado, e quando a forma mudava ali o Flutter montava a
+  folha de novo do zero — o campo perdia o foco e o teclado descia na mesma
+  hora, em toda folha com campo. As barras do
   sistema são transparentes e o estilo delas vem de `AppTheme.overlay`,
   aplicado na raiz do app — as abas não têm `AppBar`.
 - `AppSegmented` — escolha entre 2–4 opções. Cada segmento tem a largura

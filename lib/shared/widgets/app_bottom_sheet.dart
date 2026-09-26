@@ -37,6 +37,13 @@ Future<T?> showAppSheet<T>(
 /// removed from the [MediaQuery] below so nothing inside pads for it twice.
 /// With the keyboard up the padding is already zero: the keyboard's inset
 /// covers the bar, and [AppSheetBody] lifts above that.
+///
+/// It keeps one shape whatever the inset, and that is load-bearing. The
+/// padding reaches zero partway up the keyboard's slide, and returning the
+/// child bare at zero changed the tree above the whole form: Flutter built
+/// the sheet again from scratch, the field lost its focus and the keyboard
+/// went straight back down, so no sheet could be typed into on a phone with
+/// a navigation bar. `sheet_insets_test` walks the keyboard up and down.
 class _SystemBarInset extends StatelessWidget {
   const _SystemBarInset({required this.child});
 
@@ -44,10 +51,8 @@ class _SystemBarInset extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.paddingOf(context).bottom;
-    if (bottom == 0) return child;
     return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
       child: MediaQuery.removePadding(
         context: context,
         removeBottom: true,
