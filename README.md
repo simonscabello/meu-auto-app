@@ -50,17 +50,27 @@ dart format --output=none --set-exit-if-changed .
 `openapi.yaml` do backend e falha se o app referenciar uma rota que não existe no
 contrato. Ele é pulado (não falha) quando `../meu-auto-backend` não está clonado.
 
-## Build
+## Publicar uma versão
+
+O APK que vai para os celulares sai do GitHub, não desta máquina: uma tag `vX.Y.Z`
+igual ao `version:` do pubspec dispara
+[`.github/workflows/release-apk.yml`](./.github/workflows/release-apk.yml), que testa,
+assina com a chave de upload e publica o Release. Depois, `APP_LATEST_VERSION` no
+Railway faz o Início de quem está numa versão anterior mostrar "Atualizar o Meu Auto".
+O passo a passo, e o que se configura uma vez só, está em
+[`docs/RODANDO.md`](./docs/RODANDO.md), seção 5.2.
+
+## Build local
 
 ```bash
 flutter build apk --release --dart-define-from-file=dart_defines/production.json
 flutter build appbundle --release --dart-define-from-file=dart_defines/production.json
 ```
 
-Sem `android/key.properties` o release sai assinado com a chave de debug:
-instala no seu aparelho, não sobe para a Play. Como gerar e configurar a chave
-de assinatura está em [`docs/RODANDO.md`](./docs/RODANDO.md), assim como o
-`flutter build ipa` — que **exige macOS** e não roda em Windows.
+Para testar nesta máquina. Sem `android/key.properties` o release sai assinado com a
+chave de debug: instala num aparelho limpo, mas **não por cima** de um app que veio do
+Release, e não sobe para a Play. A chave de assinatura e o `flutter build ipa` — que
+**exige macOS** e não roda em Windows — estão em [`docs/RODANDO.md`](./docs/RODANDO.md).
 
 ## Documentação
 

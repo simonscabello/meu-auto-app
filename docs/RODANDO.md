@@ -82,7 +82,7 @@ O telefone não alcança `10.0.2.2` nem `localhost` do Windows. Use o IPv4 da m�
 flutter run --dart-define-from-file=dart_defines/production.json
 ```
 
-Isso usa `https://api.meuauto.com.br`. A API de produção ainda não está no ar; use só quando o deploy existir. Até lá o app abre normalmente e cai em **Sem conexão** na primeira chamada — que é o comportamento correto, não um bug do build.
+Isso usa a API de produção, `https://meu-auto-backend-production.up.railway.app` — no ar, com os dados reais: uma conta criada daqui é uma conta de verdade. E o app de produção dos celulares não sai desta máquina; sai do Release no GitHub (seção 5.2).
 
 O `dart_defines/production.json` é HTTPS de propósito e não tem par em cleartext. O build de release não carrega nenhuma exceção de HTTP: o `network_security_config.xml` é anexado só pelos manifests de **debug** e **profile** (`android/app/src/{debug,profile}/AndroidManifest.xml`). Com `targetSdk` 28+ e sem config, o Android nega cleartext direto. Se um dia um APK de release precisar falar HTTP, isso é uma decisão, não um ajuste.
 
@@ -101,6 +101,8 @@ flutter build appbundle --release --dart-define-from-file=dart_defines/productio
 O APK sai em `build/app/outputs/flutter-apk/app-release.apk` e o bundle em `build/app/outputs/bundle/release/app-release.aab`. O `.aab` é o que a Play aceita; o `.apk` serve para instalar direto num aparelho (`adb install -r <caminho>`).
 
 Esquecer o `--dart-define-from-file` faz o build usar o `defaultValue` do `AppConfig`, que é `http://10.0.2.2:8080`. O app compila, instala e não fala com nada. **A flag não é opcional.**
+
+**Estes builds são para testar nesta máquina, não para os celulares.** Sem `android/key.properties` eles saem com a chave de debug, e o Android recusa instalar por cima de um app que veio do Release. O APK dos celulares sai do GitHub — seção 5.2.
 
 ### 5.1. Chave de assinatura
 
@@ -173,6 +175,22 @@ Publicar e anunciar são passos separados de propósito: enquanto o passo 3 não
 **O aviso só aparece em APK feito pelo workflow.** É ele que passa `--dart-define=APP_VERSION=...` (`AppConfig.appVersion`); um build desta máquina não sabe a própria versão e nunca é cobrado.
 
 **A troca de chave acontece uma vez.** Um app instalado a partir de um build desta máquina foi assinado com a chave de debug, e o Android não aceita o APK do Release por cima dele: desinstale uma vez, instale o do Release e entre de novo — conta e dados ficam no servidor. Daí em diante, todo Release instala por cima.
+
+**Conferir o que foi publicado.** A chave de upload do Meu Auto (`C:\Users\Acer\keys\meu-auto-upload.jks`, alias `upload` — não é a do Pauta) tem certificado com SHA-256:
+
+```text
+639a064d69ced00f0cbf091cfcb2bfcaa8c25877d30eb753af30a9b11ca6f7f2
+```
+
+Um Release assinado com outro certificado não instala por cima de nenhum celular. Depois de cada publicação, baixe o `meu-auto.apk` do Release e confira (PowerShell; sem o `JAVA_HOME` o `apksigner` não imprime nada):
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; & "$env:LOCALAPPDATA\Android\Sdk\build-tools\37.0.0\apksigner.bat" verify --print-certs meu-auto.apk
+```
+
+E confirme o anúncio: `https://meu-auto-backend-production.up.railway.app/v1/app-version` tem de trazer a versão nova em `latest_version`.
+
+A primeira versão publicada assim foi a **1.1.0** (versionCode 2), em 26/09/2026.
 
 ## 6. Build de release (iOS)
 
