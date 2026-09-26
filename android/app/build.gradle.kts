@@ -13,6 +13,11 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // flutter_local_notifications uses java.time, which only exists from
+        // Android 8; desugaring rewrites those calls for older phones. Without it
+        // the build fails at checkReleaseAarMetadata, and the message does not
+        // say which dependency asked.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -65,6 +70,23 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+// Push reminders need the Firebase project's google-services.json in this
+// folder. It is not a secret and is committed once it exists; until then the
+// plugin is not applied, the app builds and runs, and push simply stays off
+// (PushService degrades in silence). Applying it unconditionally would fail
+// every build — CI included — for want of a file.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle(
+        "meu_auto: android/app/google-services.json nao encontrado: push desligado neste build."
+    )
 }
 
 kotlin {

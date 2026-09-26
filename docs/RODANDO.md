@@ -265,3 +265,14 @@ adb shell am start -a android.settings.BIOMETRIC_ENROLL
 Na janela, a linha "Touch the fingerprint sensor" é do Android e segue o idioma do aparelho. O título ("Meu Auto"), o subtítulo, a explicação e o "Cancelar" são do app (`BiometricCopy`) e têm de sair em português em qualquer aparelho.
 
 Um build de release instalado por cima de um de debug desta máquina mantém os dados, porque os dois saem com a mesma chave de debug. Assim dá para ver a trava no release sem cadastrar tudo de novo; é o jeito de conferir que o R8 não quebrou o plugin. Esse APK continua sendo só para teste: ver §5.2.
+
+## 10. Lembretes push
+
+O push é opcional por build. Sem `android/app/google-services.json` o app compila e funciona, o Gradle avisa que o push está desligado, e o Perfil não mostra "Avisos no celular". Com o arquivo, o app registra o aparelho ao entrar na conta.
+
+1. **Firebase, uma vez.** Projeto "Meu Auto", app Android `br.com.meuauto.meu_auto`, e o `google-services.json` em `android/app/`. Ele não é segredo e vai para o repositório. A chave da conta de serviço (Configurações do projeto › Contas de serviço › Gerar nova chave privada) **é segredo**: vira `FCM_SERVICE_ACCOUNT` no Railway, em base64, e nunca entra no repositório nem no chat. Ver `meu-auto-backend/docs/DEPLOY.md`.
+2. **Conferir o texto sem Firebase.** Suba a API local com `NOTIFICATIONS_DEBUG=true` e `REMINDERS_HOUR` na hora atual. Em até 10 minutos o log da API mostra `push not sent (NOTIFICATIONS_DEBUG)` com título, corpo e `data` de cada aviso. Só recebe quem tem aparelho registrado, então antes o app precisa ter entrado na conta num build com o `google-services.json`.
+3. **Testar num celular de verdade.** Com o app publicado e a conta aberta nele, defina `REMINDERS_HOUR` no Railway com a hora atual (horário de Brasília). O aviso chega em até 10 minutos, se houver algo vencendo ou vencido no carro. Depois **apague a variável**. Os avisos desse teste contam como os do dia e não se repetem.
+4. **Com o app aberto** quem desenha o aviso é o próprio app (`flutter_local_notifications`); **com ele fechado**, o Android, com o ícone, a cor e o canal que o manifesto aponta. Confira os dois.
+5. **A pergunta do Android 13+** aparece uma vez, na primeira vez que o Início mostra o carro. Para vê-la de novo no emulador: `adb shell pm clear br.com.meuauto.meu_auto` (apaga os dados do app) ou `adb shell pm revoke br.com.meuauto.meu_auto android.permission.POST_NOTIFICATIONS`.
+6. O `Medium_Phone_2` tem Google Play e recebe FCM. O canal se chama "Lembretes" nas configurações de notificação do app; se ele não aparecer lá, o app não chegou a iniciar o Firebase.

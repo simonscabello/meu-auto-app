@@ -89,7 +89,11 @@ Explicitly undecided — record, do not invent:
   opens the session already stored on the phone: it creates no account, recovers none,
   and stores no password. It is optional, per phone, and offered once after a password
   sign-in.
-- Notification delivery (push, email, in-app only) and how far in advance reminders fire.
+- Notification delivery: **push on Android, decided 26/09/2026** — at 9h, one per car per
+  day, each item once as it nears its due point, once when due and, for IPVA,
+  licenciamento and seguro, on the day itself (the server's thresholds: 30 days for the
+  documents, a tenth of the interval for maintenance). Still open: e-mail, an in-app
+  notification centre, and letting the owner choose which kinds and how far in advance.
 - Monetization — free, paid, or freemium — and any account limits.
 - Fuel logging computes consumption between full-tank records and contributes to cost.
 - Whether IPVA/licenciamento calendars are seeded from official data or entered by the owner.

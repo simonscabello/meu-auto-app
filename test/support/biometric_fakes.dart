@@ -65,6 +65,9 @@ final class FakeAuthServer implements HttpClientAdapter {
 
   int meCalls = 0;
 
+  /// Every request, as "METHOD /path", in order.
+  final calls = <String>[];
+
   /// Refresh tokens presented to `/auth/logout`, in order.
   final revoked = <String>[];
   int _sessions = 0;
@@ -80,6 +83,10 @@ final class FakeAuthServer implements HttpClientAdapter {
   ) async {
     final path = options.uri.path;
     final method = options.method;
+    calls.add('$method $path');
+    if (path.endsWith('/me/devices')) {
+      return ResponseBody.fromString('', 204);
+    }
     if (path.endsWith('/me') && method == 'GET') {
       meCalls++;
       switch (meAnswer) {

@@ -20,13 +20,23 @@ import 'package:meu_auto/features/timeline/application/timeline_provider.dart';
 /// only when a screen asks for it again — so there is no reason to be clever
 /// about which subset a given write "really" needs.
 void invalidateVehicleDerived(WidgetRef ref, String vehicleId) {
-  ref.invalidate(dashboardProvider(vehicleId));
-  ref.invalidate(alertsProvider(vehicleId));
-  ref.invalidate(costsDashboardProvider);
-  ref.invalidate(maintenancePlansProvider(vehicleId));
-  ref.invalidate(maintenancePlansWithHiddenProvider(vehicleId));
-  ref.invalidate(maintenancePlanProvider);
-  ref.invalidate(maintenanceProfileProvider(vehicleId));
-  ref.invalidate(timelineProvider(vehicleId));
-  ref.invalidate(odometerHistoryProvider(vehicleId));
+  invalidateVehicleDerivedWith(ref.invalidate, vehicleId);
+}
+
+/// The same list, for whoever holds a provider `Ref` rather than a
+/// `WidgetRef` — the push coordinator, when a reminder is tapped: it exists
+/// because something fell due, so what the tabs cached is already old.
+void invalidateVehicleDerivedWith(
+  void Function(ProviderOrFamily provider) invalidate,
+  String vehicleId,
+) {
+  invalidate(dashboardProvider(vehicleId));
+  invalidate(alertsProvider(vehicleId));
+  invalidate(costsDashboardProvider);
+  invalidate(maintenancePlansProvider(vehicleId));
+  invalidate(maintenancePlansWithHiddenProvider(vehicleId));
+  invalidate(maintenancePlanProvider);
+  invalidate(maintenanceProfileProvider(vehicleId));
+  invalidate(timelineProvider(vehicleId));
+  invalidate(odometerHistoryProvider(vehicleId));
 }

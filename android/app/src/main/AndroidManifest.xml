@@ -2,6 +2,11 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Entrar com biometria (local_auth). Granted at install; no prompt. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- Push reminders. Android 13+ asks for it at runtime; the app asks only
+         after Início has shown the car (PushCoordinator), never on first boot.
+         The plugins declare it too; it is spelled out because it is a product
+         decision, not a dependency detail. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- No Auto Backup: the session sits in flutter_secure_storage, encrypted
          with a Keystore key that never leaves this phone. Restored onto
          another one it cannot be decrypted, and the biometric lock would come
@@ -44,6 +49,21 @@
                     android:host="redefinir-senha"/>
             </intent-filter>
         </activity>
+        <!-- How FCM draws a reminder that arrives with the app closed. The icon
+             is the mark's white silhouette (tool/notification_icon.dart): the
+             launcher icon would come out as a white square. The channel MUST
+             be the one PushService creates and the backend addresses
+             (push.ChannelID): a message to a channel the phone does not have
+             arrives and is never shown. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="lembretes" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

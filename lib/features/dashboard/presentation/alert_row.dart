@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/shared/widgets/app_group_scope.dart';
 import 'package:meu_auto/core/domain/phrases.dart';
-import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_status_colors.dart';
 import 'package:meu_auto/features/dashboard/domain/dashboard.dart';
+import 'package:meu_auto/features/dashboard/domain/alert_destination.dart';
 import 'package:meu_auto/shared/widgets/app_list_row.dart';
 
 /// One alert as a row.
@@ -96,16 +96,8 @@ AppStatus alertStatusOf(AlertSeverity severity) {
   };
 }
 
-/// Where an alert opens. `reference_type` says where it lives; an unknown one
-/// lands on the maintenance tab rather than inventing a screen.
+/// Where an alert opens. `reference_type` says where it lives
+/// ([routeForReference], shared with the push reminders).
 String routeForAlert(Alert alert) {
-  return switch (alert.referenceType) {
-    AlertReferenceType.maintenanceRecord => AppRoutes.maintenanceRecord(
-      alert.referenceId,
-    ),
-    AlertReferenceType.maintenancePlan => AppRoutes.plan(alert.referenceId),
-    AlertReferenceType.obligation => AppRoutes.obligation(alert.referenceId),
-    AlertReferenceType.seguro => AppRoutes.seguro(alert.referenceId),
-    AlertReferenceType.desconhecido => AppRoutes.care,
-  };
+  return routeForReference(alert.referenceType, alert.referenceId);
 }

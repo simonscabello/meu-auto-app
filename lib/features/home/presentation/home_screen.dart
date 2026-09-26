@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:meu_auto/features/home/presentation/home_header.dart';
+import 'package:meu_auto/features/notification/application/push_coordinator.dart';
 import 'package:meu_auto/features/update/presentation/app_update_notice.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
@@ -23,6 +26,19 @@ class HomeScreen extends ConsumerWidget {
     final selected = ref.watch(selectedVehicleProvider);
     final vehicles = ref.watch(vehiclesProvider).valueOrNull?.vehicles ?? [];
     final vehicleId = selected.valueOrNull?.id;
+
+    // Android 13+'s notification question comes the first time Início has
+    // shown the car — never on first boot, when the owner has not yet seen
+    // what the app does. The coordinator asks once per installation.
+    final showsTheCar =
+        vehicleId != null &&
+        ref.watch(dashboardProvider(vehicleId).select((d) => d.hasValue));
+    if (showsTheCar) {
+      final coordinator = ref.read(pushCoordinatorProvider);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => unawaited(coordinator.askPermissionOnce()),
+      );
+    }
 
     return AppScaffold(
       onRefresh: () => _refresh(ref, vehicleId),

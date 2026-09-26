@@ -168,7 +168,7 @@ Exceções de formato: `/healthz` e `/readyz` **não** usam esse envelope. `/rea
 
 ## 3. Endpoints
 
-**60 operações** em **37 paths**, na mesma ordem do OpenAPI.
+**62 operações** em **38 paths**, na mesma ordem do OpenAPI.
 
 Auth: `pública` ou `Bearer`. Request/response são nomes de schema do OpenAPI, ou um envelope anônimo batizado aqui (seção 4). Além dos códigos da linha, qualquer rota pode devolver `internal`; path inexistente `not_found`; método errado `method_not_allowed`; JSON ilegível `validation_failed`.
 
@@ -215,6 +215,21 @@ A foto vai por `ApiClient.putFile`, já reduzida a 1024 px pelo `image_picker`; 
 decide o tipo pelos bytes (JPEG, PNG, WebP) e recusa acima de 5 MB. Troca de e-mail não existe. A troca de senha exige a
 senha atual, encerra os refresh tokens anteriores e devolve a sessão substituta.
 `DELETE /v1/me` é irreversível (conta + veículos + histórico) e exige a senha atual.
+
+### Avisos
+
+| Método | Path | Auth | Request | Response | Erros | Paginado |
+| --- | --- | --- | --- | --- | --- | --- |
+| POST | `/v1/me/devices` | Bearer | `RegisterDeviceRequest` | `NoContent` (204) | `unauthorized`, `validation_failed` | não |
+| DELETE | `/v1/me/devices` | Bearer | `ForgetDeviceRequest` | `NoContent` (204) | `unauthorized`, `validation_failed` | não |
+
+O token do Firebase Cloud Messaging deste aparelho, com `platform: "android"` (única
+aceita). Registrar um token de outra conta o passa para esta; registrar de novo só
+reconfirma; esquecer um token que não está registrado também responde 204. O app registra
+ao entrar na conta (`PushCoordinator`) e esquece **antes** de descartar a sessão ao sair
+(`AuthController.logout`). Os lembretes saem às 9h com `data` =
+`{kind: "reminder", vehicle_id, [reference_type, reference_id]}` — o par de referência só
+quando o aviso fala de um item, nos mesmos termos de `Alert` (`PushTap`).
 
 ### Veículos
 

@@ -125,6 +125,14 @@ biometria (26/09/2026):
   `parent` que encontrar; ele só escreve o arquivo inteiro quando o arquivo não
   existe. Regenerar não desfaz nada disso.
 
+O ícone das notificações (`res/drawable-*/ic_notification.png`, as cinco densidades) é
+a **silhueta branca** da marca sobre transparente, feita por
+`flutter test tool/notification_icon.dart` a partir de `splash_light.png` — a arte limpa,
+porque o brilho escuro da camada adaptativa engordaria a forma. O Android usa só o alfa
+desse ícone e o tinge com `notification_accent` (`#1A66DA` no claro, `#5B9DFF` no
+escuro); um ícone colorido viraria um quadrado branco. Troca de paleta não mexe em
+silhueta: só rode de novo se a marca mudar de forma.
+
 ## Splash nativa e SplashScreen interna
 
 São duas telas, em momentos distintos do boot, e não se unificam.

@@ -16,6 +16,8 @@ import 'package:meu_auto/features/auth/data/device_biometrics.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
 import 'package:meu_auto/features/auth/domain/biometric_copy.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
+import 'package:meu_auto/features/notification/application/push_setting.dart';
+import 'package:meu_auto/features/notification/domain/reminder_copy.dart';
 import 'package:meu_auto/features/profile/presentation/name_edit_sheet.dart';
 import 'package:meu_auto/features/profile/presentation/personal_data_sheets.dart';
 import 'package:meu_auto/features/profile/presentation/photo_source_sheet.dart';
@@ -41,6 +43,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _loggingOut = false;
   bool _photoBusy = false;
   bool _biometricsBusy = false;
+  bool _remindersBusy = false;
+
+  /// Coming back from the phone's settings, Android may have started or
+  /// stopped blocking the reminders: the note under the switch is read again.
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.invalidate(pushSettingProvider),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _setReminders(bool on) async {
+    setState(() => _remindersBusy = true);
+    try {
+      await ref.read(pushSettingProvider.notifier).set(on: on);
+    } finally {
+      if (mounted) setState(() => _remindersBusy = false);
+    }
+  }
 
   /// Take, pick or remove the photo. The picker shrinks it to 1024px before
   /// it leaves the phone, so an upload is a few hundred KB, not a 12 MP shot.
@@ -213,6 +243,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final themeMode =
         ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.dark;
     final biometrics = ref.watch(biometricSettingProvider).valueOrNull;
+    final reminders = ref.watch(pushSettingProvider).valueOrNull;
 
     return AppScaffold(
       title: 'Perfil',
@@ -253,6 +284,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onBiometrics: _biometricsBusy
                 ? null
                 : (on) => unawaited(_setBiometrics(on)),
+            reminders: reminders,
+            onReminders: _remindersBusy
+                ? null
+                : (on) => unawaited(_setReminders(on)),
             onLogout: _logout,
             onDeleteAccount: () => context.push(AppRoutes.deleteAccount),
           );
@@ -289,6 +324,8 @@ class ProfileContent extends StatelessWidget {
     required this.onChangePassword,
     this.biometrics,
     this.onBiometrics,
+    this.reminders,
+    this.onReminders,
     required this.onLogout,
     required this.onDeleteAccount,
     this.loggingOut = false,
@@ -317,6 +354,13 @@ class ProfileContent extends StatelessWidget {
 
   /// Null while a change is on its way, which holds the switch still.
   final ValueChanged<bool>? onBiometrics;
+
+  /// "Avisos no celular" on this phone. Null when the phone cannot be
+  /// reminded at all (the web, a build without Firebase): no group then.
+  final PushSetting? reminders;
+
+  /// Null while a change is on its way.
+  final ValueChanged<bool>? onReminders;
   final VoidCallback onLogout;
   final VoidCallback onDeleteAccount;
 
@@ -365,6 +409,26 @@ class ProfileContent extends StatelessWidget {
           ],
         ),
         const SizedBox(height: appGroupGap),
+        if (reminders != null) ...[
+          // The note says when a reminder comes and about what — or, when
+          // Android is blocking them, that it is, since otherwise the switch
+          // stays on, nothing arrives and the app looks broken.
+          AppGroup(
+            title: ReminderCopy.groupTitle,
+            footnote: reminders!.blocked
+                ? ReminderCopy.blocked
+                : ReminderCopy.note,
+            children: [
+              AppSettingRow.toggle(
+                label: ReminderCopy.settingLabel,
+                icon: Icons.notifications_none_outlined,
+                value: reminders!.enabled,
+                onChanged: loggingOut ? null : onReminders,
+              ),
+            ],
+          ),
+          const SizedBox(height: appGroupGap),
+        ],
         AppGroup(
           title: 'Dados pessoais',
           footnote: ProfileCopy.personalNote,

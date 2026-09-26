@@ -6,6 +6,7 @@ import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/core/router/app_router.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/core/theme/theme_mode_provider.dart';
+import 'package:meu_auto/features/notification/application/push_coordinator.dart';
 
 /// The one locale the product supports. `PRODUCT.md` scopes Meu Auto to Brazil,
 /// so this is a constant rather than a setting.
@@ -22,6 +23,9 @@ class MeuAutoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    // Lives as long as the app: registers this phone at sign-in and turns a
+    // tapped reminder into the screen it is about.
+    ref.watch(pushCoordinatorProvider);
     final themeMode =
         ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.dark;
     return MaterialApp.router(

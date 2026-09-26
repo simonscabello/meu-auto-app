@@ -6,6 +6,8 @@ import 'package:meu_auto/features/profile/domain/profile_copy.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
 import 'package:meu_auto/features/auth/domain/biometric_copy.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
+import 'package:meu_auto/features/notification/application/push_setting.dart';
+import 'package:meu_auto/features/notification/domain/reminder_copy.dart';
 import 'package:meu_auto/features/profile/presentation/profile_screen.dart';
 import 'package:meu_auto/shared/widgets/app_setting_row.dart';
 
@@ -164,6 +166,45 @@ void main() {
     expect(toggle.onChanged, isNull, reason: 'no callback while busy');
   });
 
+  testWidgets('the reminders switch says when they come and about what', (
+    tester,
+  ) async {
+    final changes = <bool>[];
+    await _pump(
+      tester,
+      reminders: const PushSetting(enabled: true, blocked: false),
+      onReminders: changes.add,
+    );
+
+    expect(find.text(ReminderCopy.groupTitle), findsOneWidget);
+    expect(find.text(ReminderCopy.note), findsOneWidget);
+    expect(find.text(ReminderCopy.blocked), findsNothing);
+
+    await tester.tap(find.text(ReminderCopy.settingLabel));
+    expect(changes, [false]);
+  });
+
+  testWidgets('when Android blocks the reminders, the note says so', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      reminders: const PushSetting(enabled: true, blocked: true),
+    );
+
+    expect(find.text(ReminderCopy.blocked), findsOneWidget);
+    expect(find.text(ReminderCopy.note), findsNothing);
+  });
+
+  testWidgets('a phone that cannot be reminded has no reminders group', (
+    tester,
+  ) async {
+    await _pump(tester);
+
+    expect(find.text(ReminderCopy.groupTitle), findsNothing);
+    expect(find.text(ReminderCopy.settingLabel), findsNothing);
+  });
+
   // "Sair" happens in place, after a confirmation; it does not open a screen,
   // so it does not carry the chevron that says it would.
   testWidgets('Sair has no chevron; Excluir minha conta does', (tester) async {
@@ -223,6 +264,8 @@ Future<void> _pump(
   User? user,
   bool? biometrics,
   ValueChanged<bool>? onBiometrics,
+  PushSetting? reminders,
+  ValueChanged<bool>? onReminders,
 }) async {
   // Tall enough that the whole list is built: ListView only builds what is
   // on screen, and the exits sit below the personal data.
@@ -250,6 +293,8 @@ Future<void> _pump(
           onChangePassword: onChangePassword ?? () {},
           biometrics: biometrics,
           onBiometrics: onBiometrics,
+          reminders: reminders,
+          onReminders: onReminders,
           onLogout: onLogout ?? () {},
           onDeleteAccount: () {},
         ),

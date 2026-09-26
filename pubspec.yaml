@@ -58,6 +58,14 @@ dependencies:
   local_auth: ^3.0.2
   local_auth_android: ^2.2.0
   local_auth_darwin: ^2.0.4
+  # Push reminders (26/09/2026, the owner's request, after Pauta), Android only:
+  # - firebase_core starts the SDK from android/app/google-services.json;
+  # - firebase_messaging holds the phone's token and receives the messages;
+  # - flutter_local_notifications draws a message that arrives while the app
+  #   is open, because FCM draws nothing then.
+  firebase_core: ^4.14.0
+  firebase_messaging: ^16.6.0
+  flutter_local_notifications: ^22.3.0
 
 dev_dependencies:
   flutter_test:

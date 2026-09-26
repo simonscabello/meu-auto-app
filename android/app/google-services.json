@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "116129259338",
+    "project_id": "meu-auto-1551f",
+    "storage_bucket": "meu-auto-1551f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:116129259338:android:a2fdf3227cebdde2292bb3",
+        "android_client_info": {
+          "package_name": "br.com.meuauto.meu_auto"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAu7VNcBmH6IWlflJe-kcOV1VWW1Vljdns"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

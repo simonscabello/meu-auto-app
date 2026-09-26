@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meu_auto/core/network/api_client.dart';
+import 'package:meu_auto/core/push/push_device.dart';
 import 'package:meu_auto/core/session/session_tokens.dart';
 import 'package:meu_auto/core/session/token_storage.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
@@ -10,6 +11,7 @@ import 'package:meu_auto/features/auth/data/device_biometrics.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
 
 import '../../../support/biometric_fakes.dart';
+import '../../../support/push_fakes.dart';
 
 /// The rule that does not bend: **the biometric releases the session already
 /// stored on the phone; it never stores or replays a password.**
@@ -279,6 +281,29 @@ void main() {
   });
 
   group('leaving', () {
+    test('"Sair" forgets this phone first, while the session still '
+        'authenticates', () async {
+      final device = FakePushDevice();
+      await device.init();
+      final h = await _Harness.create(
+        stored: testTokens(),
+        extra: [pushDeviceProvider.overrideWithValue(device)],
+      );
+      await h.status();
+
+      await h.auth.logout();
+
+      final forget = h.server.calls.indexWhere(
+        (call) => call.startsWith('DELETE') && call.endsWith('/me/devices'),
+      );
+      final revoke = h.server.calls.indexWhere(
+        (call) => call.endsWith('/auth/logout'),
+      );
+      expect(forget, isNonNegative, reason: 'the phone was forgotten');
+      expect(forget, lessThan(revoke), reason: 'before the session ended');
+      expect(device.tokenDeletions, 1);
+    });
+
     test('"Sair" forgets the lock', () async {
       final h = await _Harness.create(stored: testTokens(), enrolled: 'u1');
       await h.status();
@@ -363,21 +388,29 @@ void main() {
 }
 
 final class _Harness {
-  _Harness._(this.tokens, this.lock, this.biometrics, this.server, this.api)
-    : container = ProviderContainer(
-        overrides: [
-          tokenStorageProvider.overrideWithValue(tokens),
-          apiClientProvider.overrideWithValue(api),
-          deviceBiometricsProvider.overrideWithValue(biometrics),
-          biometricLockStoreProvider.overrideWithValue(lock),
-        ],
-      );
+  _Harness._(
+    this.tokens,
+    this.lock,
+    this.biometrics,
+    this.server,
+    this.api, [
+    List<Override> extra = const [],
+  ]) : container = ProviderContainer(
+         overrides: [
+           ...extra,
+           tokenStorageProvider.overrideWithValue(tokens),
+           apiClientProvider.overrideWithValue(api),
+           deviceBiometricsProvider.overrideWithValue(biometrics),
+           biometricLockStoreProvider.overrideWithValue(lock),
+         ],
+       );
 
   static Future<_Harness> create({
     SessionTokens? stored,
     String? enrolled,
     FakeBiometrics? biometrics,
     FakeAuthServer? server,
+    List<Override> extra = const [],
   }) async {
     final tokens = TokenStorage.memory();
     if (stored != null) await tokens.save(stored);
@@ -389,6 +422,7 @@ final class _Harness {
       biometrics ?? FakeBiometrics(),
       fake,
       api,
+      extra,
     );
     addTearDown(h.container.dispose);
     addTearDown(api.close);

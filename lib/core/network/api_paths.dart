@@ -30,6 +30,10 @@ abstract final class ApiPaths {
   static const changePassword = '/me/password';
   static const mePhoto = '/me/photo';
 
+  /// The phones that receive the push reminders: POST registers this one,
+  /// DELETE forgets it.
+  static const meDevices = '/me/devices';
+
   static const vehicles = '/vehicles';
 
   static String vehicle(String id) => '/vehicles/$id';

@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#090C10</color>
+    <!-- The tint of a reminder's small icon: AppColors.signalDeep on a light
+         shade, AppColors.signal on a dark one (values-night). -->
+    <color name="notification_accent">#1A66DA</color>
 </resources>

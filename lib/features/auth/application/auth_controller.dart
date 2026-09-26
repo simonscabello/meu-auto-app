@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:meu_auto/core/network/api_error_code.dart';
 import 'package:meu_auto/core/network/api_failure.dart';
+import 'package:meu_auto/core/push/push_registration.dart';
 import 'package:meu_auto/core/session/session_manager.dart';
 import 'package:meu_auto/core/session/session_tokens.dart';
 import 'package:meu_auto/features/auth/data/auth_repository.dart';
@@ -164,6 +165,11 @@ class AuthController extends AsyncNotifier<AuthStatus> {
   }
 
   Future<void> logout() async {
+    // First, while the session still authenticates: this phone stops
+    // receiving this account's reminders. Afterwards the request could not be
+    // made, and whoever signs in next here would be reminded of this car.
+    await ref.read(pushRegistrationProvider).forgetThisDevice();
+
     final session = ref.read(sessionManagerProvider);
     final refreshToken = await session.peekRefreshToken();
     if (refreshToken != null) {
