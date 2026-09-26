@@ -1,0 +1,233 @@
+# Publica o APK como Release do GitHub.
+#
+# Por que existe: o Meu Auto não está numa loja. Até aqui o APK saía da máquina de quem
+# desenvolve, assinado com a chave de debug dela. Com o Release, o `GET /v1/app-version`
+# da API aponta para uma URL fixa e o próprio app oferece "Atualizar o Meu Auto" no topo
+# do Início (lib/features/update). Mesmo desenho do app Pauta.
+#
+# **A assinatura é o ponto delicado.** O APK precisa sair assinado com a MESMA chave de
+# upload de todos os anteriores: um APK com outra chave (a de debug, por exemplo) o
+# Android recusa instalar por cima do app que já está no celular — a pessoa teria de
+# desinstalar e entrar de novo. Por isso este fluxo exige os quatro segredos abaixo e
+# **falha de propósito** se algum faltar, em vez de produzir calado um arquivo que
+# ninguém consegue instalar por cima.
+#
+#   Settings → Secrets and variables → Actions → New repository secret
+#
+#     ANDROID_KEYSTORE_BASE64   o .jks em base64 (comando em docs/RODANDO.md, seção 5)
+#     ANDROID_KEYSTORE_PASSWORD storePassword do android/key.properties
+#     ANDROID_KEY_ALIAS         keyAlias (upload)
+#     ANDROID_KEY_PASSWORD      keyPassword
+#
+# Como publicar uma versão:
+#
+#   1. suba o `version:` do pubspec.yaml (ex.: 1.2.0+3 — o número depois do + também
+#      sobe, sempre; o Android recusa instalar um build menor por cima) e faça commit;
+#   2. `git tag v1.2.0 && git push origin v1.2.0`;
+#   3. quando o Release aparecer, suba no Railway (serviço meu-auto-backend):
+#        APP_LATEST_VERSION = 1.2.0
+#
+# **Só essa.** O APP_APK_URL é configurado UMA vez e nunca mais:
+#
+#   APP_APK_URL = https://github.com/simonscabello/meu-auto-app/releases/latest/download/meu-auto.apk
+#
+# O `latest/download` do GitHub segue sozinho o Release mais novo, e este workflow publica
+# sempre uma cópia de nome fixo (meu-auto.apk) para esse endereço achar. **Não renomeie
+# esse arquivo** sem trocar a variável no Railway no mesmo minuto: o botão de quem já tem
+# o app instalado passaria a baixar um 404.
+#
+# O passo 3 continua manual de propósito: publicar o arquivo e *anunciar* a versão são
+# decisões diferentes. Enquanto APP_LATEST_VERSION não subir, o Release fica disponível
+# para testar sem que nenhum celular seja cobrado.
+
+name: Release do APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  # Permite repetir a publicação de uma tag que já existe, sem criá-la de novo.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag já existente a publicar (ex.: v1.2.0)"
+        required: true
+
+permissions:
+  # `gh release create` escreve no repositório. Nada além disso.
+  contents: write
+
+# Duas publicações da mesma tag ao mesmo tempo disputariam os mesmos arquivos do Release.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: meu-auto-app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descobrir a tag
+        id: tag
+        working-directory: .
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # Os dois repositórios lado a lado, como na máquina de desenvolvimento: o teste de
+      # contrato (test/contract/openapi_paths_test.dart) lê ../meu-auto-backend/api/openapi.yaml
+      # e, sem ele, é pulado. Com ele, um app que chama uma rota que a API em produção não
+      # tem não chega a virar Release.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          path: meu-auto-app
+
+      - uses: actions/checkout@v4
+        with:
+          repository: simonscabello/meu-auto-backend
+          path: meu-auto-backend
+
+      # O app compara a própria versão com a que a API anuncia. Uma tag que não bate com o
+      # pubspec produziria um Release "1.2.0" que se instala e continua se apresentando
+      # como 1.1.0 — e o aviso de atualização nunca sairia da tela.
+      - name: Conferir se a tag bate com o pubspec
+        id: pubspec
+        run: |
+          FULL=$(grep '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//' | tr -d '\r')
+          PUBSPEC="${FULL%%+*}"
+          TAG_VERSION="${{ steps.tag.outputs.version }}"
+          if [ "$PUBSPEC" != "$TAG_VERSION" ]; then
+            echo "::error::A tag diz $TAG_VERSION e o pubspec.yaml diz $PUBSPEC."
+            echo "::error::Acerte o 'version:' do pubspec, refaça o commit e a tag."
+            exit 1
+          fi
+          echo "full=$FULL" >> "$GITHUB_OUTPUT"
+          echo "Versão $FULL confirmada."
+
+      # Falha aqui, e não depois do build: vários minutos de compilação para descobrir no
+      # fim que o arquivo sai impossível de instalar por cima seria o pior lugar para avisar.
+      - name: Conferir os segredos de assinatura
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          faltando=""
+          [ -z "$KEYSTORE" ]       && faltando="$faltando ANDROID_KEYSTORE_BASE64"
+          [ -z "$STORE_PASSWORD" ] && faltando="$faltando ANDROID_KEYSTORE_PASSWORD"
+          [ -z "$KEY_ALIAS" ]      && faltando="$faltando ANDROID_KEY_ALIAS"
+          [ -z "$KEY_PASSWORD" ]   && faltando="$faltando ANDROID_KEY_PASSWORD"
+          if [ -n "$faltando" ]; then
+            echo "::error::Faltam segredos de assinatura:$faltando"
+            echo "::error::Sem eles o APK sairia assinado com a chave de debug, e quem"
+            echo "::error::já tem o app instalado não conseguiria atualizar por cima."
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # A mesma versão da máquina de desenvolvimento. Fixa de propósito: o canal
+          # `stable` muda sozinho, e o build publicado não pode mudar junto sem alguém
+          # decidir.
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+
+      - name: Restaurar a chave de assinatura
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/meu-auto-upload.jks"
+          # android/app/build.gradle.kts lê este arquivo; o caminho é absoluto porque o
+          # .properties não expande variáveis.
+          cat > android/key.properties <<EOF
+          storeFile=$RUNNER_TEMP/meu-auto-upload.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - run: flutter pub get
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+      # APP_VERSION é o que o app compara com a versão anunciada pela API
+      # (AppConfig.appVersion). Só este build a recebe: um build feito na máquina de
+      # desenvolvimento não sabe a própria versão e, por isso, nunca é cobrado.
+      - name: Build do APK
+        run: |
+          flutter build apk --release \
+            --dart-define-from-file=dart_defines/production.json \
+            --dart-define=APP_VERSION=${{ steps.pubspec.outputs.full }}
+
+      - name: Nomear os arquivos com a versão
+        run: |
+          V="${{ steps.tag.outputs.version }}"
+          cd build/app/outputs/flutter-apk
+          mv app-release.apk "meu-auto-$V.apk"
+          # Cópia com nome FIXO, e é ela que o APP_APK_URL aponta:
+          # https://github.com/<repo>/releases/latest/download/meu-auto.apk
+          # sempre cai no Release mais novo. Sem isto, a URL carregaria a versão no nome e
+          # teria de ser reescrita no Railway a cada publicação.
+          cp "meu-auto-$V.apk" meu-auto.apk
+          ls -lh meu-auto*.apk
+
+      # `gh` já vem no runner: nenhuma ação de terceiro precisa do token.
+      - name: Publicar o Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V="${{ steps.tag.outputs.version }}"
+          TAG="${{ steps.tag.outputs.tag }}"
+          cd build/app/outputs/flutter-apk
+
+          NOTAS=$(cat <<EOF
+          Baixe **meu-auto-$V.apk** e abra no celular. Se o Android perguntar, autorize a
+          instalação de apps desta origem.
+
+          Já tem o Meu Auto instalado? É só instalar por cima — a conta e os dados ficam no
+          servidor e continuam lá.
+
+          (\`meu-auto.apk\`, sem número, é a cópia de nome fixo que o "Atualizar o Meu Auto"
+          dentro do app baixa. É o mesmo arquivo.)
+          EOF
+          )
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" meu-auto*.apk --clobber
+          else
+            gh release create "$TAG" meu-auto*.apk \
+              --title "Meu Auto $V" \
+              --notes "$NOTAS"
+          fi
+
+          {
+            echo "### APK $V publicado"
+            echo ""
+            echo "Falta **um** passo para os celulares serem avisados: no Railway, serviço"
+            echo "meu-auto-backend, defina"
+            echo ""
+            echo "\`\`\`"
+            echo "APP_LATEST_VERSION = $V"
+            echo "\`\`\`"
+            echo ""
+            echo "O \`APP_APK_URL\` **não muda nunca mais** — ele aponta para"
+            echo "\`releases/latest/download/meu-auto.apk\`, que segue sozinho o Release mais novo."
+          } >> "$GITHUB_STEP_SUMMARY"

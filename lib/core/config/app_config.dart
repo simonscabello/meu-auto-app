@@ -14,6 +14,17 @@ final class AppConfig {
 
   static const String apiUrl = '$apiBaseUrl/v1';
 
+  /// The version this build was published as — the pubspec's `version:`,
+  /// `1.2.0+7` — handed in by the release workflow
+  /// (`.github/workflows/release-apk.yml`), which reads it from the pubspec.
+  ///
+  /// Empty in every other build, and that is deliberate: a build made on the
+  /// development machine is never told to replace itself with the published
+  /// one. It is a define rather than a plugin that reads the package because
+  /// the only build that needs to know its version is the one the workflow
+  /// makes, and the workflow already knows it.
+  static const String appVersion = String.fromEnvironment('APP_VERSION');
+
   /// False for emulator loopback, host loopback, and LAN IPs used when a
   /// physical device talks to the machine running the API.
   static bool get isProduction {

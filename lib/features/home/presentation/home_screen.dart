@@ -6,6 +6,7 @@ import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/features/dashboard/application/dashboard_provider.dart';
 import 'package:meu_auto/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:meu_auto/features/home/presentation/home_header.dart';
+import 'package:meu_auto/features/update/presentation/app_update_notice.dart';
 import 'package:meu_auto/features/vehicle/application/vehicles_provider.dart';
 import 'package:meu_auto/features/vehicle/presentation/vehicle_switcher_sheet.dart';
 import 'package:meu_auto/shared/widgets/app_error_state.dart';
@@ -41,13 +42,22 @@ class HomeScreen extends ConsumerWidget {
             ? const SizedBox.shrink()
             : DashboardView(
                 vehicleId: vehicle.id,
-                header: HomeHeader(
-                  name: vehicle.headlineName,
-                  metaParts: vehicle.brandAndYear,
-                  plate: vehicle.plate,
-                  canSwitch: vehicles.length > 1,
-                  onSwitch: () => VehicleSwitcherSheet.show(context),
-                  onAccount: () => context.push(AppRoutes.profile),
+                // The update notice rides in the header's slot so it shows in
+                // every state, the failed one included — see AppUpdateNotice.
+                header: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const AppUpdateNotice(),
+                    HomeHeader(
+                      name: vehicle.headlineName,
+                      metaParts: vehicle.brandAndYear,
+                      plate: vehicle.plate,
+                      canSwitch: vehicles.length > 1,
+                      onSwitch: () => VehicleSwitcherSheet.show(context),
+                      onAccount: () => context.push(AppRoutes.profile),
+                    ),
+                  ],
                 ),
               ),
       ),

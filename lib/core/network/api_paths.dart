@@ -13,6 +13,10 @@ abstract final class ApiPaths {
   static String get healthz => '${AppConfig.apiBaseUrl}/healthz';
   static String get readyz => '${AppConfig.apiBaseUrl}/readyz';
 
+  /// The APK the app can update to. Public on the server, so it answers even
+  /// when the session is the thing that broke — see `features/update`.
+  static const appVersion = '/app-version';
+
   static const authRegister = '/auth/register';
   static const authLogin = '/auth/login';
   static const authRefresh = '/auth/refresh';

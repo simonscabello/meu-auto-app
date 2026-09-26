@@ -168,7 +168,7 @@ Exceções de formato: `/healthz` e `/readyz` **não** usam esse envelope. `/rea
 
 ## 3. Endpoints
 
-**41 operações** em **25 paths**, na mesma ordem do OpenAPI.
+**60 operações** em **37 paths**, na mesma ordem do OpenAPI.
 
 Auth: `pública` ou `Bearer`. Request/response são nomes de schema do OpenAPI, ou um envelope anônimo batizado aqui (seção 4). Além dos códigos da linha, qualquer rota pode devolver `internal`; path inexistente `not_found`; método errado `method_not_allowed`; JSON ilegível `validation_failed`.
 
@@ -178,6 +178,14 @@ Auth: `pública` ou `Bearer`. Request/response são nomes de schema do OpenAPI, 
 | --- | --- | --- | --- | --- | --- | --- |
 | GET | `/healthz` | pública | nenhum | `HealthStatus` | — | não |
 | GET | `/readyz` | pública | nenhum | `ReadyStatus` (200) / `ReadyUnavailable` (503) | — (503 fora do envelope `Error`) | não |
+
+### App
+
+| Método | Path | Auth | Request | Response | Erros | Paginado |
+| --- | --- | --- | --- | --- | --- | --- |
+| GET | `/v1/app-version` | pública | nenhum | `AppVersion` | — | não |
+
+`AppVersion` tem dois campos, **sempre presentes** e `null` enquanto nada foi anunciado: `latest_version` (`1.2.0` ou `1.2.0+7`, o formato do `version:` do pubspec) e `apk_url` (o `releases/latest/download/meu-auto.apk` do GitHub). O app compara `latest_version` com `AppConfig.appVersion` número a número — sem build conta como build 0 — e, se for maior, mostra "Atualizar o Meu Auto" no Início (`lib/features/update`). Qualquer falha, ou valor que não dê para comparar, vira nenhum aviso. Pública de propósito: o aviso tem de chegar ao app cuja sessão ou cujo parse quebrou.
 
 ### Auth
 

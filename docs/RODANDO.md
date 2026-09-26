@@ -137,6 +137,43 @@ git check-ignore -v android/key.properties
 
 Duas coisas que não têm conserto depois: commitar o keystore (qualquer pessoa passa a publicar no seu lugar) e perder o keystore (você nunca mais atualiza o app publicado, só sobe outro com id diferente). Guarde uma cópia num gerenciador de senhas ou cofre da empresa.
 
+### 5.2. Publicar uma versão (Release no GitHub)
+
+O APK que vai para os celulares sai do workflow [`.github/workflows/release-apk.yml`](../.github/workflows/release-apk.yml), não desta máquina. Ele roda quando uma tag `v*` sobe: confere se a tag bate com o `version:` do pubspec, roda analyze e testes (com o `openapi.yaml` do backend ao lado, para o teste de contrato valer), assina com a chave de upload e publica o Release com dois arquivos — `meu-auto-<versão>.apk` e a cópia de nome fixo `meu-auto.apk`, que é o que o "Atualizar o Meu Auto" do Início baixa.
+
+**Uma vez só: os segredos da assinatura.** GitHub → repositório `meu-auto-app` → Settings → Secrets and variables → Actions → New repository secret:
+
+| Segredo | Valor |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | o `.jks` da seção 5.1 em base64 (comando abaixo) |
+| `ANDROID_KEYSTORE_PASSWORD` | o `storePassword` |
+| `ANDROID_KEY_ALIAS` | `upload` |
+| `ANDROID_KEY_PASSWORD` | o `keyPassword` |
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\caminho\para\meu-auto-upload.jks")) | Set-Clipboard
+```
+
+O workflow **falha de propósito**, antes de compilar, se algum faltar: sem eles o Gradle cairia na chave de debug e produziria calado um arquivo que ninguém instala por cima.
+
+**Uma vez só: o link no Railway**, serviço `meu-auto-backend`:
+
+```text
+APP_APK_URL = https://github.com/simonscabello/meu-auto-app/releases/latest/download/meu-auto.apk
+```
+
+**A cada versão:**
+
+1. Suba o `version:` do `pubspec.yaml`, as duas partes: `1.2.0+3` → `1.3.0+4`. O número depois do `+` é o versionCode do Android e **só pode crescer** — o Android recusa instalar um build menor por cima.
+2. Commit, e então `git tag v1.3.0 && git push origin main v1.3.0`.
+3. Quando o Release aparecer em [github.com/simonscabello/meu-auto-app/releases](https://github.com/simonscabello/meu-auto-app/releases), defina no Railway `APP_LATEST_VERSION = 1.3.0`. A partir daí, o Início de quem está numa versão anterior mostra "Atualizar o Meu Auto".
+
+Publicar e anunciar são passos separados de propósito: enquanto o passo 3 não acontece, o Release existe para testar e nenhum celular é cobrado.
+
+**O aviso só aparece em APK feito pelo workflow.** É ele que passa `--dart-define=APP_VERSION=...` (`AppConfig.appVersion`); um build desta máquina não sabe a própria versão e nunca é cobrado.
+
+**A troca de chave acontece uma vez.** Um app instalado a partir de um build desta máquina foi assinado com a chave de debug, e o Android não aceita o APK do Release por cima dele: desinstale uma vez, instale o do Release e entre de novo — conta e dados ficam no servidor. Daí em diante, todo Release instala por cima.
+
 ## 6. Build de release (iOS)
 
 **`flutter build ipa` exige macOS. Esta máquina é Windows e o passo não roda aqui** — não é configuração faltando, é a toolchain da Apple (Xcode, `xcodebuild`, assinatura) que só existe no macOS.

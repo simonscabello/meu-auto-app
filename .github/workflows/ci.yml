@@ -1,0 +1,47 @@
+# Analisa e testa o app a cada push no main e a cada pull request.
+#
+# O Release (release-apk.yml) roda os mesmos passos antes de publicar; este workflow
+# existe para a falha aparecer no commit que a causou, e não dias depois, na hora de
+# gerar uma versão.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: meu-auto-app
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # O backend ao lado, para o teste de contrato comparar o ApiPaths com o openapi.yaml
+      # de verdade em vez de ser pulado.
+      - uses: actions/checkout@v4
+        with:
+          path: meu-auto-app
+
+      - uses: actions/checkout@v4
+        with:
+          repository: simonscabello/meu-auto-backend
+          path: meu-auto-backend
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter analyze
+
+      - run: flutter test
