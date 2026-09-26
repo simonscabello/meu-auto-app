@@ -244,3 +244,22 @@ Para exercitar o app **já aberto** (warm start), deixe-o em segundo plano e dis
 ```bat
 mklink /J %LOCALAPPDATA%\Android\sdk\platforms\android-37 %LOCALAPPDATA%\Android\sdk\platforms\android-37.0
 ```
+
+## 9. Biometria no emulador
+
+O emulador do Android Studio tem um sensor de digital simulado, mas o `Medium_Phone_2` vem sem bloqueio de tela e sem digital, e sem os dois o app não oferece a biometria (a linha nem aparece em Perfil). O `adb` fica em `%LOCALAPPDATA%\Android\Sdk\platform-tools`; no Git Bash, prefixe com `MSYS_NO_PATHCONV=1` os comandos que levam caminho `/sdcard`.
+
+```bash
+adb shell locksettings set-pin 1111
+adb shell am start -a android.settings.BIOMETRIC_ENROLL
+```
+
+- A tela que pede o PIN sai **preta** no `screencap`: é uma janela protegida. Digite às cegas: `adb shell input text 1111` e `adb shell input keyevent 66`.
+- Passe a introdução ("More"). Em "Touch the sensor", repita umas quinze vezes `adb -e emu finger touch 1` e `adb -e emu finger remove 1`, até "Fingerprint added".
+- A janela da biometria (`BiometricPrompt`) também sai preta na captura. O texto dela se lê em `adb shell uiautomator dump /sdcard/ui.xml`, e a digital se encosta com o mesmo `adb -e emu finger touch 1`.
+- Só a abertura a frio pede a biometria. Para ver a trava, feche o app de verdade (`adb shell am force-stop br.com.meuauto.meu_auto`) e abra de novo.
+- No fim, `adb shell locksettings clear --old 1111` devolve o emulador sem bloqueio; a digital vai junto.
+
+Na janela, a linha "Touch the fingerprint sensor" é do Android e segue o idioma do aparelho. O título ("Meu Auto"), o subtítulo, a explicação e o "Cancelar" são do app (`BiometricCopy`) e têm de sair em português em qualquer aparelho.
+
+Um build de release instalado por cima de um de debug desta máquina mantém os dados, porque os dois saem com a mesma chave de debug. Assim dá para ver a trava no release sem cadastrar tudo de novo; é o jeito de conferir que o R8 não quebrou o plugin. Esse APK continua sendo só para teste: ver §5.2.

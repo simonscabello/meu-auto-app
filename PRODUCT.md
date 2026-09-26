@@ -85,6 +85,10 @@ Explicitly undecided — record, do not invent:
 - Whether multas (fines) are tracked in-app.
 - Authentication is e-mail/password in v1, including authenticated password change and
   recovery by e-mail. Social login and phone authentication are future options.
+  **Biometric sign-in** (fingerprint or face, decided 26/09/2026 at the owner's request)
+  opens the session already stored on the phone: it creates no account, recovers none,
+  and stores no password. It is optional, per phone, and offered once after a password
+  sign-in.
 - Notification delivery (push, email, in-app only) and how far in advance reminders fire.
 - Monetization — free, paid, or freemium — and any account limits.
 - Fuel logging computes consumption between full-tank records and contributes to cost.

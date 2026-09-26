@@ -19,7 +19,29 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
     this.onTap,
     this.trailing,
     this.destructive = false,
-  });
+  }) : toggled = null,
+       onToggled = null;
+
+  /// A yes/no setting that changes in place: a switch where the value and
+  /// the chevron would be, and a tap anywhere on the line flips it. A screen
+  /// reader hears a switch and its state, not a button.
+  ///
+  /// The same line as its neighbours — glyph, label, padding — so a switch
+  /// in a group of rows that open somewhere does not start its text at a
+  /// different place. `AppSwitchRow` is the form's version, with a subtitle
+  /// and no glyph.
+  const AppSettingRow.toggle({
+    super.key,
+    required this.label,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+    this.icon,
+  }) : toggled = value,
+       onToggled = onChanged,
+       value = null,
+       onTap = null,
+       trailing = null,
+       destructive = false;
 
   final String label;
 
@@ -31,12 +53,18 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
   final VoidCallback? onTap;
 
   /// Replaces the value and the chevron. For a row whose control lives in
-  /// place — a switch, say.
+  /// place that is not a plain switch — use [AppSettingRow.toggle] for that.
   final Widget? trailing;
 
   /// Paints the label in the error colour. For sign-out and account deletion,
   /// which must not look like the rows above them.
   final bool destructive;
+
+  /// Set only by [AppSettingRow.toggle]: whether the switch is on.
+  final bool? toggled;
+
+  /// Null disables the switch — while a change is in flight, say.
+  final ValueChanged<bool>? onToggled;
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +72,7 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
     final scheme = theme.colorScheme;
     final tones = AppTones.of(context);
     final labelColor = destructive ? scheme.error : scheme.onSurface;
+    final isToggle = toggled != null;
 
     final row = Row(
       children: [
@@ -57,7 +86,18 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
             style: theme.textTheme.titleSmall?.copyWith(color: labelColor),
           ),
         ),
-        if (trailing != null)
+        if (isToggle)
+          // The line is the tap target; the switch only shows the state.
+          ExcludeSemantics(
+            child: Switch(
+              value: toggled!,
+              onChanged: onToggled,
+              // The line already gives the 48dp target; the switch's own
+              // padding would make the row taller than its neighbours.
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          )
+        else if (trailing != null)
           trailing!
         else ...[
           // Capped, not flexible: a Flexible beside the Expanded label took
@@ -94,27 +134,34 @@ class AppSettingRow extends StatelessWidget with GroupedRow {
     final padded = Padding(
       padding: EdgeInsets.fromLTRB(
         inset.left,
-        AppSpacing.s12,
+        // The switch is taller than a line of text; less padding keeps the
+        // row exactly as tall as the ones around it.
+        isToggle ? AppSpacing.s4 : AppSpacing.s12,
         inset.right,
-        AppSpacing.s12,
+        isToggle ? AppSpacing.s4 : AppSpacing.s12,
       ),
       child: row,
     );
 
-    if (onTap == null) {
+    final VoidCallback? tap = isToggle
+        ? (onToggled == null ? null : () => onToggled!(!toggled!))
+        : onTap;
+    if (tap == null && !isToggle) {
       return padded;
     }
 
     return Semantics(
       container: true,
-      button: true,
+      button: !isToggle,
+      toggled: toggled,
+      enabled: isToggle ? onToggled != null : null,
       label: value == null ? label : '$label. $value',
       excludeSemantics: true,
-      onTap: onTap,
+      onTap: tap,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: tap,
           borderRadius: inset == EdgeInsets.zero
               ? AppRadius.borderS
               : BorderRadius.zero,

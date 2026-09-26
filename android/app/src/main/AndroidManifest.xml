@@ -1,6 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Entrar com biometria (local_auth). Granted at install; no prompt. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- No Auto Backup: the session sits in flutter_secure_storage, encrypted
+         with a Keystore key that never leaves this phone. Restored onto
+         another one it cannot be decrypted, and the biometric lock would come
+         back pointing at a session that does not exist. -->
     <application
+        android:allowBackup="false"
         android:label="Meu Auto"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

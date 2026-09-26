@@ -98,6 +98,69 @@ void main() {
     );
   });
 
+  group('locked', () {
+    test('sends the splash and every protected route to the unlock screen', () {
+      for (final location in [
+        AppRoutes.splash,
+        AppRoutes.home,
+        AppRoutes.profile,
+        AppRoutes.vehicleNew,
+      ]) {
+        expect(
+          authRedirect(status: const AuthLocked(), location: location),
+          AppRoutes.unlock,
+          reason: location,
+        );
+      }
+    });
+
+    test('stays on the unlock screen', () {
+      expect(
+        authRedirect(status: const AuthLocked(), location: AppRoutes.unlock),
+        isNull,
+      );
+    });
+
+    // The password is one tap away from the lock, and so is everything the
+    // sign-in screen leads to.
+    test('keeps the public auth routes open', () {
+      for (final location in [
+        AppRoutes.login,
+        AppRoutes.register,
+        AppRoutes.passwordReset,
+        AppRoutes.passwordResetConfirm,
+      ]) {
+        expect(
+          authRedirect(status: const AuthLocked(), location: location),
+          isNull,
+          reason: location,
+        );
+      }
+    });
+
+    test('once signed out, the unlock screen gives way to the sign-in', () {
+      expect(
+        authRedirect(status: const AuthLoggedOut(), location: AppRoutes.unlock),
+        AppRoutes.login,
+      );
+    });
+
+    test('once unlocked, it moves on like any other way in', () {
+      expect(
+        authRedirect(status: loggedIn, location: AppRoutes.unlock),
+        AppRoutes.splash,
+      );
+      expect(
+        authRedirect(
+          status: loggedIn,
+          location: AppRoutes.unlock,
+          hasVehicles: true,
+        ),
+        AppRoutes.home,
+      );
+    });
+  });
+
   group('logged in', () {
     test('stays on splash while vehicles are unknown', () {
       expect(

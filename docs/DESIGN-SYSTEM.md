@@ -69,6 +69,11 @@ Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
   principal. **Formulário curto**: folha (`showAppSheet(isForm: true)` +
   `AppSheetHeader` + `AppSheetBody`).
 - **Diálogo só para confirmação** (`confirmAction`); o botão diz o verbo.
+- **Entrada** (splash, desbloqueio, login): sem `AppBar`. A tela de
+  desbloqueio da biometria é a própria splash — `SplashFrame`, a marca no mesmo
+  lugar sobre o mesmo spinner — e só ganha os botões quando o pedido do sistema
+  é cancelado. Um formulário de login por trás do pedido de digital parecia que
+  o app tinha deslogado (lição do Pauta).
 
 ## Componentes (`lib/shared/widgets`)
 
@@ -95,6 +100,10 @@ Regra: nenhuma cor, raio ou espaçamento literal fora desta pasta.
   `AppRowChevron`.
 - `AppListRowShell`, `AppFactRow` (`inline` para fatos curtos),
   `AppSettingRow`, `AppChoiceRow`, `AppSwitchRow`.
+- `AppSettingRow.toggle` — o sim/não num grupo de configurações ("Entrar com
+  biometria"): o interruptor no lugar do valor, a linha inteira como alvo,
+  lido como interruptor e não como botão, e da mesma altura das vizinhas.
+  `AppSwitchRow` é o do formulário, com subtítulo e sem ícone.
 - `AppSectionHeader` — `title` (padrão: 16/600, texto) ou `label` (quieto,
   para partes de formulário). Ação à direita em azul, sem botão.
 - `AppRowDivider`, `AppPagedFooter`, `groupByMonth`.

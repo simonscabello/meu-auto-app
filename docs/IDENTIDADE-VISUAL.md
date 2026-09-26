@@ -110,6 +110,21 @@ Depois do `flutter_launcher_icons`, conferir `ios/Runner.xcodeproj/project.pbxpr
 `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS` precisa continuar
 `YES`.
 
+Os temas do Android (`values*/styles.xml`) não são mais os do template, desde a
+biometria (26/09/2026):
+
+- `LaunchTheme` e `NormalTheme` herdam de `Theme.AppCompat.Light.NoActionBar`
+  (claro) e `Theme.AppCompat.NoActionBar` (escuro). O `local_auth` mostra o pedido
+  de digital pelo AndroidX, que fecha o app no Android 8 e anteriores sob um tema
+  do framework.
+- O `NormalTheme` pinta a janela com a cor da página — `#090C10` no escuro,
+  `#F2F4F7` no claro, as mesmas da splash e de `AppColors.*.surface`. O
+  `?android:colorBackground` do template, sob o AppCompat, vira um cinza
+  (`#303030` no escuro) que o app não tem.
+- O `flutter_native_splash:create` edita os itens do `LaunchTheme` e mantém o
+  `parent` que encontrar; ele só escreve o arquivo inteiro quando o arquivo não
+  existe. Regenerar não desfaz nada disso.
+
 ## Splash nativa e SplashScreen interna
 
 São duas telas, em momentos distintos do boot, e não se unificam.
@@ -117,6 +132,11 @@ São duas telas, em momentos distintos do boot, e não se unificam.
 1. **Splash nativa** — símbolo sobre a cor do tema, antes de o Flutter subir.
 2. **`SplashScreen`** (`lib/features/auth/presentation/splash_screen.dart`) —
    wordmark sobre o mesmo fundo enquanto a sessão resolve.
+
+Com a biometria ligada, entre as duas vem a **`UnlockScreen`**, que não é uma
+terceira tela para quem olha: é a mesma moldura da `SplashScreen`
+(`SplashFrame`), com a marca no mesmo lugar e o mesmo spinner por trás do
+pedido de digital. Os botões só aparecem se o pedido for cancelado.
 
 O app abre no tema escuro por padrão (`ThemeModeStore`); a splash nativa segue
 o tema do sistema. Num aparelho em modo claro a emenda mostra a splash clara e

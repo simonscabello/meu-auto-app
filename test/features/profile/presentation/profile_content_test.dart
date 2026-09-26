@@ -4,6 +4,7 @@ import 'package:meu_auto/core/domain/civil_date.dart';
 import 'package:meu_auto/core/domain/formatters.dart';
 import 'package:meu_auto/features/profile/domain/profile_copy.dart';
 import 'package:meu_auto/core/theme/app_theme.dart';
+import 'package:meu_auto/features/auth/domain/biometric_copy.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
 import 'package:meu_auto/features/profile/presentation/profile_screen.dart';
 import 'package:meu_auto/shared/widgets/app_setting_row.dart';
@@ -111,7 +112,7 @@ void main() {
   ) async {
     await _pump(tester);
 
-    for (final section in ['Conta', 'Veículos', 'Aparência']) {
+    for (final section in ['Conta', 'Segurança', 'Veículos', 'Aparência']) {
       expect(find.text(section), findsOneWidget, reason: section);
     }
     await tester.ensureVisible(find.text('Excluir minha conta'));
@@ -123,6 +124,44 @@ void main() {
       tester.getTopLeft(find.text('Excluir minha conta')).dy,
       greaterThan(tester.getTopLeft(find.text('Sair')).dy),
     );
+  });
+
+  testWidgets('Segurança holds the password and, on a phone that can check '
+      'one, the biometric switch', (tester) async {
+    final changes = <bool>[];
+    await _pump(tester, biometrics: false, onBiometrics: changes.add);
+
+    expect(find.text('Segurança'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text(BiometricCopy.settingLabel)).dy,
+      greaterThan(tester.getTopLeft(find.text('Alterar senha')).dy),
+    );
+    // The password is the account's; the biometric is this phone's.
+    expect(find.text(BiometricCopy.settingNote), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+
+    await tester.tap(find.text(BiometricCopy.settingLabel));
+    expect(changes, [true]);
+  });
+
+  testWidgets('with nothing to check on the phone, no switch and no note', (
+    tester,
+  ) async {
+    await _pump(tester);
+
+    expect(find.text('Alterar senha'), findsOneWidget);
+    expect(find.text(BiometricCopy.settingLabel), findsNothing);
+    expect(find.text(BiometricCopy.settingNote), findsNothing);
+    expect(find.byType(Switch), findsNothing);
+  });
+
+  testWidgets('the switch shows the lock that is on, and holds still while '
+      'it changes', (tester) async {
+    await _pump(tester, biometrics: true);
+
+    final toggle = tester.widget<Switch>(find.byType(Switch));
+    expect(toggle.value, isTrue);
+    expect(toggle.onChanged, isNull, reason: 'no callback while busy');
   });
 
   // "Sair" happens in place, after a confirmation; it does not open a screen,
@@ -182,6 +221,8 @@ Future<void> _pump(
   ValueChanged<ThemeMode>? onThemeMode,
   VoidCallback? onPhone,
   User? user,
+  bool? biometrics,
+  ValueChanged<bool>? onBiometrics,
 }) async {
   // Tall enough that the whole list is built: ListView only builds what is
   // on screen, and the exits sit below the personal data.
@@ -207,6 +248,8 @@ Future<void> _pump(
           onThemeMode: onThemeMode ?? (_) {},
           onVehicles: () {},
           onChangePassword: onChangePassword ?? () {},
+          biometrics: biometrics,
+          onBiometrics: onBiometrics,
           onLogout: onLogout ?? () {},
           onDeleteAccount: () {},
         ),

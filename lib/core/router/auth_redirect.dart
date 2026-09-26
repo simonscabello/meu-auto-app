@@ -24,6 +24,15 @@ String? authRedirect({
         return null;
       }
       return AppRoutes.login;
+    case AuthLocked():
+      // The session exists and waits for the owner. Its background is the
+      // unlock screen, not the sign-in form — which read as "the app signed
+      // me out". The password stays one tap away, so the public routes stay
+      // open too.
+      if (location == AppRoutes.unlock || _isPublicAuthRoute(location)) {
+        return null;
+      }
+      return AppRoutes.unlock;
     case AuthLoggedIn():
       return _loggedInRedirect(location: location, hasVehicles: hasVehicles);
   }
@@ -37,7 +46,7 @@ String? _loggedInRedirect({
     if (location == AppRoutes.splash) {
       return null;
     }
-    if (_isPublicAuthRoute(location)) {
+    if (_isEntryRoute(location)) {
       return AppRoutes.splash;
     }
     return null;
@@ -48,7 +57,7 @@ String? _loggedInRedirect({
     }
     return AppRoutes.vehicleNew;
   }
-  if (location == AppRoutes.splash || _isPublicAuthRoute(location)) {
+  if (location == AppRoutes.splash || _isEntryRoute(location)) {
     return AppRoutes.home;
   }
   return null;
@@ -58,4 +67,9 @@ bool _isPublicAuthRoute(String location) {
   return location == AppRoutes.login ||
       location == AppRoutes.register ||
       location == AppRoutes.passwordReset;
+}
+
+/// Where someone waits to get in. Signed in, none of them is a place to be.
+bool _isEntryRoute(String location) {
+  return _isPublicAuthRoute(location) || location == AppRoutes.unlock;
 }

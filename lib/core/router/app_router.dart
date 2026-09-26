@@ -14,6 +14,7 @@ import 'package:meu_auto/features/auth/presentation/password_reset_confirm_scree
 import 'package:meu_auto/features/auth/presentation/password_reset_request_screen.dart';
 import 'package:meu_auto/features/auth/presentation/register_screen.dart';
 import 'package:meu_auto/features/auth/presentation/splash_screen.dart';
+import 'package:meu_auto/features/auth/presentation/unlock_screen.dart';
 import 'package:meu_auto/features/costs/presentation/costs_screen.dart';
 import 'package:meu_auto/features/dashboard/presentation/alerts_screen.dart';
 import 'package:meu_auto/features/home/presentation/home_screen.dart';
@@ -77,6 +78,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.unlock,
+        builder: (context, state) => const UnlockScreen(),
       ),
       GoRoute(
         path: AppRoutes.register,

@@ -23,10 +23,12 @@ class SplashScreen extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
 
     if (auth.hasError) {
-      return _SplashFrame(
-        below: AppErrorState.fromError(
-          error: auth.error!,
-          onRetry: () => ref.invalidate(authControllerProvider),
+      return AppScaffold(
+        body: SplashFrame(
+          below: AppErrorState.fromError(
+            error: auth.error!,
+            onRetry: () => ref.invalidate(authControllerProvider),
+          ),
         ),
       );
     }
@@ -35,45 +37,51 @@ class SplashScreen extends ConsumerWidget {
     if (status is AuthLoggedIn) {
       final vehicles = ref.watch(vehiclesProvider);
       if (vehicles.hasError && !(vehicles.valueOrNull?.available ?? false)) {
-        return _SplashFrame(
-          below: AppErrorState.fromError(
-            error: vehicles.error!,
-            onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+        return AppScaffold(
+          body: SplashFrame(
+            below: AppErrorState.fromError(
+              error: vehicles.error!,
+              onRetry: () => ref.read(vehiclesProvider.notifier).reload(),
+            ),
           ),
         );
       }
     }
 
-    return const _SplashFrame(
-      below: SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
-    );
+    return const AppScaffold(body: SplashFrame(below: SplashFrame.spinner));
   }
 }
 
-class _SplashFrame extends StatelessWidget {
-  const _SplashFrame({required this.below});
+/// The mark at the centre of an empty page, and whatever waits under it.
+///
+/// Shared with the unlock screen, which must be indistinguishable from this
+/// one while the biometric prompt is on its way: the same mark, in the same
+/// place, over the same spinner.
+class SplashFrame extends StatelessWidget {
+  const SplashFrame({super.key, required this.below});
 
-  /// The spinner while waiting, or the error when waiting failed.
+  /// The spinner while waiting, the error when waiting failed, or — on the
+  /// unlock screen — the ways in.
   final Widget below;
+
+  static const spinner = SizedBox(
+    width: 20,
+    height: 20,
+    child: CircularProgressIndicator(strokeWidth: 2),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.page),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const AppWordmark(size: AppWordmarkSize.large),
-              const SizedBox(height: AppSpacing.s32),
-              below,
-            ],
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.page),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppWordmark(size: AppWordmarkSize.large),
+            const SizedBox(height: AppSpacing.s32),
+            below,
+          ],
         ),
       ),
     );

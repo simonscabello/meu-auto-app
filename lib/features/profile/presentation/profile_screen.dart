@@ -11,7 +11,10 @@ import 'package:meu_auto/core/router/app_routes.dart';
 import 'package:meu_auto/core/theme/app_spacing.dart';
 import 'package:meu_auto/core/theme/theme_mode_provider.dart';
 import 'package:meu_auto/features/auth/application/auth_controller.dart';
+import 'package:meu_auto/features/auth/application/biometric_setting.dart';
+import 'package:meu_auto/features/auth/data/device_biometrics.dart';
 import 'package:meu_auto/features/auth/domain/auth_status.dart';
+import 'package:meu_auto/features/auth/domain/biometric_copy.dart';
 import 'package:meu_auto/features/auth/domain/user.dart';
 import 'package:meu_auto/features/profile/presentation/name_edit_sheet.dart';
 import 'package:meu_auto/features/profile/presentation/personal_data_sheets.dart';
@@ -37,6 +40,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _loggingOut = false;
   bool _photoBusy = false;
+  bool _biometricsBusy = false;
 
   /// Take, pick or remove the photo. The picker shrinks it to 1024px before
   /// it leaves the phone, so an upload is a few hundred KB, not a 12 MP shot.
@@ -166,6 +170,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     await ref.read(authControllerProvider.notifier).logout();
   }
 
+  /// Turning it on opens the system prompt; the switch waits for it, and
+  /// the snack bar says when the lock takes effect.
+  Future<void> _setBiometrics(bool on) async {
+    setState(() => _biometricsBusy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final check = await ref
+          .read(biometricSettingProvider.notifier)
+          .set(on: on);
+      if (!mounted) return;
+      switch (check) {
+        case BiometricCheck.confirmed:
+          showAppSnackBar(messenger, message: BiometricCopy.enabled);
+        case BiometricCheck.notConfirmed:
+          showAppErrorSnackBar(messenger, message: BiometricCopy.notConfirmed);
+        case BiometricCheck.lockedOut:
+          showAppErrorSnackBar(
+            messenger,
+            message: BiometricCopy.lockedOutSetting,
+          );
+        case null:
+          break;
+      }
+    } finally {
+      if (mounted) setState(() => _biometricsBusy = false);
+    }
+  }
+
   Future<void> _changePassword() async {
     final changed = await context.push<bool>(AppRoutes.changePassword);
     if (changed != true || !mounted) return;
@@ -180,6 +212,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final auth = ref.watch(authControllerProvider);
     final themeMode =
         ref.watch(themeModeProvider).valueOrNull ?? ThemeMode.dark;
+    final biometrics = ref.watch(biometricSettingProvider).valueOrNull;
 
     return AppScaffold(
       title: 'Perfil',
@@ -216,6 +249,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             },
             onVehicles: () => context.push(AppRoutes.vehicles),
             onChangePassword: () => unawaited(_changePassword()),
+            biometrics: biometrics,
+            onBiometrics: _biometricsBusy
+                ? null
+                : (on) => unawaited(_setBiometrics(on)),
             onLogout: _logout,
             onDeleteAccount: () => context.push(AppRoutes.deleteAccount),
           );
@@ -250,6 +287,8 @@ class ProfileContent extends StatelessWidget {
     required this.onThemeMode,
     required this.onVehicles,
     required this.onChangePassword,
+    this.biometrics,
+    this.onBiometrics,
     required this.onLogout,
     required this.onDeleteAccount,
     this.loggingOut = false,
@@ -270,6 +309,14 @@ class ProfileContent extends StatelessWidget {
   final ValueChanged<ThemeMode> onThemeMode;
   final VoidCallback onVehicles;
   final VoidCallback onChangePassword;
+
+  /// Whether biometric sign-in is on for this account on this phone. Null
+  /// when the phone cannot check a biometric, and then there is no row at
+  /// all: a group draws a hairline before every child, even an empty one.
+  final bool? biometrics;
+
+  /// Null while a change is on its way, which holds the switch still.
+  final ValueChanged<bool>? onBiometrics;
   final VoidCallback onLogout;
   final VoidCallback onDeleteAccount;
 
@@ -294,11 +341,27 @@ class ProfileContent extends StatelessWidget {
               value: user.name,
               onTap: loggingOut ? null : onEditName,
             ),
+          ],
+        ),
+        const SizedBox(height: appGroupGap),
+        // How this account gets in. The password is the account's; the
+        // biometric is this phone's, which is what the note says.
+        AppGroup(
+          title: 'Segurança',
+          footnote: biometrics == null ? null : BiometricCopy.settingNote,
+          children: [
             AppSettingRow(
               label: 'Alterar senha',
               icon: Icons.lock_outline,
               onTap: loggingOut ? null : onChangePassword,
             ),
+            if (biometrics != null)
+              AppSettingRow.toggle(
+                label: BiometricCopy.settingLabel,
+                icon: Icons.fingerprint,
+                value: biometrics!,
+                onChanged: loggingOut ? null : onBiometrics,
+              ),
           ],
         ),
         const SizedBox(height: appGroupGap),

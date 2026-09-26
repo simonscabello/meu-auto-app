@@ -55,6 +55,7 @@ class _DesignGalleryState extends State<DesignGallery> {
   bool _dark = true;
   bool _loadingButton = true;
   bool _switch = true;
+  bool _settingSwitch = false;
   int _segment = 2;
   int _choice = 1;
   final _money = TextEditingController(text: 'R\$\u00A0420,00');
@@ -455,6 +456,12 @@ class _DesignGalleryState extends State<DesignGallery> {
                   label: 'E-mail',
                   icon: Icons.mail_outline,
                   value: 'simon@example.com',
+                ),
+                AppSettingRow.toggle(
+                  label: 'Entrar com biometria',
+                  icon: Icons.fingerprint,
+                  value: _settingSwitch,
+                  onChanged: (value) => setState(() => _settingSwitch = value),
                 ),
                 AppSettingRow(
                   label: 'Sair',

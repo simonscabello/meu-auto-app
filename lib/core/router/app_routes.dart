@@ -4,6 +4,10 @@ abstract final class AppRoutes {
   static const register = '/register';
   static const passwordReset = '/password-reset';
 
+  /// Behind the biometric prompt while a stored session is locked. It looks
+  /// like the splash on purpose: see `UnlockScreen`.
+  static const unlock = '/desbloquear';
+
   /// Deep link from the password-reset e-mail: `meuauto://redefinir-senha?token=`.
   static const passwordResetConfirm = '/redefinir-senha';
 

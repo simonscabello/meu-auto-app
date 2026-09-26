@@ -49,6 +49,10 @@
 		<true/>
 		<key>NSCameraUsageDescription</key>
 		<string>Para tirar a foto do seu perfil.</string>
+		<!-- Without it iOS ends the app the first time Face ID is asked for.
+		     Touch ID needs no key. -->
+		<key>NSFaceIDUsageDescription</key>
+		<string>Para entrar no Meu Auto com o Face ID.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Para escolher a foto do seu perfil.</string>
 		<key>NSAppTransportSecurity</key>

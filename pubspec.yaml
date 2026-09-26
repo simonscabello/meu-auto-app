@@ -50,6 +50,14 @@ dependencies:
   uuid: ^4.6.0
   url_launcher: ^6.3.2
   image_picker: ^1.2.3
+  # Sign in with a fingerprint or a face (26/09/2026, the owner's request,
+  # after Pauta): the biometric opens the session already stored on the
+  # phone and never stores a password. The two platform packages are listed
+  # only because the system prompt's words come from them, and their default
+  # is English.
+  local_auth: ^3.0.2
+  local_auth_android: ^2.2.0
+  local_auth_darwin: ^2.0.4
 
 dev_dependencies:
   flutter_test:
