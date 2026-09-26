@@ -190,7 +190,9 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"; & "$env:LOCALAPP
 
 E confirme o anúncio: `https://meu-auto-backend-production.up.railway.app/v1/app-version` tem de trazer a versão nova em `latest_version`.
 
-A primeira versão publicada assim foi a **1.1.0** (versionCode 2), em 26/09/2026.
+A primeira versão publicada assim foi a **1.1.0** (versionCode 2), em 26/09/2026. A **1.2.0** (versionCode 3), com a entrada por biometria, saiu no mesmo dia.
+
+Para esperar o Release, observe o link da própria tag — `https://github.com/simonscabello/meu-auto-app/releases/download/v1.3.0/meu-auto.apk` responde 404 até ele existir e 302 depois. O `releases/latest/download/...` não serve para isso: ele já responde, apontando para a versão anterior.
 
 ## 6. Build de release (iOS)
 
